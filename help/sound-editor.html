@@ -38,9 +38,9 @@
 <div class="fr-block" lang="fr">
 <h2>🚀 Démarrage rapide</h2>
 <ol>
-  <li>Ouvrir la page dans <b>Chrome, Edge ou Firefox desktop</b> (Web MIDI requis — pas de support mobile).</li>
+  <li>Ouvrir la page dans <b>Chrome ou Edge desktop</b> (Web MIDI avec sysex requis — Firefox ne supporte pas le sysex ; pas de support mobile).</li>
   <li>Brancher l'interface MIDI USB du KN2000, puis cliquer <b>🔄 Ports</b> et vérifier les entrées/sorties.</li>
-  <li>Cliquer <b>🔌 Connecter</b> : le slot courant est lu automatiquement (capture 📸 de l'original).</li>
+  <li>Cliquer <b>🔌 Connecter</b> : l'outil teste la liaison (lecture du slot courant, capture 📸 de l'original) et n'affiche « ● connecté » que si le KN2000 répond.</li>
   <li>Choisir un <b>slot</b> (A-1 → B-18) : lecture automatique du son.</li>
   <li>Modifier avec les curseurs et switches des onglets GENERAL / TONE / EFFECT. Par défaut, tout reste à l'écran ; pour écrire dans le clavier, armer l'écriture avec <b>🔒 Écriture</b> (le cadenas devient 🔓).</li>
 </ol>
@@ -88,6 +88,7 @@
   <li>Encodage des knobs configurable (2-complément ou absolu, inversion).</li>
 </ul>
 <div class="tip">💡 Le paramétrage APC est mémorisé dans le navigateur (localStorage) — il est propre à chaque origine (localhost ≠ github.io) : à refaire une fois par site.</div>
+<div class="tip">💡 <b>Après un rebranchement USB</b>, Windows peut renuméroter les ports MIDI : si le port APC mémorisé ne correspond plus (ou pointe désormais le port du KN2000), l'outil le détecte et réinitialise la config APC avec un message dans le journal — il suffit de rechoisir le port dans l'onglet APC.</div>
 
 <h3>Journal sysex</h3>
 <ul>
@@ -103,9 +104,12 @@
 <h2>❓ Dépannage</h2>
 <ul>
   <li><b>Le KN2000 n'apparaît pas dans les ports</b> : vérifier le câble/Interface, cliquer 🔄 Ports.</li>
+  <li><b>« ⚠ pas de réponse » après 🔌 Connecter</b> : l'outil n'a pas reçu de réponse du KN2000. Vérifier les ports In/Out (🔄 Ports), le câble MIDI, le branchement USB de l'interface, et que le clavier est allumé. Après tout rebranchement USB, cliquer 🔄 Ports.</li>
   <li><b>Lecture auto ne marche pas</b> : vérifier « Realtime sysex » sur ON.</li>
+  <li><b>La connexion se dégrade puis tombe</b> : rebrancher l'interface MIDI sur un autre port USB (éviter de partager un hub USB non alimenté avec d'autres périphériques MIDI), redémarrer le clavier, puis 🔄 Ports → 🔌 Connecter.</li>
   <li><b>APC : knobs sans effet</b> : vérifier l'assignation des paramètres dans l'onglet APC et l'encodage.</li>
   <li><b>Dump incomplet</b> : le dump doit totaliser 5 184 octets ; relancer le dump.</li>
+  <li><b>Sous Firefox, rien ne se passe</b> : Firefox ne supporte pas le sysex Web MIDI — utiliser Chrome ou Edge.</li>
 </ul>
 </div>
 
@@ -113,9 +117,9 @@
 <div class="en-block" lang="en">
 <h2>🚀 Quick start</h2>
 <ol>
-  <li>Open the page in <b>Chrome or Edge desktop</b> (Web MIDI required — no mobile support).</li>
+  <li>Open the page in <b>Chrome or Edge desktop</b> (Web MIDI with SysEx required — Firefox does not support SysEx; no mobile support).</li>
   <li>Connect the KN2000's USB MIDI interface, click <b>🔄 Ports</b> and check the inputs/outputs.</li>
-  <li>Click <b>🔌 Connect</b>: the current slot is read automatically (original is captured 📸).</li>
+  <li>Click <b>🔌 Connect</b>: the tool tests the link (reads the current slot, original is captured 📸) and only shows “● connected” if the KN2000 answers.</li>
   <li>Pick a <b>slot</b> (A-1 → B-18): the sound loads automatically.</li>
   <li>Edit with the sliders and switches of the GENERAL / TONE / EFFECT tabs. By default everything stays on screen; to write to the keyboard, arm writing with <b>🔒 Writing</b> (the padlock turns 🔓).</li>
 </ol>
@@ -163,6 +167,7 @@
   <li>Knob encoding configurable (two's complement or absolute, inversion).</li>
 </ul>
 <div class="tip">💡 The APC setup is stored in the browser (localStorage) — it is specific to each origin (localhost ≠ github.io): redo it once per site.</div>
+<div class="tip">💡 <b>After replugging USB</b>, Windows may renumber the MIDI ports: if the remembered APC port no longer matches (or now points to the KN2000's port), the tool detects it and resets the APC setup with a message in the log — just pick the port again in the APC tab.</div>
 
 <h3>SysEx log</h3>
 <ul>
@@ -178,13 +183,17 @@
 <h2>❓ Troubleshooting</h2>
 <ul>
   <li><b>KN2000 not listed in ports</b>: check cable/interface, click 🔄 Ports.</li>
+  <li><b>“⚠ no reply” after 🔌 Connect</b>: the tool got no answer from the KN2000. Check the In/Out ports (🔄 Ports), the MIDI cable, the interface's USB connection, and that the keyboard is on. After any USB replug, click 🔄 Ports.</li>
   <li><b>Auto-read not working</b>: check “Realtime sysex” is ON.</li>
+  <li><b>Connection degrades then drops</b>: replug the MIDI interface into another USB port (avoid sharing an unpowered USB hub with other MIDI devices), restart the keyboard, then 🔄 Ports → 🔌 Connect.</li>
   <li><b>APC: knobs do nothing</b>: check parameter assignments in the APC tab and the encoding mode.</li>
   <li><b>Incomplete dump</b>: a dump must total 5,184 bytes; run the dump again.</li>
+  <li><b>Nothing happens under Firefox</b>: Firefox does not support Web MIDI SysEx — use Chrome or Edge.</li>
 </ul>
 </div>
 
 <h2>🕐 Historique des versions / Version history</h2>
+<div class="ver"><b>v0.8.2</b><span class="date">24/10/2026</span> — Robustesse connexion : « ● connecté » n'est affiché qu'après vérification que le KN2000 répond (sinon « ⚠ pas de réponse » avec diagnostic). Correctif APC : l'onglet APC ne coupe plus le récepteur du port KN2000. Détection du port APC mémorisé obsolète (renumérotation USB). Docs navigateurs corrigées (Firefox ≠ sysex).<br/><i>Connection robustness: “● connected” only shown after the KN2000 answers. APC fix: the APC tab no longer breaks the KN2000 port receiver. Stale APC port detection (USB renumbering). Browser docs fixed (Firefox ≠ SysEx).</i></div>
 <div class="ver"><b>v0.8.1</b><span class="date">24/10/2026</span> — Première publication sur GitHub Pages. Lecture auto du slot (capture de l'original), onglets GENERAL/TONE/EFFECT/BANQUE, session avec rétablissement de l'original, catalogue de sons, surface APC Key 25 mk2 (4 banques × 8 knobs, pads ON/OFF), écriture armée 🔒/🔓, auto-appliquer ⚡.<br/><i>First release on GitHub Pages. Auto slot read (original capture), GENERAL/TONE/EFFECT/BANK tabs, original-restore session, sound catalogue, APC Key 25 mk2 surface, armed writing, auto-apply.</i></div>
 <div class="ver"><b>v0.6</b><span class="date">21/10/2026</span> — Version de développement locale (serveur Python) : cartographie 144 octets, écrans de base, dump de banque.<br/><i>Local development version: 144-byte mapping, base screens, bank dump.</i></div>
 

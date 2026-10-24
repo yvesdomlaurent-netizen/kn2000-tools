@@ -10,9 +10,14 @@ Outils :
 ---
 
 ## [Non publié] / Unreleased
-- Aide en ligne par outil : `help/sound-editor.html`, `help/panel-console.html` (FR/EN).
 
 ## 2026-10-24
+
+### Sound Editor v0.8.2
+- **Robustesse connexion** : le bouton 🔌 Connecter vérifie désormais que le KN2000 répond (lecture test du slot) avant d'afficher « ● connecté ». Sans réponse : « ⚠ pas de réponse » avec pistes de diagnostic dans le journal (au lieu d'un « connecté » trompeur).
+- **Correctif APC critique** : le rattachement de la surface APC ne coupe plus le récepteur sysex du port KN2000 (l'onglet APC remettait à zéro le handler de tous les autres ports, y compris celui du clavier → pertes MIDI après bricolage de la config).
+- **Port APC obsolète détecté** : si le port APC mémorisé (localStorage) correspond désormais au port du KN2000 (renumérotation des ports par Windows après rebranchement USB), la config APC est réinitialisée avec un message explicite dans le journal.
+- **Docs** : compatibilité navigateurs corrigée — le sysex Web MIDI n'est pas supporté sous Firefox, Chrome/Edge desktop requis.
 
 ### Panel Console v1.0
 - Première publication sur GitHub Pages.
@@ -20,6 +25,7 @@ Outils :
 
 ### Site
 - Ajout de Panel Console à l'accueil (`index.html`).
+- Aide en ligne par outil : `help/sound-editor.html`, `help/panel-console.html` (FR/EN).
 
 ### Sound Editor v0.8.1
 - Première publication sur GitHub Pages.

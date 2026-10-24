@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>KN2000 Sound Editor v0.8.1</title>
+<title>KN2000 Sound Editor v0.8.2</title>
 <style>
   :root { font-family: system-ui, sans-serif; background:#0b1220; color:#e2e8f0; }
   * { box-sizing:border-box; }
@@ -68,7 +68,7 @@
 </style>
 </head>
 <body>
-<div class="banner">🎹 Sound Editor <b>v0.8.1</b> — structure du son 144 octets (cartographie officielle p.24/30/31 + Digital Effects). Lecture AUTO à la connexion et au changement de slot (capture 📸 de l'original). Onglets GENERAL/TONE/EFFECT = écrans du manual. Onglet APC = surface de contrôle live (pads parts, knobs, LEDs). Écriture : bouton-état 🔒/🔓 dans la barre d'outils. ⚠️ Toujours faire un dump de sauvegarde avant d'écrire.</div>
+<div class="banner">🎹 Sound Editor <b>v0.8.2</b> — structure du son 144 octets (cartographie officielle p.24/30/31 + Digital Effects). Lecture AUTO à la connexion et au changement de slot (capture 📸 de l'original). Onglets GENERAL/TONE/EFFECT = écrans du manual. Onglet APC = surface de contrôle live (pads parts, knobs, LEDs). Écriture : bouton-état 🔒/🔓 dans la barre d'outils. ⚠️ Toujours faire un dump de sauvegarde avant d'écrire.</div>
 
 <header>
   <h1>🎹 Sound Editor</h1>
@@ -711,20 +711,32 @@ function refreshPorts(){
       acc.outputs.forEach(p=>ao.add(new Option(p.name,p.id)));
       if(APC.inId&&[...ai.options].some(o=>o.value===APC.inId)) ai.value=APC.inId;
       if(APC.outId&&[...ao.options].some(o=>o.value===APC.outId)) ao.value=APC.outId;
+      if(APC.inId&&APC.inId===$("inSel").value) log("⚠️ Le port APC mémorisé est maintenant celui du KN2000 (ports renumérotés par Windows ?) — rebranche/rechoisis le port de l'APC dans l'onglet APC.","status-ko");
       apcAttach(); apcUI();
     }
   }).catch(e=>log("Accès MIDI refusé : "+e.message,"status-ko"));
 }
-function connect(){
+let lastReadOk=false;
+async function connect(){
   if(!access){ log("Clique d'abord sur « 🔄 Ports ».","status-ko"); return; }
   midiIn=access.inputs.get($("inSel").value)||null;
   midiOut=access.outputs.get($("outSel").value)||null;
+  if(APC.inId&&midiIn&&APC.inId===midiIn.id){
+    log("⚠️ Le port APC mémorisé pointe désormais le port du KN2000 (ports renumérotés après rebranchement USB ?) — config APC réinitialisée.","status-ko");
+    APC.inId=null; apcSave(); apcUI();
+  }
   if(midiIn) midiIn.onmidimessage=onMidi;
+  apcAttach();
   const ok=!!(midiIn&&midiOut);
-  $("stMidi").textContent=ok?"● connecté":"non connecté";
-  $("stMidi").className="pill "+(ok?"on":"off");
-  log(ok?"Connecté. Mode lecture seule (écriture à armer en bas).":"Choisis les ports.","",ok?null:"status-ko");
-  if(ok){ log("📖 Lecture automatique du slot "+slotName(curSlot)+"…"); readSlot(); }
+  if(!ok){ $("stMidi").textContent="non connecté"; $("stMidi").className="pill off";
+    log("Choisis les ports.","status-ko"); return; }
+  $("stMidi").textContent="⏳ test KN2000…"; $("stMidi").className="pill off";
+  log("Test de liaison : lecture du slot "+slotName(curSlot)+"…");
+  await readSlot();
+  if(lastReadOk){ $("stMidi").textContent="● connecté"; $("stMidi").className="pill on";
+    log("Connecté. Mode lecture seule (écriture à armer en bas).","status-ok"); }
+  else { $("stMidi").textContent="⚠ pas de réponse"; $("stMidi").className="pill off";
+    log("⚠️ Ports choisis mais le KN2000 ne répond pas — vérifie In/Out (🔄 Ports), le câble MIDI et le branchement USB.","status-ko"); }
 }
 function onMidi(ev){
   const data=Array.from(ev.data);
@@ -759,7 +771,7 @@ function readAddr(a,siz){
 async function readSlot(){
   const n=curSlot;
   $("log").innerHTML="";                       // log vidé à chaque lecture
-  raw=new Uint8Array(144); const got=new Array(144).fill(false);
+  lastReadOk=false; raw=new Uint8Array(144); const got=new Array(144).fill(false);
   log("Lecture du slot "+slotName(n)+" : 144 octets, DRQ séquentiels…");
   for(let pass=1; pass<=2; pass++){
     for(let off=0; off<144; off++){
@@ -777,6 +789,7 @@ async function readSlot(){
     toast("Lecture incomplète — ancien affichage conservé");
     return;
   }
+  lastReadOk=true;
   $("progress").textContent="✓ 144/144";
   model=parse(raw); bind(model); cacheSave();
   setSource("● machine "+new Date().toLocaleTimeString(),"Données lues sur le KN2000");
@@ -1427,7 +1440,8 @@ function apcSt(){ const el=$("apcSt"); if(!el) return;
 }
 function apcAttach(){
   if(!access) return;
-  access.inputs.forEach(inp=>{ inp.onmidimessage = (inp.id===APC.inId) ? apcMsg : null; });
+  if(APC.inId&&midiIn&&APC.inId===midiIn.id){ APC.inId=null; apcSave(); }
+  access.inputs.forEach(inp=>{ inp.onmidimessage = (inp.id===APC.inId) ? apcMsg : (midiIn&&inp.id===midiIn.id) ? onMidi : null; });
   apcSt();
 }
 function apcSelectPart(pi){
@@ -1573,3 +1587,4 @@ $("btnClearLog").onclick=()=>{ $("log").innerHTML=""; log("Log vidé."); };
 </script>
 </body>
 </html>
+
