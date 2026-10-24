@@ -13,6 +13,11 @@ Outils :
 
 ## 2026-10-25
 
+### Sound Editor v0.9.1 — correctifs LEDs retour terrain
+- **Pads ON/OFF : changement d'état de nouveau visible.** La couleur par défaut des tones ON/OFF était le vert (0x21), identique à la couleur d'état ON → aucun changement visible à l'appui. Les tones ON/OFF passent par défaut en **blanc** (état OFF) ; l'état ON reste **vert**. (Couleurs toujours paramétrables fonction par fonction.)
+- **Pads sélecteurs de banque : maintenant visibles.** Un pad utilisé comme bouton de banque s'affiche en **gris** (banque inactive) ou **vert** (banque active) — auparavant éteint sauf banque active, et l'éclairage « couleur fonction » pouvait écraser le vert (ordre d'application corrigé : les LEDs de banque sont appliquées en dernier).
+- **Protocole LED correct pour les boutons** (Track/Scene/Stop/Play…) utilisés comme sélecteurs de banque : LED simple on/off (00/01), pas la palette RVB des pads.
+
 ### Sound Editor v0.9.0 — surface APC étendue
 - **8 banques de knobs** (64 paramètres pilotables, contre 4 banques/32 avant) ; migration automatique des configs existantes.
 - **N'importe quel bouton de l'APC comme sélecteur de banque** : Knob Control, Track, Scene, Stop, Play… ou un pad — le mécanisme d'apprentissage « 🎓 bouton » accepte tout bouton émettant un Note On.
@@ -20,6 +25,7 @@ Outils :
 - **Couleurs paramétrables par fonction** : palette de 12 couleurs (palette officielle Akai), éditeur dédié dans l'onglet APC.
 - **Paramètres manquants ajoutés aux knobs** : enveloppes complètes des 3 tones (Decay 2, Sustain 2, Touch attack, Touch curve, Lvl KF, EKF atk/dcy/rls), filtre complet des 2nd/sub (Touch depth, curve, slope), Auto bend depth/speed, Distortion touch — 74 paramètres au total.
 - **Export / import de la config APC** (JSON) : banques, assignations, pads, couleurs et ports — pour copier la config d'une origine à l'autre (localhost ↔ github.io), d'un navigateur ou d'un PC à l'autre.
+- À faire (demande d'Yves) : faire passer l'export config APC par le dossier 📁 déjà configuré (comme banques/packages), avec repli sur téléchargement.
 
 ## 2026-10-24
 

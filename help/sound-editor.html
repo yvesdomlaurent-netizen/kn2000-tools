@@ -83,9 +83,9 @@
 
 <h3>Onglet APC — Akai APC Key 25 mk2</h3>
 <ul>
-  <li>🎛️ <b>Knobs — 8 banques × 8</b> (64 paramètres pilotables). Apprentissage (« 🎓 CC ») : tourner les 8 knobs un par un ; « 🎓 bouton » : lier un <b>n'importe quel bouton</b> de l'APC (Knob Control, Track, Scene, Stop, Play… ou un pad) comme sélecteur de cette banque. Chaque knob est ensuite assigné à un paramètre via le menu déroulant (74 paramètres disponibles : enveloppes complètes, KF, filtres des 3 tones, vibrato, auto bend, modulation, distortion, reverb, FX).</li>
+  <li>🎛️ <b>Knobs — 8 banques × 8</b> (64 paramètres pilotables). Apprentissage (« 🎓 CC ») : tourner les 8 knobs un par un ; « 🎓 bouton » : lier <b>n'importe quel bouton</b> de l'APC (Knob Control, Track, Scene, Stop, Play… ou un pad) comme sélecteur de cette banque. Chaque knob est ensuite assigné à un paramètre via le menu déroulant (74 paramètres disponibles : enveloppes complètes, KF, filtres des 3 tones, vibrato, auto bend, modulation, distortion, reverb, FX).</li>
   <li>🎛️ <b>Pads</b> : 1re colonne = parts du clavier (RIGHT1/RIGHT2/LEFT) ; les autres pads pilotent des ON/OFF (tones, vibrato, modulation, distortion, effect, glide, wheel…).</li>
-  <li>🎨 <b>LEDs en continu</b> : chaque pad assigné reste allumé à la <b>couleur de sa fonction</b> (état OFF) ; la LED passe au <b>vert</b> quand la fonction est ON ; un pad libre est éteint. Couleurs paramétrables fonction par fonction (palette de 12 couleurs).</li>
+  <li>🎨 <b>LEDs en continu</b> : chaque pad assigné reste allumé à la <b>couleur de sa fonction</b> (état OFF) ; la LED passe au <b>vert</b> quand la fonction est ON ; un pad libre est éteint. Un pad utilisé comme <b>sélecteur de banque</b> s'affiche en <b>gris</b> (banque inactive) ou <b>vert</b> (banque active). Couleurs paramétrables fonction par fonction (palette de 12 couleurs).</li>
   <li>💾 <b>Export / import de la config APC</b> (JSON) : copie toute la config (banques, knobs, pads, couleurs, ports) d'une origine/navigateur/PC à un autre.</li>
   <li>Encodage des knobs configurable (2-complément ou absolu, inversion).</li>
 </ul>
@@ -111,6 +111,7 @@
   <li><b>La connexion se dégrade puis tombe</b> : rebrancher l'interface MIDI sur un autre port USB (éviter de partager un hub USB non alimenté avec d'autres périphériques MIDI), redémarrer le clavier, puis 🔄 Ports → 🔌 Connecter.</li>
   <li><b>APC : knobs sans effet</b> : vérifier l'assignation des paramètres dans l'onglet APC et l'encodage.</li>
   <li><b>APC : LEDs des pads n'apparaissent pas</b> : vérifier que « APC Out » est le port de la surface de contrôle (retours LED), puis refaire une action sur un pad.</li>
+  <li><b>APC : un pad ON/OFF ne change pas de couleur à l'appui</b> : vérifier que sa couleur fonction n'est pas le vert (couleur réservée à l'état ON) — la changer dans l'éditeur de couleurs.</li>
   <li><b>Dump incomplet</b> : le dump doit totaliser 5 184 octets ; relancer le dump.</li>
   <li><b>Sous Firefox, rien ne se passe</b> : Firefox ne supporte pas le sysex Web MIDI — utiliser Chrome ou Edge.</li>
 </ul>
@@ -167,7 +168,7 @@
 <ul>
   <li>🎛️ <b>Knobs — 8 banks × 8</b> (64 controllable parameters). Learning (“🎓 CC”): turn each of the 8 knobs; “🎓 button”: link <b>any APC button</b> (Knob Control, Track, Scene, Stop, Play… or a pad) as this bank's selector. Each knob is then assigned to a parameter via the dropdown (74 parameters available: full envelopes, KF, filters of all 3 tones, vibrato, auto bend, modulation, distortion, reverb, FX).</li>
   <li>🎛️ <b>Pads</b>: first column = keyboard parts (RIGHT1/RIGHT2/LEFT); other pads drive ON/OFF switches (tones, vibrato, modulation, distortion, effect, glide, wheel…).</li>
-  <li>🎨 <b>Continuous LEDs</b>: each assigned pad stays lit with its <b>function's colour</b> (OFF state); the LED turns <b>green</b> when the function is ON; a free pad is off. Colours are configurable per function (12-colour palette).</li>
+  <li>🎨 <b>Continuous LEDs</b>: each assigned pad stays lit with its <b>function's colour</b> (OFF state); the LED turns <b>green</b> when the function is ON; a free pad is off. A pad used as a <b>bank selector</b> shows <b>gray</b> (inactive bank) or <b>green</b> (active bank). Colours are configurable per function (12-colour palette).</li>
   <li>💾 <b>APC setup export / import</b> (JSON): copies the whole setup (banks, knobs, pads, colours, ports) across origins/browsers/PCs.</li>
   <li>Knob encoding configurable (two's complement or absolute, inversion).</li>
 </ul>
@@ -193,12 +194,14 @@
   <li><b>Connection degrades then drops</b>: replug the MIDI interface into another USB port (avoid sharing an unpowered USB hub with other MIDI devices), restart the keyboard, then 🔄 Ports → 🔌 Connect.</li>
   <li><b>APC: knobs do nothing</b>: check parameter assignments in the APC tab and the encoding mode.</li>
   <li><b>APC: pad LEDs don't show</b>: make sure “APC Out” is the control surface's port (LED returns), then act on a pad again.</li>
+  <li><b>APC: an ON/OFF pad doesn't change colour when pressed</b>: check that its function colour isn't green (reserved for the ON state) — change it in the colour editor.</li>
   <li><b>Incomplete dump</b>: a dump must total 5,184 bytes; run the dump again.</li>
   <li><b>Nothing happens under Firefox</b>: Firefox does not support Web MIDI SysEx — use Chrome or Edge.</li>
 </ul>
 </div>
 
 <h2>🕐 Historique des versions / Version history</h2>
+<div class="ver"><b>v0.9.1</b><span class="date">25/10/2026</span> — Correctifs LEDs : couleur par défaut des tones ON/OFF passée du vert au blanc (le vert est réservé à l'état ON — le changement d'état est de nouveau visible) ; pads sélecteurs de banque visibles (gris = banque inactive, vert = active, LEDs de banque appliquées en dernier) ; protocole LED simple on/off pour les boutons Track/Scene utilisés comme sélecteurs.<br/><i>LED fixes: tones ON/OFF default colour moved from green to white (green reserved for ON state — state change visible again); bank-selector pads now visible (gray = inactive bank, green = active, bank LEDs applied last); simple on/off LED protocol for Track/Scene buttons used as selectors.</i></div>
 <div class="ver"><b>v0.9.0</b><span class="date">25/10/2026</span> — Surface APC étendue : 8 banques de knobs (64 mappings), n'importe quel bouton APC comme sélecteur de banque, LEDs des pads en continu (couleur par fonction, paramétrable), 74 paramètres assignables (enveloppes complètes + KF + filtres + FX), export/import de la config APC en JSON.<br/><i>Extended APC surface: 8 knob banks, any APC button as bank selector, continuous pad LEDs (per-function, configurable colours), 74 assignable parameters, JSON setup export/import.</i></div>
 <div class="ver"><b>v0.8.2</b><span class="date">24/10/2026</span> — Robustesse connexion : « ● connecté » n'est affiché qu'après vérification que le KN2000 répond (sinon « ⚠ pas de réponse » avec diagnostic). Correctif APC : l'onglet APC ne coupe plus le récepteur du port KN2000. Détection du port APC mémorisé obsolète (renumérotation USB). Docs navigateurs corrigées (Firefox ≠ sysex).<br/><i>Connection robustness: “● connected” only shown after the KN2000 answers. APC fix: the APC tab no longer breaks the KN2000 port receiver. Stale APC port detection (USB renumbering). Browser docs fixed (Firefox ≠ SysEx).</i></div>
 <div class="ver"><b>v0.8.1</b><span class="date">24/10/2026</span> — Première publication sur GitHub Pages. Lecture auto du slot (capture de l'original), onglets GENERAL/TONE/EFFECT/BANQUE, session avec rétablissement de l'original, catalogue de sons, surface APC Key 25 mk2 (4 banques × 8 knobs, pads ON/OFF), écriture armée 🔒/🔓, auto-appliquer ⚡.<br/><i>First release on GitHub Pages. Auto slot read (original capture), GENERAL/TONE/EFFECT/BANK tabs, original-restore session, sound catalogue, APC Key 25 mk2 surface, armed writing, auto-apply.</i></div>

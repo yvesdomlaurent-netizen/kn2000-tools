@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>KN2000 Sound Editor v0.9.0</title>
+<title>KN2000 Sound Editor v0.9.1</title>
 <style>
   :root { font-family: system-ui, sans-serif; background:#0b1220; color:#e2e8f0; }
   * { box-sizing:border-box; }
@@ -68,7 +68,7 @@
 </style>
 </head>
 <body>
-<div class="banner">🎹 Sound Editor <b>v0.9.0</b> — structure du son 144 octets (cartographie officielle p.24/30/31 + Digital Effects). Lecture AUTO à la connexion et au changement de slot (capture 📸 de l'original). Onglets GENERAL/TONE/EFFECT = écrans du manual. Onglet APC = surface de contrôle live (pads parts, knobs, LEDs). Écriture : bouton-état 🔒/🔓 dans la barre d'outils. ⚠️ Toujours faire un dump de sauvegarde avant d'écrire.</div>
+<div class="banner">🎹 Sound Editor <b>v0.9.1</b> — structure du son 144 octets (cartographie officielle p.24/30/31 + Digital Effects). Lecture AUTO à la connexion et au changement de slot (capture 📸 de l'original). Onglets GENERAL/TONE/EFFECT = écrans du manual. Onglet APC = surface de contrôle live (pads parts, knobs, LEDs). Écriture : bouton-état 🔒/🔓 dans la barre d'outils. ⚠️ Toujours faire un dump de sauvegarde avant d'écrire.</div>
 
 <header>
   <h1>🎹 Sound Editor</h1>
@@ -244,7 +244,7 @@
     <div id="apcKnobs"></div>
   </div>
   <div class="card" style="grid-column:1/-1"><h2>Pads — 1re colonne = parts · les autres = ON/OFF</h2>
-    <p class="note">Chaque pad assigné reste <b>allumé en continu</b> à la couleur de sa fonction (état OFF) ; la LED passe au <b>vert</b> quand la fonction est ON. Pads libres = éteints. Couleurs paramétrables ci-dessous. Les pads de la 1re colonne (RIGHT1 / RIGHT2 / LEFT) restent réservés aux parts.</p>
+    <p class="note">Chaque pad assigné reste <b>allumé en continu</b> à la couleur de sa fonction (état OFF) ; la LED passe au <b>vert</b> quand la fonction est ON. Pads libres = éteints. Couleurs paramétrables ci-dessous. Un pad utilisé comme <b>sélecteur de banque</b> s'affiche en <b>gris</b> (banque inactive) ou <b>vert</b> (banque active). Les pads de la 1re colonne (RIGHT1 / RIGHT2 / LEFT) restent réservés aux parts.</p>
     <div id="apcPads"></div>
   </div>
   <div class="card" style="grid-column:1/-1"><h2>🎨 Couleurs des fonctions (LED pads)</h2>
@@ -1432,7 +1432,7 @@ const APC_TOGGLES=[
  {f:"glide",l:"Glide ON/OFF",c:0x29},
  {f:"wheel",l:"Mod wheel ON/OFF",c:0x29},
 
- {f:"t0_on",l:"Tone 1st ON/OFF",c:0x21},{f:"t1_on",l:"Tone 2nd ON/OFF",c:0x21},{f:"t2_on",l:"Tone sub ON/OFF",c:0x21},
+ {f:"t0_on",l:"Tone 1st ON/OFF",c:0x03},{f:"t1_on",l:"Tone 2nd ON/OFF",c:0x03},{f:"t2_on",l:"Tone sub ON/OFF",c:0x03},
  {f:"vibT0",l:"Vibrato 1st ON/OFF",c:0x0D},{f:"vibT1",l:"Vibrato 2nd ON/OFF",c:0x0D},{f:"vibT2",l:"Vibrato sub ON/OFF",c:0x0D},
  {f:"modOn",l:"Modulation ON/OFF",c:0x3D},
  {f:"disOn",l:"Distortion ON/OFF",c:0x09},
@@ -1449,13 +1449,16 @@ function apcSave(){ try{ localStorage.setItem("kn2000_se_v06_apc", JSON.stringif
 let apcLearn=null;
 function apcOut(){ if(!access||!APC.outId) return null; let o=null; access.outputs.forEach(x=>{ if(x.id===APC.outId) o=x; }); return o; }
 function apcLed(note,vel){ const o=apcOut(); if(o) o.send([0x90,note,vel]); }
-function apcBtnLeds(){ // boutons de banque appris : vert = banque active, éteint = autres
-  APC.banks.forEach((b,i)=>{ if(b.btn!=null) apcLed(b.btn, i===APC.bank?0x21:0x00); });
+function apcBtnLeds(){ // sélecteurs de banque : pad → vert = banque active, gris = pad de banque inactif ; bouton (Track/Scene…) → LED simple on/off
+  APC.banks.forEach((b,i)=>{ if(b.btn==null) return;
+    if(b.btn<40) apcLed(b.btn, i===APC.bank?0x21:0x02);   // pad RVB : palette
+    else apcLed(b.btn, i===APC.bank?0x01:0x00);           // bouton UI : LED simple (00=off, 01=on, 02=blink)
+  });
 }
 const APC_PALETTE=[["éteint",0x00],["gris",0x02],["blanc",0x03],["rouge",0x05],["orange",0x09],["jaune",0x0D],["vert",0x21],["vert clair",0x1C],["turquoise",0x29],["bleu",0x45],["magenta",0x3D],["rose",0x33]];
 function apcColorOf(f){ if(APC.colors&&APC.colors[f]!=null) return APC.colors[f]; const t=APC_TOGGLES.find(x=>x.f===f); return t?t.c:0x00; }
-function apcPadsLeds(){ // couleur fonction en continu sur chaque pad assigné (état OFF)
-  Object.keys(APC.pads).forEach(n=>{ apcLed(+n, apcColorOf(APC.pads[n])); });
+function apcPadsLeds(){ // couleur fonction en continu sur chaque pad assigné (état OFF) — les pads utilisés comme sélecteurs de banque sont gérés par apcBtnLeds
+  Object.keys(APC.pads).forEach(n=>{ if(APC.banks.some(b=>b.btn===+n)) return; apcLed(+n, apcColorOf(APC.pads[n])); });
 }
 function apcSt(){ const el=$("apcSt"); if(!el) return;
   let ok=false; if(access&&APC.inId){ access.inputs.forEach(x=>{ if(x.id===APC.inId) ok=true; }); }
@@ -1588,7 +1591,7 @@ function apcUI(){
     });
   }
   const enc=$("apcEnc"); if(enc) enc.value=APC.enc||"2c";
-  apcSt(); apcBtnLeds(); apcPadsLeds();
+  apcSt(); apcPadsLeds(); apcBtnLeds();
 }
 $("apcEnc").onchange=()=>{ APC.enc=$("apcEnc").value; apcSave(); log("🎛️ Encodage knobs : "+$("apcEnc").selectedOptions[0].textContent); };
 $("apcIn").onchange=()=>{
@@ -1647,5 +1650,6 @@ $("btnClearLog").onclick=()=>{ $("log").innerHTML=""; log("Log vidé."); };
 </script>
 </body>
 </html>
+
 
 
