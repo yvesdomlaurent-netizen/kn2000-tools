@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Aide — Sound Editor KN2000</title>
+<style>
+  :root { font-family: system-ui, sans-serif; background:#0b1220; color:#e2e8f0; }
+  * { box-sizing:border-box; }
+  body { margin:0 auto; padding:20px; max-width:880px; line-height:1.5; }
+  header { background:#131c30; border-radius:12px; padding:16px 18px; margin-bottom:16px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  h1 { margin:0; font-size:1.2rem; color:#bae6fd; flex:1; }
+  .lang { display:flex; gap:4px; }
+  .lang button { background:#1e3a5f; color:#bae6fd; border:0; border-radius:8px; padding:6px 14px; cursor:pointer; font-weight:600; }
+  .lang button.on { background:#38bdf8; color:#0b1220; }
+  h2 { color:#7dd3fc; font-size:1.05rem; margin:26px 0 8px; border-bottom:1px solid #1e3a5f; padding-bottom:4px; }
+  h3 { color:#bae6fd; font-size:.92rem; margin:16px 0 4px; }
+  p, li { font-size:.92rem; color:#cbd5e1; }
+  a { color:#38bdf8; }
+  code { background:#1e293b; border-radius:5px; padding:1px 6px; font-size:.85em; color:#fbbf24; }
+  .warn { background:#3b2109; border:1px solid #b45309; color:#fdba74; border-radius:10px; padding:10px 14px; margin:12px 0; font-size:.9rem; }
+  .tip { background:#0b2745; border:1px solid #1e3a5f; color:#bae6fd; border-radius:10px; padding:10px 14px; margin:12px 0; font-size:.9rem; }
+  ol, ul { padding-left:22px; }
+  .ver { background:#131c30; border:1px solid #1e293b; border-radius:10px; padding:10px 14px; margin:8px 0; }
+  .ver b { color:#7dd3fc; }
+  .ver .date { color:#64748b; font-size:.8rem; margin-left:8px; }
+  .back { display:inline-block; margin-top:24px; }
+  .fr-block { } .en-block { display:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📖 Sound Editor — Aide / Help</h1>
+  <div class="lang"><button id="frBtn" class="on" onclick="setLang('fr')">FR</button><button id="enBtn" onclick="setLang('en')">EN</button></div>
+</header>
+
+<!-- ============ FR ============ -->
+<div class="fr-block" lang="fr">
+<h2>🚀 Démarrage rapide</h2>
+<ol>
+  <li>Ouvrir la page dans <b>Chrome ou Edge desktop</b> (Web MIDI requis — pas de support mobile).</li>
+  <li>Brancher l'interface MIDI USB du KN2000, puis cliquer <b>🔄 Ports</b> et vérifier les entrées/sorties.</li>
+  <li>Cliquer <b>🔌 Connecter</b> : le slot courant est lu automatiquement (capture 📸 de l'original).</li>
+  <li>Choisir un <b>slot</b> (A-1 → B-18) : lecture automatique du son.</li>
+  <li>Modifier avec les curseurs et switches des onglets GENERAL / TONE / EFFECT. Par défaut, tout reste à l'écran ; pour écrire dans le clavier, armer l'écriture avec <b>🔒 Écriture</b> (le cadenas devient 🔓).</li>
+</ol>
+<div class="warn">⚠️ <b>Avant toute écriture</b> : faire un dump de sauvegarde de la banque (onglet BANQUE → Dump banque) ou un export. Le Sound Editor écrit dans les Sound Memory A/B du KN2000.</div>
+<div class="tip">💡 L'option <b>⚡ Auto-appliquer</b> recharge après chaque écriture le son en cours sur les parts du clavier qui le jouent (nécessite « Realtime sysex » sur ON dans le KN2000).</div>
+<div class="tip">💡 Sans clavier, le bouton <b>🧪 Exemple A-1 usine</b> charge un son d'exemple pour explorer les écrans.</div>
+
+<h2>📚 Fonctions détaillées</h2>
+
+<h3>Onglet GENERAL</h3>
+<ul>
+  <li>🗺️ <b>Cartographie 144 octets</b> : nom (16 caractères), octave shift, controllers, vibrato, auto bend &amp; trill, modulation, digital effect — correspond aux écrans du manual Technics (p.24/30/31 + Digital Effects).</li>
+  <li>📸 <b>Session — Original</b> : la première lecture d'un slot capture automatiquement l'original (144 octets). À tout moment : « ↩️ Rétablir l'original » renvoie l'original dans la machine, « ✅ Garder le nouveau son » valide la modification. Un original par slot, conservé entre rechargements de page.</li>
+  <li>✍️ <b>Nom</b> : édition du nom du son, écriture séparée via le bouton « nom » (écriture armée requise).</li>
+  <li>📍 <b>Lire l'état</b> : affiche quel son jouent RIGHT1 / RIGHT2 / LEFT, indépendamment du son édité.</li>
+</ul>
+
+<h3>Onglet TONE (1st · 2nd · sub)</h3>
+<ul>
+  <li>Édition des trois tones : paramètres, enveloppes avec schémas visuels et courbes.</li>
+  <li>Code couleur : <span style="color:#4ade80">champ confirmé</span> · <span style="color:#fbbf24">partiel</span> · <span style="color:#64748b">inconnu</span>.</li>
+</ul>
+
+<h3>Onglet EFFECT</h3>
+<ul>
+  <li>Digital Effects : sélection, paramètres et mix, selon la cartographie établie sur la machine.</li>
+</ul>
+
+<h3>Onglet BANQUE (36 slots)</h3>
+<ul>
+  <li>📥 <b>Dump banque</b> : lit les 36 slots du clavier (5 184 octets) et les met en cache.</li>
+  <li>📤 <b>Envoi banque</b> : écrit les 36 slots vers le clavier (écriture armée requise).</li>
+  <li>📂 Import / export de banque au format JSON.</li>
+</ul>
+
+<h3>📚 Catalogue de sonorités</h3>
+<ul>
+  <li>Sons isolés (144 octets chacun) : importer, exporter, copier d'un slot vers un autre.</li>
+</ul>
+
+<h3>Onglet APC — Akai APC Key 25 mk2</h3>
+<ul>
+  <li>🎛️ <b>Knobs</b> : 4 banques × 8 knobs. Apprentissage (« 🎓 CC ») : tourner les 8 knobs un par un ; bouton « 🎓 bouton » pour lier le bouton Knob Control de chaque banque. Chaque knob est ensuite assigné à un paramètre via le menu déroulant.</li>
+  <li>🎛️ <b>Pads</b> : 1re colonne = parts du clavier (RIGHT1/RIGHT2/LEFT) ; les autres pads pilotent des ON/OFF (vibrato, modulation, distortion, effect…). LEDs : vert = actif, blanc = part sélectionnée.</li>
+  <li>Encodage des knobs configurable (2-complément ou absolu, inversion).</li>
+</ul>
+<div class="tip">💡 Le paramétrage APC est mémorisé dans le navigateur (localStorage) — il est propre à chaque origine (localhost ≠ github.io) : à refaire une fois par site.</div>
+
+<h3>Journal sysex</h3>
+<ul>
+  <li>📜 Le journal affiche tout le trafic MIDI. Utile pour diagnostiquer une connexion ou découvrir des commandes.</li>
+</ul>
+
+<h2>🧷 Prérequis côté clavier</h2>
+<ul>
+  <li>KN2000 : « Realtime sysex » sur ON pour la lecture automatique et l'auto-appliquer.</li>
+  <li>Interface MIDI USB reliée au port MIDI du KN2000.</li>
+</ul>
+
+<h2>❓ Dépannage</h2>
+<ul>
+  <li><b>Le KN2000 n'apparaît pas dans les ports</b> : vérifier le câble/Interface, cliquer 🔄 Ports.</li>
+  <li><b>Lecture auto ne marche pas</b> : vérifier « Realtime sysex » sur ON.</li>
+  <li><b>APC : knobs sans effet</b> : vérifier l'assignation des paramètres dans l'onglet APC et l'encodage.</li>
+  <li><b>Dump incomplet</b> : le dump doit totaliser 5 184 octets ; relancer le dump.</li>
+</ul>
+</div>
+
+<!-- ============ EN ============ -->
+<div class="en-block" lang="en">
+<h2>🚀 Quick start</h2>
+<ol>
+  <li>Open the page in <b>Chrome or Edge desktop</b> (Web MIDI required — no mobile support).</li>
+  <li>Connect the KN2000's USB MIDI interface, click <b>🔄 Ports</b> and check the inputs/outputs.</li>
+  <li>Click <b>🔌 Connect</b>: the current slot is read automatically (original is captured 📸).</li>
+  <li>Pick a <b>slot</b> (A-1 → B-18): the sound loads automatically.</li>
+  <li>Edit with the sliders and switches of the GENERAL / TONE / EFFECT tabs. By default everything stays on screen; to write to the keyboard, arm writing with <b>🔒 Writing</b> (the padlock turns 🔓).</li>
+</ol>
+<div class="warn">⚠️ <b>Before any write</b>: make a bank backup dump (BANK tab → Bank dump) or an export. The Sound Editor writes to the KN2000's Sound Memory A/B.</div>
+<div class="tip">💡 The <b>⚡ Auto-apply</b> option reloads the edited sound onto the keyboard parts playing it after each write (requires “Realtime sysex” ON on the KN2000).</div>
+<div class="tip">💡 Without a keyboard, the <b>🧪 Factory A-1 example</b> button loads a sample sound to explore the screens.</div>
+
+<h2>📚 Detailed features</h2>
+
+<h3>GENERAL tab</h3>
+<ul>
+  <li>🗺️ <b>144-byte mapping</b>: name (16 chars), octave shift, controllers, vibrato, auto bend &amp; trill, modulation, digital effect — matches the Technics manual screens (p.24/30/31 + Digital Effects).</li>
+  <li>📸 <b>Session — Original</b>: the first read of a slot automatically captures the original (144 bytes). At any time: “↩️ Restore original” sends the original back to the machine, “✅ Keep new sound” validates the change. One original per slot, kept across page reloads.</li>
+  <li>✍️ <b>Name</b>: sound name editing, written separately via the “name” button (armed writing required).</li>
+  <li>📍 <b>Read state</b>: shows which sound RIGHT1 / RIGHT2 / LEFT are playing, independently of the edited sound.</li>
+</ul>
+
+<h3>TONE tab (1st · 2nd · sub)</h3>
+<ul>
+  <li>Editing of the three tones: parameters, envelopes with visual diagrams and curves.</li>
+  <li>Colour code: <span style="color:#4ade80">confirmed field</span> · <span style="color:#fbbf24">partial</span> · <span style="color:#64748b">unknown</span>.</li>
+</ul>
+
+<h3>EFFECT tab</h3>
+<ul>
+  <li>Digital Effects: selection, parameters and mix, based on the mapping established on the machine.</li>
+</ul>
+
+<h3>BANK tab (36 slots)</h3>
+<ul>
+  <li>📥 <b>Bank dump</b>: reads all 36 slots from the keyboard (5,184 bytes) and caches them.</li>
+  <li>📤 <b>Bank send</b>: writes the 36 slots back to the keyboard (armed writing required).</li>
+  <li>📂 Bank import / export as JSON.</li>
+</ul>
+
+<h3>📚 Sound catalogue</h3>
+<ul>
+  <li>Isolated sounds (144 bytes each): import, export, copy from one slot to another.</li>
+</ul>
+
+<h3>APC tab — Akai APC Key 25 mk2</h3>
+<ul>
+  <li>🎛️ <b>Knobs</b>: 4 banks × 8 knobs. Learning (“🎓 CC”): turn each of the 8 knobs; “🎓 button” links each bank's Knob Control button. Each knob is then assigned to a parameter via the dropdown.</li>
+  <li>🎛️ <b>Pads</b>: first column = keyboard parts (RIGHT1/RIGHT2/LEFT); other pads drive ON/OFF switches (vibrato, modulation, distortion, effect…). LEDs: green = active, white = selected part.</li>
+  <li>Knob encoding configurable (two's complement or absolute, inversion).</li>
+</ul>
+<div class="tip">💡 The APC setup is stored in the browser (localStorage) — it is specific to each origin (localhost ≠ github.io): redo it once per site.</div>
+
+<h3>SysEx log</h3>
+<ul>
+  <li>📜 The log shows all MIDI traffic. Useful to diagnose a connection or discover commands.</li>
+</ul>
+
+<h2>🧷 Keyboard-side requirements</h2>
+<ul>
+  <li>KN2000: “Realtime sysex” ON for automatic reading and auto-apply.</li>
+  <li>USB MIDI interface connected to the KN2000's MIDI port.</li>
+</ul>
+
+<h2>❓ Troubleshooting</h2>
+<ul>
+  <li><b>KN2000 not listed in ports</b>: check cable/interface, click 🔄 Ports.</li>
+  <li><b>Auto-read not working</b>: check “Realtime sysex” is ON.</li>
+  <li><b>APC: knobs do nothing</b>: check parameter assignments in the APC tab and the encoding mode.</li>
+  <li><b>Incomplete dump</b>: a dump must total 5,184 bytes; run the dump again.</li>
+</ul>
+</div>
+
+<h2>🕐 Historique des versions / Version history</h2>
+<div class="ver"><b>v0.8.1</b><span class="date">24/10/2026</span> — Première publication sur GitHub Pages. Lecture auto du slot (capture de l'original), onglets GENERAL/TONE/EFFECT/BANQUE, session avec rétablissement de l'original, catalogue de sons, surface APC Key 25 mk2 (4 banques × 8 knobs, pads ON/OFF), écriture armée 🔒/🔓, auto-appliquer ⚡.<br/><i>First release on GitHub Pages. Auto slot read (original capture), GENERAL/TONE/EFFECT/BANK tabs, original-restore session, sound catalogue, APC Key 25 mk2 surface, armed writing, auto-apply.</i></div>
+<div class="ver"><b>v0.6</b><span class="date">21/10/2026</span> — Version de développement locale (serveur Python) : cartographie 144 octets, écrans de base, dump de banque.<br/><i>Local development version: 144-byte mapping, base screens, bank dump.</i></div>
+
+<a class="back" href="../sound-editor.html">← Retour au Sound Editor / Back to the Sound Editor</a> · <a href="../index.html">Accueil / Home</a>
+
+<script>
+function setLang(l){
+  document.querySelector('.fr-block').style.display = l==='fr'?'':'none';
+  document.querySelector('.en-block').style.display = l==='en'?'':'none';
+  document.getElementById('frBtn').className = l==='fr'?'on':'';
+  document.getElementById('enBtn').className = l==='en'?'on':'';
+  try{ localStorage.setItem('kn2000_help_lang', l); }catch(e){}
+}
+try{ const s=localStorage.getItem('kn2000_help_lang'); if(s) setLang(s); }catch(e){}
+</script>
+</body>
+</html>

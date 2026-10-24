@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Aide — Panel Console KN2000</title>
+<style>
+  :root { font-family: system-ui, sans-serif; background:#0b1220; color:#e2e8f0; }
+  * { box-sizing:border-box; }
+  body { margin:0 auto; padding:20px; max-width:880px; line-height:1.5; }
+  header { background:#131c30; border-radius:12px; padding:16px 18px; margin-bottom:16px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  h1 { margin:0; font-size:1.2rem; color:#bae6fd; flex:1; }
+  .lang { display:flex; gap:4px; }
+  .lang button { background:#1e3a5f; color:#bae6fd; border:0; border-radius:8px; padding:6px 14px; cursor:pointer; font-weight:600; }
+  .lang button.on { background:#38bdf8; color:#0b1220; }
+  h2 { color:#7dd3fc; font-size:1.05rem; margin:26px 0 8px; border-bottom:1px solid #1e3a5f; padding-bottom:4px; }
+  h3 { color:#bae6fd; font-size:.92rem; margin:16px 0 4px; }
+  p, li { font-size:.92rem; color:#cbd5e1; }
+  a { color:#38bdf8; }
+  .warn { background:#3b2109; border:1px solid #b45309; color:#fdba74; border-radius:10px; padding:10px 14px; margin:12px 0; font-size:.9rem; }
+  .tip { background:#0b2745; border:1px solid #1e3a5f; color:#bae6fd; border-radius:10px; padding:10px 14px; margin:12px 0; font-size:.9rem; }
+  ol, ul { padding-left:22px; }
+  .ver { background:#131c30; border:1px solid #1e293b; border-radius:10px; padding:10px 14px; margin:8px 0; }
+  .ver b { color:#7dd3fc; }
+  .ver .date { color:#64748b; font-size:.8rem; margin-left:8px; }
+  .back { display:inline-block; margin-top:24px; }
+  .fr-block { } .en-block { display:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📖 Panel Console — Aide / Help</h1>
+  <div class="lang"><button id="frBtn" class="on" onclick="setLang('fr')">FR</button><button id="enBtn" onclick="setLang('en')">EN</button></div>
+</header>
+
+<!-- ============ FR ============ -->
+<div class="fr-block" lang="fr">
+<h2>🚀 Démarrage rapide</h2>
+<ol>
+  <li>Ouvrir la page dans <b>Chrome ou Edge desktop</b> (Web MIDI requis).</li>
+  <li>Brancher l'interface MIDI USB du KN2000, sélectionner les ports d'entrée/sortie.</li>
+  <li>Cliquer <b>🔄 Lire l'état</b> : la console relit la configuration courante du clavier (sonorités par part, rythme, tempo…).</li>
+  <li>Ajuster les réglages à l'écran, puis <b>➤ Envoyer Tout</b> pour les transmettre au clavier. Chaque section peut aussi être envoyée individuellement (<b>▶</b>).</li>
+</ol>
+<div class="tip">💡 Le bouton <b>🔍 Moniteur</b> affiche tout ce que le KN2000 envoie (CC, PC, sysex) — très utile pour découvrir des commandes non documentées.</div>
+
+<h2>📚 Fonctions détaillées</h2>
+
+<h3>🎛️ Réglages pilotables</h3>
+<ul>
+  <li><b>Sonorités par part</b> : sélection par nom (listes déroulantes groupées) pour les parts du clavier.</li>
+  <li><b>Rythme / tempo</b> : démarrage/arrêt, contrôle du tempo et reset.</li>
+  <li><b>Techni-Chord</b> : modes (Off / OneFing / Fingered / Pianist) via les boutons dédiés.</li>
+  <li><b>Panel Memory</b> : rappel (<b>▶ Rappel</b>) des Panel Memory, lecture (<b>📖 Lire cette PM</b>) et écriture (<b>➤ Écrire vers le clavier</b>) d'une PM.</li>
+  <li><b>Volumes / équilibres</b> : réglages par section avec retour d'état.</li>
+</ul>
+
+<h3>🛠️ Fonctions avancées</h3>
+<ul>
+  <li><b>État actuel</b> : vue complète de l'état du clavier, rafraîchie par « Lire l'état ».</li>
+  <li><b>↔ Diff 2 PM</b> : compare les deux dernières Panel Memory lues octet par octet — révèle où un réglage (ex. son d'une part) est stocké dans la PM.</li>
+  <li><b>⚖ Scanner adresses part APC</b> : interroge les adresses sysex documentées pour l'APC (utile à l'exploration).</li>
+  <li><b>💾 Bibliothèque d'ensembles</b> : « Sauver l'état actuel » mémorise la configuration complète ; « ⬇ Export JSON » / « ⬆ Import JSON » pour partager ou sauvegarder des ensembles complets.</li>
+  <li><b>📜 Log</b> : journal MIDI/sysex de la session.</li>
+</ul>
+
+<h2>❓ Dépannage</h2>
+<ul>
+  <li><b>Aucun état ne s'affiche</b> : vérifier les ports, « Realtime sysex » sur ON dans le KN2000.</li>
+  <li><b>Un réglage ne s'applique pas</b> : utiliser « Diff 2 PM » pour vérifier si le réglage est bien stocké dans les Panel Memory.</li>
+  <li><b>Découvrir une commande</b> : activer le Moniteur 🔍 et manipuler la même fonction sur le clavier.</li>
+</ul>
+</div>
+
+<!-- ============ EN ============ -->
+<div class="en-block" lang="en">
+<h2>🚀 Quick start</h2>
+<ol>
+  <li>Open the page in <b>Chrome or Edge desktop</b> (Web MIDI required).</li>
+  <li>Connect the KN2000's USB MIDI interface and select the input/output ports.</li>
+  <li>Click <b>🔄 Read state</b>: the console re-reads the keyboard's current configuration (part sounds, rhythm, tempo…).</li>
+  <li>Adjust the settings on screen, then <b>➤ Send All</b> to transmit them to the keyboard. Each section can also be sent individually (<b>▶</b>).</li>
+</ol>
+<div class="tip">💡 The <b>🔍 Monitor</b> button shows everything the KN2000 sends (CC, PC, SysEx) — very useful to discover undocumented commands.</div>
+
+<h2>📚 Detailed features</h2>
+
+<h3>🎛️ Controllable settings</h3>
+<ul>
+  <li><b>Part sounds</b>: selection by name (grouped dropdowns) for the keyboard parts.</li>
+  <li><b>Rhythm / tempo</b>: start/stop, tempo control and reset.</li>
+  <li><b>Techni-Chord</b>: modes (Off / OneFing / Fingered / Pianist) via dedicated buttons.</li>
+  <li><b>Panel Memory</b>: recall (<b>▶ Recall</b>), read (<b>📖 Read this PM</b>) and write (<b>➤ Write to keyboard</b>) of a Panel Memory.</li>
+  <li><b>Volumes / balances</b>: per-section settings with state feedback.</li>
+</ul>
+
+<h3>🛠️ Advanced features</h3>
+<ul>
+  <li><b>Current state</b>: full view of the keyboard state, refreshed by “Read state”.</li>
+  <li><b>↔ Diff 2 PM</b>: byte-by-byte comparison of the last two Panel Memories read — reveals where a setting (e.g. a part's sound) is stored in the PM.</li>
+  <li><b>⚖ Scan APC part addresses</b>: queries documented SysEx addresses for the APC (useful for exploration).</li>
+  <li><b>💾 Ensemble library</b>: “Save current state” stores the full configuration; “⬇ Export JSON” / “⬆ Import JSON” to share or back up complete ensembles.</li>
+  <li><b>📜 Log</b>: MIDI/SysEx log of the session.</li>
+</ul>
+
+<h2>❓ Troubleshooting</h2>
+<ul>
+  <li><b>No state displayed</b>: check the ports and “Realtime sysex” ON on the KN2000.</li>
+  <li><b>A setting does not apply</b>: use “Diff 2 PM” to check whether the setting is actually stored in the Panel Memories.</li>
+  <li><b>Discovering a command</b>: enable the 🔍 Monitor and operate the same function on the keyboard.</li>
+</ul>
+</div>
+
+<h2>🕐 Historique des versions / Version history</h2>
+<div class="ver"><b>v1.0</b><span class="date">24/10/2026</span> — Première publication sur GitHub Pages. Console de pilotage : sonorités par part, rythme/tempo, Techni-Chord, Panel Memory (rappel/lecture/écriture), lecture d'état, moniteur MIDI, diff de Panel Memories, bibliothèque d'ensembles avec export/import JSON.<br/><i>First release on GitHub Pages. Control console: part sounds, rhythm/tempo, Techni-Chord, Panel Memory (recall/read/write), state readout, MIDI monitor, Panel Memory diff, ensemble library with JSON export/import.</i></div>
+
+<a class="back" href="../panel-console.html">← Retour à la Panel Console / Back to the Panel Console</a> · <a href="../index.html">Accueil / Home</a>
+
+<script>
+function setLang(l){
+  document.querySelector('.fr-block').style.display = l==='fr'?'':'none';
+  document.querySelector('.en-block').style.display = l==='en'?'':'none';
+  document.getElementById('frBtn').className = l==='fr'?'on':'';
+  document.getElementById('enBtn').className = l==='en'?'on':'';
+  try{ localStorage.setItem('kn2000_help_lang', l); }catch(e){}
+}
+try{ const s=localStorage.getItem('kn2000_help_lang'); if(s) setLang(s); }catch(e){}
+</script>
+</body>
+</html>
