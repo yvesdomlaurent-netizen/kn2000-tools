@@ -12,8 +12,10 @@
   h1 { margin:0 0 6px; font-size:1.3rem; color:#bae6fd; }
   .lead { margin:0; color:#94a3b8; }
   .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; }
-  .card { background:#131c30; border:1px solid #1e3a5f; border-radius:12px; padding:16px; text-decoration:none; color:inherit; display:block; }
+  .card { position:relative; background:#131c30; border:1px solid #1e3a5f; border-radius:12px; padding:16px; color:inherit; display:block; }
+  .card-link { position:absolute; inset:0; z-index:1; border-radius:12px; }
   .card:hover { border-color:#38bdf8; }
+  .doc { position:relative; z-index:2; }
   .card h2 { margin:0 0 8px; font-size:1.05rem; color:#bae6fd; }
   .card p { margin:0 0 10px; font-size:.9rem; color:#94a3b8; }
   .tag { display:inline-block; font-size:.72rem; background:#1e3a5f; color:#bae6fd; border-radius:6px; padding:2px 8px; }
@@ -30,16 +32,18 @@
 </header>
 
 <div class="grid">
-  <a class="card" href="sound-editor.html">
+  <div class="card">
+    <a class="card-link" href="sound-editor.html" aria-label="Ouvrir le Sound Editor"></a>
     <h2>Sound Editor</h2>
     <p>Éditeur de sons pour les banques personnelles Memory A/B : lecture/écriture des 36 slots Sound Memory (sysex, 144 octets par son), écrans General/Tone/Effect, schémas d'enveloppe, surface Akai APC Key 25 mk2, dump de banque et packages JSON.</p>
     <span class="tag">v0.8.1</span> <a class="doc" href="help/sound-editor.html" target="_blank" rel="noopener">📖 Documentation</a>
-  </a>
-  <a class="card" href="panel-console.html">
+  </div>
+  <div class="card">
+    <a class="card-link" href="panel-console.html" aria-label="Ouvrir la Panel Console"></a>
     <h2>Panel Console</h2>
     <p>Console de pilotage : sonorités, rythme, Techni-Chord, Panel Memory, lecture d'état et bibliothèque d'ensembles.</p>
     <span class="tag">v1.0</span> <a class="doc" href="help/panel-console.html" target="_blank" rel="noopener">📖 Documentation</a>
-  </a>
+  </div>
   <div class="card soon">
     <h2>Séquenceur / Composer</h2>
     <p>En projet.</p>
