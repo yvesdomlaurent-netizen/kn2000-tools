@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KN2000 Tools — utilitaires Web MIDI pour Technics SX-KN2000</title>
+<style>
+  :root { font-family: system-ui, sans-serif; background:#0b1220; color:#e2e8f0; }
+  * { box-sizing:border-box; }
+  body { margin:0 auto; padding:20px; max-width:880px; }
+  header { background:#131c30; border-radius:12px; padding:18px; margin-bottom:20px; }
+  h1 { margin:0 0 6px; font-size:1.3rem; color:#bae6fd; }
+  .lead { margin:0; color:#94a3b8; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; }
+  .card { background:#131c30; border:1px solid #1e3a5f; border-radius:12px; padding:16px; text-decoration:none; color:inherit; display:block; }
+  .card:hover { border-color:#38bdf8; }
+  .card h2 { margin:0 0 8px; font-size:1.05rem; color:#bae6fd; }
+  .card p { margin:0 0 10px; font-size:.9rem; color:#94a3b8; }
+  .tag { display:inline-block; font-size:.72rem; background:#1e3a5f; color:#bae6fd; border-radius:6px; padding:2px 8px; }
+  .soon { opacity:.55; }
+  footer { margin-top:24px; font-size:.8rem; color:#64748b; }
+  a { color:#38bdf8; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎹 KN2000 Tools</h1>
+  <p class="lead">Utilitaires Web MIDI pour le clavier <strong>Technics SX-KN2000</strong> — dans le navigateur, sans installation. Compatible Chrome/Edge desktop (Web MIDI).</p>
+</header>
+
+<div class="grid">
+  <a class="card" href="sound-editor.html">
+    <h2>Sound Editor</h2>
+    <p>Éditeur de sons pour les banques personnelles Memory A/B : lecture/écriture des 36 slots Sound Memory (sysex, 144 octets par son), écrans General/Tone/Effect, schémas d'enveloppe, surface Akai APC Key 25 mk2, dump de banque et packages JSON.</p>
+    <span class="tag">v0.8.1</span>
+  </a>
+  <div class="card soon">
+    <h2>Panel Console</h2>
+    <p>Console de pilotage : sonorités, rythme, Techni-Chord, Panel Memory, lecture d'état et bibliothèque d'ensembles.</p>
+    <span class="tag">à venir</span>
+  </div>
+  <div class="card soon">
+    <h2>Séquenceur / Composer</h2>
+    <p>En projet.</p>
+    <span class="tag">à venir</span>
+  </div>
+</div>
+
+<footer>
+  ⚠️ Avant toute écriture vers le KN2000 : faire un dump de sauvegarde de la banque.<br/>
+  <a href="https://github.com/yvesdomlaurent-netizen/kn2000-tools">Code source sur GitHub</a> — licence MIT.
+</footer>
+</body>
+</html>

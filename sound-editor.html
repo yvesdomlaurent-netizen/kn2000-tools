@@ -1,0 +1,1575 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KN2000 Sound Editor v0.8.1</title>
+<style>
+  :root { font-family: system-ui, sans-serif; background:#0b1220; color:#e2e8f0; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:14px; }
+  .banner { background:#1e3a5f; color:#bae6fd; padding:6px 12px; border-radius:8px; font-size:.78rem; margin-bottom:12px; }
+  header { display:flex; flex-wrap:wrap; gap:10px; align-items:center; background:#131c30; border-radius:12px; padding:12px; margin-bottom:12px; }
+  header h1 { font-size:1.05rem; margin:0 12px 0 0; }
+  select, input[type=text], input[type=number] { background:#0b1220; color:#e2e8f0; border:1px solid #334155; border-radius:6px; padding:6px 8px; font-size:.88rem; max-width:260px; }
+  button { background:#0284c7; color:#fff; border:none; border-radius:8px; padding:7px 12px; font-size:.85rem; cursor:pointer; margin:2px 2px 2px 0; }
+  button.ok { background:#15803d; } button.warn { background:#b45309; } button.ghost { background:#334155; }
+  #nameIn { font-weight:700; font-size:1.02em; color:#38bdf8; background:#0b2745; border:1px solid #38bdf8; border-radius:6px; padding:6px 10px; letter-spacing:.02em; }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  .pill { padding:3px 10px; border-radius:99px; font-size:.75rem; font-weight:600; }
+  .pill.on { background:#14532d; color:#4ade80; } .pill.off { background:#450a0a; color:#f87171; }
+  .tabs { display:flex; gap:4px; margin-bottom:12px; flex-wrap:wrap; }
+  .tab { padding:8px 16px; border-radius:8px 8px 0 0; background:#1e293b; cursor:pointer; font-size:.9rem; border-bottom:3px solid transparent; }
+  .tab.active { background:#131c30; border-bottom-color:#0284c7; color:#7dd3fc; font-weight:600; }
+  .panel { display:none; } .panel.active { display:block; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:12px; }
+  .card { background:#131c30; border-radius:12px; padding:14px; border:1px solid #1e293b; }
+  .card h2 { font-size:.95rem; margin:0 0 10px; color:#7dd3fc; }
+  .card h2 .off { font-size:.7rem; background:#334155; padding:2px 8px; border-radius:6px; margin-left:6px; color:#94a3b8; }
+  .prow label { flex:0 0 128px; color:#94a3b8; }
+  .prow .val { font-family:monospace; min-width:48px; text-align:right; color:#fbbf24; }
+  .prow .hexv { font-family:monospace; font-size:.72rem; color:#64748b; }
+  input[type=range] { -webkit-appearance:none; appearance:none; flex:1; min-width:100px; height:14px; background:transparent; }
+  input[type=range]::-webkit-slider-runnable-track { height:4px; background:#334155; border-radius:2px; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:11px; height:11px; border-radius:50%; background:#38bdf8; margin-top:-3.5px; }
+  input[type=range]::-moz-range-track { height:4px; background:#334155; border-radius:2px; }
+  input[type=range]::-moz-range-thumb { width:11px; height:11px; border:none; border-radius:50%; background:#38bdf8; }
+  .prow { display:flex; align-items:center; gap:8px; margin:4px 0; font-size:.78rem; flex-wrap:wrap; }
+  .prow label { flex:0 0 110px; color:#94a3b8; }
+  .seg { display:flex; gap:2px; flex-wrap:wrap; }
+  .seg button { padding:4px 8px; font-size:.72rem; background:#1e293b; border-radius:5px; }
+  .seg button.on { background:#0284c7; }
+  .switch { position:relative; width:40px; height:20px; background:#334155; border-radius:99px; cursor:pointer; transition:.2s; flex:0 0 auto; }
+  .swgrp { display:inline-flex; align-items:center; gap:7px; }
+  .swgrp label { flex:0 0 auto; }
+  .switch.on { background:#15803d; }
+  .switch::after { content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:.2s; }
+  .switch.on::after { left:22px; }
+  .envbox { background:#0b1220; border-radius:8px; padding:8px; margin-top:10px; }
+  .envbox svg { width:100%; height:120px; display:block; }
+  .envlegend { font-size:.7rem; color:#64748b; margin-top:4px; }
+  .sect { border:1px solid #1e293b; border-radius:8px; padding:6px 8px 7px; margin:8px 0; background:#0e1626; }
+  .sect>h3 { font-size:.64rem; letter-spacing:.07em; text-transform:uppercase; color:#7dd3fc; margin:0 0 5px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:2px 14px; }
+  .grid2 .prow { margin:2px 0; gap:6px; }
+  .grid2 .prow label { flex:0 0 auto; max-width:80px; font-size:.68rem; }
+  .grid2 input[type=range] { flex:1; min-width:26px; }
+  .grid2 .val { min-width:32px; cursor:pointer; border-bottom:1px dotted #b45309; }
+  .grid2 .val:hover { color:#fdba74; }
+  .known { color:#4ade80; } .partial { color:#fbbf24; } .unknown { color:#475569; } .name { color:#38bdf8; }
+  .legend { font-size:.75rem; color:#94a3b8; margin-top:8px; }
+  .note { color:#fbbf24; font-size:.72rem; }
+  .tone-off { opacity:.45; }
+  #log { font-family:monospace; font-size:.72rem; background:#020617; border-radius:8px; padding:10px; height:150px; overflow-y:auto; white-space:pre-wrap; border:1px solid #1e293b; margin-top:10px; }
+  .status-ok { color:#4ade80; } .status-ko { color:#f87171; }
+  .toast { position:fixed; bottom:14px; right:14px; background:#15803d; color:#fff; padding:10px 16px; border-radius:10px; font-size:.85rem; display:none; z-index:9; }
+  #progress { font-size:.78rem; color:#7dd3fc; }
+  .warnCard { border:2px solid #b45309; }
+</style>
+</head>
+<body>
+<div class="banner">🎹 Sound Editor <b>v0.8.1</b> — structure du son 144 octets (cartographie officielle p.24/30/31 + Digital Effects). Lecture AUTO à la connexion et au changement de slot (capture 📸 de l'original). Onglets GENERAL/TONE/EFFECT = écrans du manual. Onglet APC = surface de contrôle live (pads parts, knobs, LEDs). Écriture : bouton-état 🔒/🔓 dans la barre d'outils. ⚠️ Toujours faire un dump de sauvegarde avant d'écrire.</div>
+
+<header>
+  <h1>🎹 Sound Editor</h1>
+  <label title="Slot Sound Memory édité (A-1 → B-18)">Slot <select id="slotSel"></select></label>
+  <label title="Nom du son courant (16 caractères, octets 0x00-0x0F)">Nom <input type="text" id="nameIn" maxlength="16" size="16" placeholder="(lire pour afficher)"></label>
+  <button class="ghost" id="btnNameWrite" title="Écrire le nom (16 octets 0x00-0x0F) dans le son courant — écriture armée requise">✍️ nom</button>
+  <button class="ghost" id="btnRefresh" title="Recherche les ports MIDI disponibles">🔄 Ports</button>
+  <label>In <select id="inSel"></select></label>
+  <label>Out <select id="outSel"></select></label>
+  <button id="btnConnect" title="Connecte l'éditeur au KN2000 (lecture auto du slot courant)">🔌 Connecter</button>
+  <span class="pill off" id="stMidi">non connecté</span>
+  <button class="ghost" id="btnDemo" title="Charge un exemple usine A-1 dans les écrans (démo, sans clavier)">🧪 Exemple A-1 usine</button>
+  <button class="ghost" id="btnExport" title="Exporte le son courant (144 octets) en fichier JSON">⬇️ Export JSON</button>
+  <button class="ghost" id="btnClearLog" title="Vider le journal sysex">🧹 Vider le log</button>
+  <button class="ghost" id="btnLogToggle" title="Afficher/masquer le journal sysex">📜 Journal</button>
+  <button id="btnArm" class="ghost" title="Bascule l'écriture des modifications vers le KN2000 (curseurs, switches, changement de tone)">🔒 Écriture : OFF</button>
+  <label style="white-space:nowrap;font-size:1.15rem;font-weight:600" title="Après chaque écriture : recharge le slot en cours sur les parts du clavier qui le jouent (voisin d'aller-retour PC 0 · bank 0). Requiert Realtime sysex ON."><input type="checkbox" id="autoApply" style="width:22px;height:22px;vertical-align:middle;transform:translateY(-3px)"> ⚡ Auto-appliquer</label>
+  <button id="btnPartRead" class="ghost" title="Lit l'état des 3 parts du clavier (20 1n 00, SIZ 2) — indépendant du son en cours d'édition">📍 Lire l'état</button>
+  <span class="val" id="pS0">RIGHT1 : ?</span> <span class="val" id="pS1">RIGHT2 : ?</span> <span class="val" id="pS2">LEFT : ?</span>
+  <span class="pill off" id="srcPill" title="Origine des données affichées">aucune donnée</span>
+  <span id="progress"></span>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-t="general">GENERAL</div>
+  <div class="tab" data-t="tone">TONE (1st · 2nd · sub)</div>
+  <div class="tab" data-t="effect">EFFECT</div>
+  <div class="tab" data-t="bank">BANQUE (36 slots)</div>
+  <div class="tab" data-t="apc">APC</div>
+</div>
+
+<!-- ================= GENERAL ================= -->
+<div class="panel active" id="p-general"><div class="grid">
+  <div class="card" id="sessionCard" style="grid-column:1/-1"><h2>📸 Session — Original du slot en cours</h2>
+    <div class="prow"><span class="val" id="origInfo">aucun original capturé</span>
+      <button id="btnRestore" class="warn" disabled>↩️ Rétablir l'original</button>
+      <button id="btnKeepNew" class="ok" disabled>✅ Garder le nouveau son</button>
+      <span class="note">L'original est capturé AUTOMATIQUEMENT à la première lecture d'un slot (avant toute modif) — un original par slot, conservé entre rechargements de page. « Rétablir » renvoie les 144 octets originaux dans la machine (armé requis, ~10 s) ; « Garder » valide le nouveau son et oublie l'original.</span></div>
+  </div>
+  <div class="card"><h2>Octave Shift <span class="off">0x11</span></h2>
+    <div class="prow"><label>Octave shift</label><div class="seg" data-f="octSh"></div></div>
+    <div class="prow"><label>Right of split</label><div class="seg" data-f="octR"></div></div>
+    <div class="prow"><label>Left of split</label><div class="seg" data-f="octL"></div></div>
+    <div class="prow"><label>Bits bas 0x11</label><span class="val" id="octB0"></span><span class="hexv">non documentés (OCR coupé)</span></div>
+    <div class="sect"><h3 style="font-size:.95rem;letter-spacing:normal;text-transform:none;margin:0 0 10px">Distortion <span class="off">0x1C-0x1D</span></h3>
+      <div class="prow"><label>Type</label><div class="seg" data-f="disType"></div></div>
+      <div class="prow"><span class="swgrp"><label>On/Off</label><div class="switch" data-f="disOn"></div></span></div>
+      <div class="prow"><label>Depth</label><input type="range" min="0" max="50" data-f="v1C"><span class="val" data-v="v1C"></span></div>
+      <div class="prow"><label>Touch depth</label><input type="range" min="0" max="50" data-f="v1D"><span class="val" data-v="v1D"></span></div>
+      <div class="note">GROWL = attaque seulement ; DISTORTION = tout le son.</div>
+    </div>
+  </div>
+  <div class="card"><h2>Controllers <span class="off">0x10</span></h2>
+    <div class="prow"><span class="swgrp"><label>Glide</label><div class="switch" data-f="glide"></div></span></div>
+    <div class="prow"><span class="swgrp"><label>Modulation wheel</label><div class="switch" data-f="wheel"></div></span></div>
+    <div class="prow"><label>Wheel mode</label><div class="seg" data-f="wheelMode"></div></div>
+    <div class="prow"><label>Sustain pedal</label><div class="seg" data-f="sustain"></div></div>
+    <div class="sect"><h3 style="font-size:.95rem;letter-spacing:normal;text-transform:none;margin:0 0 10px">Sound Reverb <span class="off">0x1E</span></h3>
+      <div class="prow"><label>Reverb depth</label><input type="range" min="0" max="31" data-f="v1E"><span class="val" data-v="v1E"></span></div>
+    </div>
+  </div>
+  <div class="card"><h2>Vibrato <span class="off">0x12-0x15</span></h2>
+    <div class="prow"><span class="swgrp"><label>1st</label><div class="switch" data-f="vibT0"></div></span><span class="swgrp"><label>2nd</label><div class="switch" data-f="vibT1"></div></span><span class="swgrp"><label>sub</label><div class="switch" data-f="vibT2"></div></span></div>
+    <div class="prow"><label>Vol mod depth</label><input type="range" min="0" max="30" data-f="v12"><span class="val" data-v="v12"></span></div>
+    <div class="prow"><label>Pitch mod depth</label><input type="range" min="0" max="30" data-f="v13"><span class="val" data-v="v13"></span></div>
+    <div class="prow"><label>Speed</label><input type="range" min="0" max="30" data-f="v14"><span class="val" data-v="v14"></span></div>
+    <div class="prow"><label>Delay</label><input type="range" min="0" max="30" data-f="v15"><span class="val" data-v="v15"></span></div>
+    <div class="note">ON/OFF par tone = bit 6 du flag de chaque tone (onglet TONE).</div>
+  </div>
+  <div class="card"><h2>Auto Bend &amp; Trill <span class="off">0x16-0x18</span></h2>
+    <div class="prow"><label>On/Off</label><div class="seg" data-f="atOn"></div></div>
+    <div class="prow"><label>Mode</label><div class="seg" data-f="atMode"></div></div>
+    <div class="prow"><label>Type</label><div class="seg" data-f="atType"></div></div>
+    <div class="prow"><label>Pattern</label><div class="seg" data-f="atPat"></div><span class="hexv" id="atPatNote"></span></div>
+    <div class="envbox"><svg viewBox="0 0 360 90" id="atSvg"></svg><div class="envlegend">Forme du pitch selon le pattern (Reference Guide p.12)</div></div>
+    <div class="prow"><label>Depth</label><input type="range" min="-30" max="30" data-f="v17"><span class="val" data-v="v17"></span></div>
+    <div class="prow"><label>Speed</label><input type="range" min="0" max="30" data-f="v18"><span class="val" data-v="v18"></span></div>
+  </div>
+  <div class="card"><h2>Modulation <span class="off">0x19-0x1B</span></h2>
+    <div class="prow"><span class="swgrp"><label>On/Off</label><div class="switch" data-f="modOn"></div></span></div>
+    <div class="prow"><label>Mode</label><div class="seg" data-f="modMode"></div></div>
+    <div class="prow"><label>Wave</label><div class="seg" data-f="modWave"></div>
+      <svg width="90" height="30" viewBox="0 0 90 30" id="modSvg"><path d="" stroke="#38bdf8" fill="none" stroke-width="1.5"/></svg></div>
+    <div class="prow"><label>Depth</label><input type="range" min="0" max="127" data-f="v1A"><span class="val" data-v="v1A"></span></div>
+    <div class="prow"><label>Speed</label><input type="range" min="0" max="127" data-f="v1B"><span class="val" data-v="v1B"></span></div>
+  </div>
+</div></div>
+
+<!-- ================= TONE ================= -->
+<div class="panel" id="p-tone">
+  <div class="grid" id="toneGrid"></div>
+</div>
+
+<!-- ================= EFFECT ================= -->
+<div class="panel" id="p-effect">
+  <div class="grid">
+  <div class="card"><h2>Digital Effect <span class="off">0x1F</span></h2>
+    <div class="prow"><span class="swgrp"><label>On/Off</label><div class="switch" data-f="fxOn"></div></span></div>
+    <div class="prow"><label>Pan</label><div class="seg" data-f="fxPan"></div></div>
+    <div class="prow"><label>Type</label><select id="fxType"></select></div>
+    <div class="prow"><label>Code</label><span class="val" id="fxCode"></span></div>
+  </div>
+  <div class="card"><h2>Paramètres <span class="off">0x20-0x27</span></h2>
+    <div id="fxParams"></div>
+    <div class="note">Signification des octets 0x20-0x27 selon le TYPE (Digital Effects 1&2). Ceux marqués ⚠ restent à valider par micro-test.</div>
+  </div></div>
+</div>
+
+<!-- ================= BRUT ================= -->
+<!-- ================= BANQUE ================= -->
+<div class="panel" id="p-bank">
+  <div class="card"><h2>Banque Sound Memory — lire le clavier (dump) / écrire vers le clavier (envoi)</h2>
+    <p class="note">Dump request <span class="hexv">f0 50 2b 01 18 10 30 00 00 00 00 42 00 tc f7</span> → HRQ→HRT, puis 2 blocs BTR + ~41 paquets 7e (données nibblées, checksum par paquet). Stockage local du dump complet. L'envoi inverse se fait slot par slot (ITR séquencés validés, ~5-6 min).</p>
+    <div class="prow">
+      <button class="ok" id="btnBankDump" title="Demande au KN2000 ses 36 sons Sound Memory (~5 Ko, 1 seule commande)">🏦 Dump banque — lire les 36 slots du clavier</button>
+      <button class="warn" id="btnBankSend" title="Écrit la banque chargée dans les 36 slots du KN2000, séquentiel ITR (~5-6 min) — écriture armée 🔒 + confirmation requises">📤 Envoyer le package vers le clavier (36 slots)</button>
+      <button class="ghost" id="btnBankExport" title="Enregistre la banque chargée en fichier JSON complet (36 slots)">⬇️ Exporter la banque chargée (fichier JSON)</button>
+      <span id="bankStatus">—</span>
+    </div>
+    <div class="prow">
+      <input type="file" id="bankFile" accept=".json,application/json" style="display:none">
+      <button class="ghost" id="btnBankImport" title="Charge un fichier JSON banque (remplace la banque chargée)">📥 Importer une banque (fichier JSON)</button>
+      <button class="ghost" id="btnBankSaveLib" title="Sauve la banque chargée comme fichier kn2000_package_*.json dans le dossier utilisateur (repli navigateur)">💾 Archiver en package (fichier du dossier)</button>
+      <select id="bankLib" style="max-width:230px" title="Bibliothèque de packages — 📁 dossier utilisateur / 💾 navigateur"><option value="">— bibliothèque —</option></select>
+      <button class="ghost" id="btnBankLoad" title="Charge le package sélectionné (le rend banque courante et l'affiche dans la table)">📂 Charger le package sélectionné</button>
+      <button class="ghost" id="btnBankDel" title="Supprimer le package sélectionné (fichier du dossier ou stockage navigateur)">🗑</button>
+    </div>
+    <div style="max-height:420px; overflow:auto;">
+      <table id="bankTbl" style="width:100%; border-collapse:collapse; font-size:.78rem;">
+
+        <thead><tr style="background:#334155;"><th style="padding:4px 8px;">Slot</th><th style="text-align:left;padding:4px 8px;">Nom</th><th style="padding:4px 8px;">1st</th><th style="padding:4px 8px;">2nd</th><th style="padding:4px 8px;">sub</th><th style="padding:4px 8px;">Effect</th><th title="Importer ce slot dans le catalogue" style="padding:4px 4px;">📚</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="legend">Clic sur une ligne → le son se charge dans les écrans ; bouton 📚 → importe le slot dans le catalogue. Packages : archivés dans le dossier utilisateur (📁 fichiers kn2000_package_*.json, mis à jour directement par les copies 📦) ou, à défaut de dossier choisi, dans le navigateur (localStorage).</div>
+  </div>
+  <div class="card" id="catalogCard"><h2>📚 Catalogue de sonorités — sons isolés (144 octets chacun)</h2>
+    <div class="prow">
+      <button class="ok" id="btnCatAdd" title="Ajoute le son courant (écrans) au catalogue avec son nom">💾 Ajouter le son courant</button>
+      <select id="catSel" style="max-width:280px" title="Son choisi dans le catalogue"><option value="">— catalogue —</option></select>
+      <button class="ok" id="btnCatSendBank" title="Copie le son choisi dans le slot choisi de la banque chargée — navigateur seulement, rien vers le clavier ; met à jour le package source de la bibliothèque">📦 Envoyer vers package</button>
+      <select id="catDstSlot" style="max-width:110px" title="Slot de destination dans la banque chargée (package)"><option value="">slot…</option></select>
+      <button class="warn" id="btnCatSend" title="Écrit les 144 octets du son choisi sur le slot courant (armé requis, ~10 s)">↩️ Envoyer vers slot courant</button>
+      <button class="ghost" id="btnCatRename" title="Renommer le son choisi">✎</button>
+      <button class="ghost" id="btnCatDel" title="Supprimer le son choisi du catalogue">🗑</button>
+    </div>
+    <div class="prow">
+      <button class="ghost" id="btnCatExport" title="Enregistre le catalogue en JSON (s'ouvre directement dans le dossier choisi)">⬇️ Export JSON</button>
+      <input type="file" id="catFile" accept=".json,application/json" style="display:none">
+      <button class="ghost" id="btnCatImport" title="Ouvre le sélecteur dans le dossier choisi">📥 Import JSON</button>
+      <button class="ghost" id="btnCatDir" style="display:none" title="Choisir le dossier catalogue (utilisé par export ET import ; mémorisé par le navigateur)">📁 Dossier : non défini</button>
+      <button class="ghost" id="btnCatDirForget" style="display:none" title="Oublier le dossier catalogue">✖</button>
+    </div>
+    <div class="legend" id="catDirLegend" style="display:none">📁 Dossier catalogue : l'export ET l'import s'ouvrent directement dedans. Le nom du dernier fichier exporté est réutilisé. Le dossier et son autorisation sont mémorisés par le navigateur.</div>
+    <div class="legend">Bibliothèque de sons isolés créés en session : nom + date + 144 octets, stockés dans le navigateur. « Envoyer » écrase le slot courant sélectionné en haut (confirmation + écriture armée requises).</div>
+  </div>
+</div>
+
+<!-- ================= APC ================= -->
+<div class="panel" id="p-apc"><div class="grid">
+  <div class="card" style="grid-column:1/-1"><h2>🎛️ APC Key 25 mk2 — surface de contrôle live</h2>
+    <p class="note">Choisis les ports MIDI de l'APC (surface de contrôle = le 2e port « APC Key 25 mk2 », pas le keybed). Les 3 pads de la 1re colonne (bas → haut) = <b>RIGHT1 / RIGHT2 / LEFT</b> : sélectionner une part qui joue une Sound Memory y charge le slot en lecture et rend les knobs actifs dessus. Les knobs ajustent les paramètres en direct (écriture live si 🔒 armé, avec ⚡ auto-apply). 4 banques de 8 knobs = 32 mappings (les boutons Knob Control changent la banque — à apprendre s'ils émettent).</p>
+    <div class="prow">
+      <label title="Entrée MIDI de la surface APC (Port 1)">APC In <select id="apcIn"></select></label>
+      <label title="Sortie MIDI vers l'APC (retours LED)">APC Out <select id="apcOut"></select></label>
+      <span class="pill off" id="apcSt">non connecté</span>
+      <label title="Encodage des knobs : relatif ± par défaut ; si les valeurs partent dans le mauvais sens, essaie « inversé »">Encodage <select id="apcEnc"><option value="2c">relatif ± (65/63)</option><option value="inv">relatif inversé (1/127)</option><option value="abs">absolu 0-127</option></select></label>
+      <span class="val" id="apcPart">part : —</span>
+    </div>
+  </div>
+  <div class="card" style="grid-column:1/-1"><h2>Knobs — 4 banques × 8</h2>
+    <p class="note">Par banque : « 🎓 CC » = clique puis tourne chaque knob une fois (les 8 numéros CC sont capturés) ; « 🎓 bouton » = clique puis presse le bouton Knob Control de l'APC (s'il n'émet rien, la banque se choisit en cliquant le bouton de la ligne). La banque <b>active</b> est surlignée.</p>
+    <div id="apcKnobs"></div>
+  </div>
+  <div class="card" style="grid-column:1/-1"><h2>Pads — 1re colonne = parts · les autres = ON/OFF</h2>
+    <p class="note">LED par type : vert = tones · jaune = vibrato · orange = distortion · bleu = effect · magenta = modulation · turquoise = controllers. La LED du pad s'allume quand la fonction est ON. Les pads des autres colonnes sont libres : choisis une action dans chaque liste.</p>
+    <div id="apcPads"></div>
+  </div>
+</div></div>
+
+<!-- ================= JOURNAL SYSEX (masqué par défaut) ================= -->
+<div class="card" id="logCard" style="display:none"><h2>Journal sysex</h2><div id="log"></div></div>
+
+
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const TTABLE={"0|0":["A","Piano"],"1|0":["A","Bright Piano"],"3|0":["A","E.Grand"],"5|0":["A","E.Piano 1"],"5|1":["A","E.Piano 2"],"6|2":["A","Modern E.P.2"],"6|0":["A","Modern E.P.1"],"6|2":["A","Bell Piano"],"114|0":["A","Synth Piano"],"8|0":["B","Vibraphone"],"9|0":["B","Glockenspiel 1"],"9|1":["B","Glockenspiel 2"],"9|2":["B","Soft Glockenspiel"],"10|0":["B","Marimba"],"11|0":["B","Xylophone"],"13|0":["B","Bottle Marimba"],"14|0":["B","Tubular Bells"],"14|1":["B","Solid Bars"],"15|0":["B","Steel Drum"],"16|0":["B","Harpsichord 1"],"16|1":["B","Harpsichord 2"],"17|0":["B","Clavi"],"113|0":["B","African Mallet"],"115|0":["B","Synth Clavi"],"20|0":["C","Nylon Guitar 1"],"21|0":["C","Nylon Guitar 2"],"22|0":["C","Folk Guitar"],"24|0":["C","Jazz Guitar 2"],"25|0":["C","Jazz Guitar 1"],"26|1":["C","Funk Solid"],"26|0":["C","Bright Solid"],"27|1":["C","Gtr Harmonics"],"27|0":["C","Distorsion Gtr."],"27|2":["C","OverdriveGtf"],"28|1":["C","60's Solid"],"28|0":["C","Mellow Solid"],"29|0":["C","Mute Guitar 1"],"29|1":["C","Mute Guitar 2"],"31|1":["C","Country Gtr"],"31|0":["C","Hawaiian Guitar"],"7|0":["D","Music Box"],"32|0":["D","Harp"],"33|0":["D","Banjo"],"36|0":["D","Shamisen"],"37|0":["D","Koto"],"38|1":["D","Dulcimer"],"38|0":["D","Sitar"],"39|0":["D","Kalimba"],"126|0":["D","Timpani"],"127|1":["D","Orchestra Hit"],"96|1":["E","Jazz Violin"],"96|0":["E","Violin"],"97|0":["E","Cello"],"97|1":["E","Viola"],"98|0":["E","Bowed Bass"],"99|0":["E","Pizzicato"],"100|0":["E","Strings"],"104|2":["E","Vocal Ah"],"104|1":["E","Vocal Ooh 1"],"105|0":["E","Vocal Ooh 2"],"109|0":["E","Vocal Doo"],"80|0":["F","Brt Accordion"],"81|0":["F","Mel. Accordion"],"82|0":["F","Musette"],"84|0":["F","Pipe Organ 1"],"85|0":["F","Pipe Organ 2"],"88|0":["F","Jazz Organ"],"89|0":["F","Full DrawBars"],"90|0":["F","Pop Organ"],"91|0":["F","16' & 1'"],"93|0":["F","Jazz Drawbars"],"60|0":["G","Synth Brass"],"48|0":["G","Trumpet"],"49|0":["G","Mel.Trombone"],"50|0":["G","Mute Trumpet"],"51|0":["G","Flugel Horn"],"51|1":["G","Soft Flugel"],"52|0":["G","Brt.Trombone"],"54|0":["G","Closed Fr.Horn"],"54|1":["G","Open Fr.Horn"],"55|0":["G","Tuba"],"56|0":["G","Brass"],"61|1":["G","Syn.BrassEns."],"61|2":["G","Sweep S.Brass"],"66|0":["H","Oboe"],"67|0":["H","English Horn"],"68|0":["H","Jazz Clarinet"],"68|1":["H","Mel.Clarinet"],"69|0":["H","Clas.Clarinet"],"70|0":["H","Bassoon"],"73|0":["H","Bagpipe"],"76|0":["H","Soprano Sax"],"76|1":["H","Mellow Alto Sax"],"77|0":["H","Alto Sax"],"78|1":["H","Tenor Sax 1"],"78|0":["H","Tenor Sax 2"],"79|0":["H","Rock Tenor Sax"],"79|1":["H","Baritone Sax"],"83|0":["H","Harmonica"],"83|1":["H","Blues Harm."],"117|0":["H","SynthClarinet"],"64|0":["I","Piccolo"],"64|1":["I","Alto Flute"],"65|0":["I","Jazz Flute"],"65|1":["I","Classic Flute"],"72|0":["I","Pan Flute"],"74|0":["I","Recorder"],"74|1":["I","Ocarina"],"75|1":["I","Quena"],"75|0":["I","Shakuhachi"],"111|0":["I","Whistle"],"40|0":["J","Electric Bass"],"40|1":["J","Bright E.Bass"],"40|3":["J","Funky E.Bass"],"40|2":["J","Fretless Bass"],"41|0":["J","Slap Bass 1"],"41|1":["J","Slap Bass 2"],"41|2":["J","Thumb Bass 1"],"41|3":["J","Thumb Bass 2"],"42|0":["J","Picked E.Bass"],"43|0":["J","Acoustic Bass"],"43|1":["J","Mellow A.Bass"],"44|0":["J","Mallet Bass"],"44|2":["J","Wow Bass 2"],"44|3":["J","Analog Bass 2"],"45|0":["J","Synth Chopper"],"45|2":["J","Wire Bass"],"46|1":["J","Analog Bass 1"],"46|2":["J","Plastic Bass"],"46|0":["J","Wow Bass 1"],"46|3":["J","Smack Bass"],"47|1":["J","Rock Bass"],"47|0":["J","Mute Bass"],"94|0":["K","Sine Lead"],"94|1":["K","Sine Wave"],"120|1":["K","Tri. Wave"],"120|0":["K","Sawtooth Wave"],"121|1":["K","Square Wave"],"121|0":["K","Click Square"],"122|0":["K","Pulse Wave 1"],"122|1":["K","Pulse Wave 2"],"122|2":["K","Pulse Wave 3"],"122|3":["K","Pulse Wave 4"],"123|0":["K","Organ Bell"],"123|1":["K","Bright Bell"],"78|0":["K","Digi Lead"],"120|2":["K","Digi Wire"],"61|0":["K","Synth String"],"118|2":["K","Pulse Mod."],"119|1":["K","Wow Pad"],"119|0":["K","Soft Pad"],"116|0":["K","Bell Pad"],"107|2":["K","Fog Vox"],"107|1":["K","Mellow Ens."],"107|0":["K","Synth Vocal"],"116|2":["L","Metallic Org."],"112|0":["L","Gamelan 1"],"112|1":["L","Gamelan 2"],"112|2":["L","Gamelan 3"],"13|128":["L","E.Cymbal"],"29|128":["L","Click 1"],"30|128":["L","Click 2"],"27|128":["L","Click 3"],"28|128":["L","Click 4"],"21|128":["L","Fret Noise"],"26|128":["L","Key Click"],"0|128":["L","White Noise 1"],"0|129":["L","White Noise 2"],"2|128":["L","HiPass Noise1"],"3|128":["L","HiPass Noise2"],"7|128":["L","Sax Breath"],"8|128":["L","Shaku Breath"],"15|128":["L","Pick Noise 1"],"16|128":["L","Pick Noise 2"],"17|128":["L","Pick Noise 3"],"112|3":["L","Crystal Wave"],"74|128":["L","Tabla Hit"],"12|129":["L","Double Hammer"],"12|128":["L","Hammer 1"],"11|128":["L","Hammer 2"],"23|128":["L","Scratch 1"],"23|129":["L","Scratch 2"],"95|128":["M","Wind Chime"],"76|128":["M","Claves"],"78|128":["M","Slap"],"82|128":["M","Shaker"],"51|128":["M","Rim 1"],"52|128":["M","Rim 2"],"53|128":["M","Rim 3"],"32|128":["M","Rock Kick"],"33|128":["M","Jazz Kick"],"34|128":["M","Rock Kick"],"42|128":["M","Melodic Tom"],"63|128":["M","Reverse Cymb."],"67|128":["M","Bongo"],"75|128":["M","Wood Block"],"89|128":["M","Agogo"],"35|128":["M","Analog Kick 1"],"35|129":["M","Analog Kick 2"],"33|29":["M","Orch.Bass Dr."],"37|128":["M","Rock Snare"],"38|128":["M","Jazz Snare"],"39|128":["M","Soul Snare"],"38|129":["M","Orch.Snare"],"41|128":["M","Reverse Snare"],"44|128":["M","Electric Tom"],"45|128":["M","Analog Tom 1"],"45|129":["M","Analog Tom 2"],"47|128":["M","Brush Short"],"48|128":["M","Brush Long"],"54|128":["M","H.H.Closed 1"],"55|128":["M","H.H.Closed 2"],"56|128":["M","H.H.Open 1"],"57|128":["M","H.H.Open 2"],"58|128":["M","Crash Cymbal"],"59|128":["M","Orch.Cymbal"],"60|128":["M","Ride Cymbal 1"],"61|128":["M","Ride Cymbal 2"],"62|128":["M","Ride Cymbal 3"],"64|128":["M","Conga 1"],"65|128":["M","Conga 2"],"69|128":["M","Timbales 1"],"70|128":["M","Timbales 2"],"72|128":["M","Samba Drum"],"79|128":["M","Hand Claps"],"80|128":["M","Maracas"],"81|128":["M","Cabasa"],"84|128":["M","Guiro Short"],"85|128":["M","Guiro Long"],"86|128":["M","Cuica 1"],"86|129":["M","Cuica 2"],"87|128":["M","Triangle Mute"],"88|128":["M","Triangle Open"],"90|128":["M","Cowbell"],"91|128":["M","Tambourine"],"92|128":["M","Crickets"],"93|128":["M","Vibraslap"],"94|128":["M","Samba Whistle"],"120|128":["N","Rain"],"94|128":["N","Gun Shot"],"112|128":["N","Helicopter"],"114|128":["N","Telephone"],"118|128":["N","Seashore"],"95|128":["N","Bird Tweet 1"],"107|128":["N","Bird Tweet 2"],"98|128":["N","Bird Tweet 3"],"99|128":["N","Bird Tweet 4"],"116|128":["N","Applause"],"107|128":["N","Church Bell"],"122|128":["N","Rain Drops"]};// ============ Constantes protocole ============
+function slotAddr(n){ const t = 0x50 + n*0x90; return [0x30, (t>>7)&0x7f, t&0x7f]; } // n=0..35 : A-1..A-18, B-1..B-18
+function addrOf(n, off){ const b = slotAddr(n); const t = (b[1]<<7) + b[2] + off; return [0x30, (t>>7)&0x7f, t&0x7f]; }
+function xorChecksum(bytes){ let x=0; for(const b of bytes) x^=b; return x&0x7f; }
+function msgITR(n, off, val){ return msgITRaddr(addrOf(n,off),[val]); }
+function msgITRaddr(a, vals){
+  const nibs=[]; vals.forEach(v=>{ nibs.push((v>>4)&0x0f, v&0x0f); });
+  const body=[0x50,0x2c,0x01,0x18,0x10].concat(a,[0x00,(vals.length>>7)&0x7f,vals.length&0x7f],nibs,[0x00]);
+  return [0xf0].concat(body,[xorChecksum(body)],[0xf7]);
+}
+function msgDRQ(n, off){ return msgDRQaddr(addrOf(n,off),1); }
+function msgDRQaddr(a, siz){
+  const body=[0x50,0x2b,0x01,0x18,0x10].concat(a,[0x00,(siz>>7)&0x7f,siz&0x7f,0x00]);
+  return [0xf0].concat(body,[xorChecksum(body)],[0xf7]);
+}
+const hex = arr => arr.map(b=>b.toString(16).padStart(2,"0")).join(" ");
+const signed = v => v>127 ? v-256 : v;
+const SMIDX={"0|0":"PIANO & E.PIANO|Piano","1|0":"PIANO & E.PIANO|Bright Piano","0|16":"PIANO & E.PIANO|Piano 1 Octave","3|32":"PIANO & E.PIANO|Rock Piano","1|16":"PIANO & E.PIANO|Honky Tonk","3|0":"PIANO & E.PIANO|Electric Grand","5|0":"PIANO & E.PIANO|E.Piano 1","5|32":"PIANO & E.PIANO|E.Piano 2","6|0":"PIANO & E.PIANO|Modern E.P.1","2|0":"PIANO & E.PIANO|Mellow Piano","2|16":"PIANO & E.PIANO|Piano 2 Octave","0|32":"PIANO & E.PIANO|Midi Grand","1|48":"PIANO & E.PIANO|Jangle Piano","114|0":"PIANO & E.PIANO|Synth Piano","4|0":"PIANO & E.PIANO|Modern E.P.2","6|48":"PIANO & E.PIANO|Modern E.P.3","116|16":"PIANO & E.PIANO|Bell Piano","114|32":"PIANO & E.PIANO|Crystal Piano","16|0":"HARPSI & MALLET|Harpsichord","18|0":"HARPSI & MALLET|Cembalo","17|0":"HARPSI & MALLET|Clavi","115|0":"HARPSI & MALLET|Synth Clavi","9|0":"HARPSI & MALLET|Glockenspiel","8|0":"HARPSI & MALLET|Vibraphone","10|0":"HARPSI & MALLET|Marimba","11|0":"HARPSI & MALLET|Xylophone","15|0":"HARPSI & MALLET|Steel Drum","16|16":"HARPSI & MALLET|Harpsi.Octave","12|0":"HARPSI & MALLET|Celesta","13|0":"HARPSI & MALLET|Bottle Marimba","113|0":"HARPSI & MALLET|African Mallet","14|0":"HARPSI & MALLET|Tubular Bells","14|16":"HARPSI & MALLET|Wind Chime","14|32":"HARPSI & MALLET|Tinkle Bell","11|16":"HARPSI & MALLET|Caribbean Mallet","9|32":"HARPSI & MALLET|Synth Glocken","20|0":"GUITAR|Nylon Str.Gtr.1","21|0":"GUITAR|Nylon Str.Gtr.2","22|0":"GUITAR|Folk Guitar","25|0":"GUITAR|Jazz Guitar 1","26|0":"GUITAR|Bright Solid Gtr","28|0":"GUITAR|Mellow Solid Gtr","29|0":"GUITAR|Mute Guitar","30|0":"GUITAR|Distortion Gtr.","31|16":"GUITAR|Country Guitar","23|0":"GUITAR|12 String Guitar","24|0":"GUITAR|Jazz Guitar 2","26|16":"GUITAR|Funk Solid Gtr.","28|16":"GUITAR|'60's Solid Gtr.","27|32":"GUITAR|Overdrive Guitar","27|16":"GUITAR|Guitar Harmonics","31|0":"GUITAR|Hawaiian Guitar","26|32":"GUITAR|Synth Solid Gtr.","29|32":"GUITAR|Synth Mute Gtr.","33|0":"SPECIAL PERC|Banjo","35|0":"SPECIAL PERC|Mandolin","32|0":"SPECIAL PERC|Harp","127|16":"SPECIAL PERC|Orchestra Hit 1","126|0":"SPECIAL PERC|Timpani","7|0":"SPECIAL PERC|Music Box","39|0":"SPECIAL PERC|Kalimba","38|0":"SPECIAL PERC|Sitar","37|0":"SPECIAL PERC|Koto","34|0":"SPECIAL PERC|Ukulele","127|32":"SPECIAL PERC|Orchestra Hit 2","7|16":"SPECIAL PERC|Toy Piano","7|32":"SPECIAL PERC|Xmas Piano","14|48":"SPECIAL PERC|Gamelan","38|16":"SPECIAL PERC|Dulcimer","36|0":"SPECIAL PERC|Shamisen","38|32":"SPECIAL PERC|Kanun","38|48":"SPECIAL PERC|Cumbus","100|0":"STRINGS & VOCAL|Strings","102|0":"STRINGS & VOCAL|Octave Strings","99|0":"STRINGS & VOCAL|Pizzicato Str.","103|0":"STRINGS & VOCAL|Synth Strings 1","96|0":"STRINGS & VOCAL|Violin","96|16":"STRINGS & VOCAL|Jazz Violin","97|0":"STRINGS & VOCAL|Cello","104|48":"STRINGS & VOCAL|Vocal Ah","104|32":"STRINGS & VOCAL|Vocal Ooh","101|0":"STRINGS & VOCAL|Slow Strings","100|32":"STRINGS & VOCAL|Tremolo Strings","98|16":"STRINGS & VOCAL|Bass Strings","103|16":"STRINGS & VOCAL|Synth Strings 2","96|32":"STRINGS & VOCAL|Fiddle","97|32":"STRINGS & VOCAL|Viola","98|0":"STRINGS & VOCAL|Bowed Bass","109|0":"STRINGS & VOCAL|Vocal Doo","105|0":"STRINGS & VOCAL|Humming","88|0":"ORGAN & ACCORDION|Jazz Organ","89|0":"ORGAN & ACCORDION|Full Drawbars","93|0":"ORGAN & ACCORDION|Jazz Drawbars","90|0":"ORGAN & ACCORDION|Pop Organ 1","84|0":"ORGAN & ACCORDION|Pipe Organ 1","85|0":"ORGAN & ACCORDION|Pipe Organ 2","80|0":"ORGAN & ACCORDION|Bright Accordion","81|0":"ORGAN & ACCORDION|Mellow Accordion","82|0":"ORGAN & ACCORDION|Musette","91|0":"ORGAN & ACCORDION|16' & 1'","89|32":"ORGAN & ACCORDION|Pop Organ 2","92|32":"ORGAN & ACCORDION|Rock Organ","93|32":"ORGAN & ACCORDION|Digi Organ","87|32":"ORGAN & ACCORDION|Theatre Organ 1","87|48":"ORGAN & ACCORDION|Theatre Organ 2","86|32":"ORGAN & ACCORDION|Harmonium","94|16":"ORGAN & ACCORDION|Organ Bass","80|16":"ORGAN & ACCORDION|Bandoneon","56|0":"BRASS|Brass","56|16":"BRASS|Octave Brass","56|48":"BRASS|Brass & Synth","48|0":"BRASS|Trumpet","50|0":"BRASS|Mute Trumpet","51|0":"BRASS|Flugel Horn","52|0":"BRASS|Bright Trombone","60|0":"BRASS|Synth Brass","61|16":"BRASS|Syn.Brass Ens.1","56|32":"BRASS|Mute Brass Ens.","48|16":"BRASS|Mellow Trumpet","53|0":"BRASS|Mellow Trombone","54|0":"BRASS|Closed Fr.Horn","54|16":"BRASS|Open Fr.Horn","55|0":"BRASS|Tuba","61|48":"BRASS|Syn.Brass Ens.2","63|32":"BRASS|Oct.Synth Brass","62|48":"BRASS|Wow Synth Brass","76|0":"REED|Soprano Sax","77|0":"REED|Alto Sax","78|48":"REED|Tenor Sax","78|16":"REED|Breathy Tenor","79|16":"REED|Baritone Sax","68|0":"REED|Jazz Clarinet","66|0":"REED|Oboe","70|0":"REED|Bassoon","83|0":"REED|Harmonica","77|16":"REED|Mellow Alto Sax","79|0":"REED|Rock Tenor Sax","78|32":"REED|Distortion Sax","79|48":"REED|Synth Sax","68|16":"REED|Mellow Clarinet","69|0":"REED|Classic Clarinet","67|0":"REED|English Horn","73|0":"REED|Bagpipe","83|16":"REED|Blues Harmonica","64|0":"FLUTE & ETHNIC|Piccolo","65|0":"FLUTE & ETHNIC|Jazz Flute","65|16":"FLUTE & ETHNIC|Classical Flute","64|16":"FLUTE & ETHNIC|Alto Flute","74|0":"FLUTE & ETHNIC|Recorder","74|16":"FLUTE & ETHNIC|Ocarina","72|0":"FLUTE & ETHNIC|Pan Flute 1","111|0":"FLUTE & ETHNIC|Whistle","75|0":"FLUTE & ETHNIC|Shakuhachi","64|48":"FLUTE & ETHNIC|Alto Ensemble","72|16":"FLUTE & ETHNIC|Pan Flute 2","72|32":"FLUTE & ETHNIC|Blown Bottle","75|16":"FLUTE & ETHNIC|Quena","73|16":"FLUTE & ETHNIC|Shanai","73|32":"FLUTE & ETHNIC|Ney","74|32":"FLUTE & ETHNIC|Synth Recorder","72|48":"FLUTE & ETHNIC|Synth Calliope","112|48":"FLUTE & ETHNIC|Knock Whistle","117|0":"SYNTH LEAD|Square Lead","118|16":"SYNTH LEAD|Saw Lead","106|16":"SYNTH LEAD|Air Vox","121|32":"SYNTH LEAD|Lead Voice","121|0":"SYNTH LEAD|Click Square","112|0":"SYNTH LEAD|Pluck Organ","115|16":"SYNTH LEAD|Synthynet","117|16":"SYNTH LEAD|Poly Smack","20|48":"SYNTH LEAD|Nylon Synth","117|32":"SYNTH LEAD|Chiffer Lead","27|48":"SYNTH LEAD|Charang","119|0":"SYNTH LEAD|5th Wave","112|32":"SYNTH LEAD|Chopper Flute","115|32":"SYNTH LEAD|Pluck Ensemble","21|48":"SYNTH LEAD|Atmosphere","94|0":"SYNTH LEAD|Sine Lead","117|48":"SYNTH LEAD|Plop","121|16":"SYNTH LEAD|Wet Square","43|0":"BASS|Acoustic Bass","43|16":"BASS|Mellow Ac.Bass","40|0":"BASS|Electric Bass","40|32":"BASS|Fretless Bass","42|0":"BASS|Picked E.Bass","47|0":"BASS|Mute Bass","41|0":"BASS|Slap Bass 1","46|16":"BASS|Analog Bass","45|0":"BASS|Synth Chopper","40|16":"BASS|Bright E.Bass","40|48":"BASS|Funky E.Bass","47|16":"BASS|Rock Bass","41|16":"BASS|Slap Bass 2","46|0":"BASS|Wow Bass","46|48":"BASS|Smack Bass","45|32":"BASS|Wire Bass","44|0":"BASS|Mallet Bass","46|32":"BASS|Bass & Lead","116|32":"SYNTH PAD|Bell Pad","107|16":"SYNTH PAD|Mellow Ensemble","102|32":"SYNTH PAD|Polysynth","107|32":"SYNTH PAD|Spacy Pad","120|0":"SYNTH PAD|Crystal Ensemble","106|32":"SYNTH PAD|Metal Pad","108|32":"SYNTH PAD|Dream","104|16":"SYNTH PAD|Digi Heaven","103|48":"SYNTH PAD|Synth Ensemble","107|48":"SYNTH PAD|Halo Pad","62|32":"SYNTH PAD|Sweep Pad","107|0":"SYNTH PAD|Synth Vocal","108|48":"SYNTH PAD|Mist","62|16":"SYNTH PAD|Mellow Brass","108|0":"SYNTH PAD|Click Echo","106|48":"SYNTH PAD|Click Vox","120|16":"SYNTH PAD|Star Theme","63|16":"SYNTH PAD|Synth Orchestra","113|128":"KEYBOARD PERC (KITS)|Jazz Kit","118|128":"KEYBOARD PERC (KITS)|Trad Kit","112|128":"KEYBOARD PERC (KITS)|Rock Kit 1","115|128":"KEYBOARD PERC (KITS)|Rock Kit 2","126|128":"KEYBOARD PERC (KITS)|Light Rock Kit","119|128":"KEYBOARD PERC (KITS)|Hard Rock Kit","120|128":"KEYBOARD PERC (KITS)|Funk Kit","122|128":"KEYBOARD PERC (KITS)|Dance Kit","121|128":"KEYBOARD PERC (KITS)|Soul Kit","117|128":"KEYBOARD PERC (KITS)|Brush Kit 1","127|128":"KEYBOARD PERC (KITS)|Brush Kit 2","123|128":"KEYBOARD PERC (KITS)|House Kit","114|128":"KEYBOARD PERC (KITS)|Electric Kit","116|128":"KEYBOARD PERC (KITS)|Synth Kit","124|128":"KEYBOARD PERC (KITS)|Orchestral Kit","125|128":"KEYBOARD PERC (KITS)|Sound Effect Kit","122|0":"PERC & EFFECT|Agogo","122|16":"PERC & EFFECT|Wood Block","123|48":"PERC & EFFECT|Taiko Drum","122|32":"PERC & EFFECT|Melodic Tom","124|0":"PERC & EFFECT|Synth Drum","122|48":"PERC & EFFECT|Reverse Cymbal","121|48":"PERC & EFFECT|Ice Rain","119|16":"PERC & EFFECT|Soundtrack","106|0":"PERC & EFFECT|Goblins","124|16":"PERC & EFFECT|Fret Noise","124|32":"PERC & EFFECT|Key Click","124|48":"PERC & EFFECT|Seashore","125|32":"PERC & EFFECT|Bird Tweet","123|0":"PERC & EFFECT|Telephone","123|16":"PERC & EFFECT|Helicopter","125|48":"PERC & EFFECT|Applause","123|32":"PERC & EFFECT|Gun Shot","126|32":"PERC & EFFECT|Rapper","0|128":"MEMORY A (sons)|Memory A-1","1|128":"MEMORY A (sons)|Memory A-2","2|128":"MEMORY A (sons)|Memory A-3","3|128":"MEMORY A (sons)|Memory A-4","4|128":"MEMORY A (sons)|Memory A-5","5|128":"MEMORY A (sons)|Memory A-6","6|128":"MEMORY A (sons)|Memory A-7","7|128":"MEMORY A (sons)|Memory A-8","8|128":"MEMORY A (sons)|Memory A-9","9|128":"MEMORY A (sons)|Memory A-10","10|128":"MEMORY A (sons)|Memory A-11","11|128":"MEMORY A (sons)|Memory A-12","12|128":"MEMORY A (sons)|Memory A-13","13|128":"MEMORY A (sons)|Memory A-14","14|128":"MEMORY A (sons)|Memory A-15","15|128":"MEMORY A (sons)|Memory A-16","16|128":"MEMORY A (sons)|Memory A-17","17|128":"MEMORY A (sons)|Memory A-18","18|128":"MEMORY B (sons)|Memory B-1","19|128":"MEMORY B (sons)|Memory B-2","20|128":"MEMORY B (sons)|Memory B-3","21|128":"MEMORY B (sons)|Memory B-4","22|128":"MEMORY B (sons)|Memory B-5","23|128":"MEMORY B (sons)|Memory B-6","24|128":"MEMORY B (sons)|Memory B-7","25|128":"MEMORY B (sons)|Memory B-8","26|128":"MEMORY B (sons)|Memory B-9","27|128":"MEMORY B (sons)|Memory B-10","28|128":"MEMORY B (sons)|Memory B-11","29|128":"MEMORY B (sons)|Memory B-12","30|128":"MEMORY B (sons)|Memory B-13","31|128":"MEMORY B (sons)|Memory B-14","32|128":"MEMORY B (sons)|Memory B-15","33|128":"MEMORY B (sons)|Memory B-16","34|128":"MEMORY B (sons)|Memory B-17","35|128":"MEMORY B (sons)|Memory B-18"};
+const toneName = (ttn,sfx) => (TTABLE[ttn+"|"+sfx]||[null,"TTN "+ttn])[1];
+const toneGrp  = (ttn,sfx) => (TTABLE[ttn+"|"+sfx]||[null,""])[0];
+
+// ============ Carte des 144 octets (p.24/30/31 + Digital Effects) ============
+const MAP_DESC = {};
+(function(){
+  const d = MAP_DESC;
+  for(let i=0;i<16;i++) d[i] = ["name","Nom du son (car. "+(i+1)+")"];
+  d[0x10]=["name","General flags : Glide b7 · Wheel b6 · Wheel mode b3 · Sustain b2"];
+  d[0x11]=["name","Octave shift : b6-7 shift · b4-5 right · b2-3 left · b0-1 ?"];
+  d[0x12]=["known","Vibrato VOL MOD DEPTH 0-30"]; d[0x13]=["known","Vibrato PITCH MOD DEPTH 0-30"];
+  d[0x14]=["known","Vibrato SPEED 0-30"]; d[0x15]=["known","Vibrato DELAY 0-30"];
+  d[0x16]=["known","A&T : On/Off b6-7 · Mode b4-5 · Type b2 · Pattern b0-1"];
+  d[0x17]=["known","A&T DEPTH −30..+30"]; d[0x18]=["known","A&T SPEED 0-30"];
+  d[0x19]=["partial","Modulation : On b6 · Mode b4-5 · Wave b1-2"]; d[0x1A]=["partial","MOD DEPTH 0-127 (⚠ order?)"]; d[0x1B]=["partial","MOD SPEED 0-127 (⚠ order?)"];
+  d[0x1C]=["known","Distortion : Type b7 · On b6 · Depth 0-50"]; d[0x1D]=["known","Distortion TOUCH DEPTH 0-50"];
+  d[0x1E]=["known","Sound REVERB DEPTH 0-31"];
+  d[0x1F]=["known","Effect : On b7 · Pan/ST b6 · TYPE 0-B"];
+  for(let i=0x20;i<=0x27;i++) d[i]=["partial","Effect param "+i.toString(16)+" (selon TYPE)"];
+  const TDESC = [["flags : Tone ON b7 · Vib b6"],["TTN SELECT 0-127"],["SUFFIX/SFX"],["KEY SHIFT ±24"],["TUNE ±50"],["VOLUME 0-127"],["TOUCH DEPTH"],["TOUCH CURVE ±3"],["LEVEL KF SLOPE ±50"],["LEVEL KF LOW KEY LIM"],["LEVEL KF HIGH KEY LIM"],["ATTACK 0-50"],["TOUCH ATTACK ±50"],["DECAY 1"],["SUSTAIN 1"],["DECAY 2"],["SUSTAIN 2"],["RELEASE"],["ATK KF SLOPE ±50"],["ATK KF LOW"],["ATK KF HIGH"],["DCY KF SLOPE ±50"],["DCY KF LOW"],["DCY KF HIGH"],["REL KF SLOPE ±50 (hyp.)"],["REL KF LOW (hyp.)"],["REL KF HIGH (hyp.)"],["FILTER CUTOFF 0-127"],["FILTER TOUCH DEPTH 0-50"],["FILTER TOUCH CURVE ±3"],["FILTER TYPE FF=THRU/0-6"],["FILTER SLOPE ±50"],["FILTER LOW KEY LIM"],["FILTER HIGH KEY LIM"]];
+  [0x28,0x4A,0x6C].forEach((base,ti)=>TDESC.forEach((t,i)=>{
+    d[base+i]=[i<=1?"known":"known", ["1st","2nd","sub"][ti]+" : "+t[0]];
+  }));
+  d[0x8E]=["unknown","Réservé"]; d[0x8F]=["unknown","Réservé"];
+})();
+// ============ Types d'effet (table officielle) ============
+const FX_TYPES = ["CELESTE 1","CELESTE 2","CHORUS 1","CHORUS 2","ENSEMBLE 1","ENSEMBLE 2","TREMOLO","ORGAN TREMOLO","SINGLE DELAY","REPEAT DELAY","SOLO EFFECT 1","SOLO EFFECT 2"];
+const FX_PARAMS = {
+  0:[["DEPTH",0x20,0,50,0],["SPEED",0x21,0,50,0],["DETUNE",0x22,-50,50,1],["DELAY",0x23,0,50,0],["BALANCE",0x24,0,100,0],["INTENSITY",0x25,-50,50,1],["REV DEPTH",0x26,-5,5,1]],
+  2:[["DEPTH",0x20,0,50,0],["SPEED",0x21,0,50,0],["DETUNE",0x22,-50,50,1],["DELAY",0x23,0,50,0],["BALANCE",0x24,0,100,0],["INTENSITY",0x25,-50,50,1],["REV DEPTH",0x26,-5,5,1]],
+  4:[["DEPTH 1",0x20,0,50,0],["SPEED 1",0x21,0,50,0],["DEPTH 2",0x22,0,50,0],["SPEED 2",0x23,0,50,0],["DETUNE",0x24,-50,50,1],["DELAY",0x25,0,50,0],["INTENSITY",0x26,-50,50,1],["REV DEPTH",0x27,-5,5,1]],
+  6:[["DEPTH",0x20,0,50,0],["SPEED",0x21,0,50,0],["WAVE",0x22,0,3,0],["BALANCE",0x23,0,100,0],["INTENSITY",0x24,-50,50,1],["REV DEPTH",0x25,-5,5,1]],
+  7:[["DEPTH 1",0x20,0,50,0],["SPEED 1",0x21,0,50,0],["DEPTH 2",0x22,0,50,0],["SPEED 2",0x23,0,50,0],["DETUNE",0x24,-50,50,1],["DELAY",0x25,0,50,0],["KEY SHIFT",0x26,-24,24,1],["BALANCE",0x27,0,100,0]],
+  8:[["DELAY",0x20,0,50,0],["DETUNE",0x21,-50,50,1],["KEY SHIFT",0x22,-24,24,1],["BALANCE",0x23,0,100,0],["INTENSITY",0x24,-50,50,1],["REV DEPTH",0x25,-5,5,1]],
+  9:[["SPEED",0x20,0,50,0],["DECAY",0x21,0,50,0],["SUSTAIN",0x22,0,50,0],["RELEASE",0x23,0,50,0],["INTENSITY",0x24,-50,50,1],["REV DEPTH",0x25,-5,5,1]],
+  10:[["DISTORTION",0x20,0,50,0],["TOUCH DEPTH",0x21,0,50,0],["DEPTH",0x22,0,50,0],["INTENSITY",0x23,-50,50,1],["REV DEPTH",0x24,-5,5,1]],
+  11:[["DISTORTION",0x20,0,50,0],["TOUCH DEPTH",0x21,0,50,0],["DEPTH",0x22,0,50,0],["INTENSITY",0x23,-50,50,1],["REV DEPTH",0x24,-5,5,1]]
+};
+FX_PARAMS[1]=FX_PARAMS[0]; FX_PARAMS[3]=FX_PARAMS[2]; FX_PARAMS[5]=FX_PARAMS[4];
+const AT_PATTERNS = { bend:["UP","UP-DOWN","UP-DROP","DELAY-UP"], trill:["DOWN-UP","UP-DOWN","MELODY","5-UP"] };
+
+// ============ État ============
+let midiIn=null, midiOut=null, curSlot=0;
+let raw = null;            // Uint8Array(144) du slot courant
+let model = null;          // objet structuré
+const $ = id => document.getElementById(id);
+function log(m,cls){ const d=$("log"); const t=new Date().toLocaleTimeString();
+  d.innerHTML = `<span${cls?` class="${cls}"`:""}>[${t}] ${m}</span>`+d.innerHTML; }
+let tt; function toast(m){ const t=$("toast"); t.textContent=m; t.style.display="block"; clearTimeout(tt); tt=setTimeout(()=>t.style.display="none",2600); }
+
+// ============ UI : onglets, segments ============
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
+  t.classList.add("active"); $("p-"+t.dataset.t).classList.add("active");
+});
+function buildSeg(sel, items, onIdx){
+  sel.innerHTML="";
+  items.forEach((it,i)=>{ const b=document.createElement("button");
+    b.textContent=it[0]; b.dataset.v=it[1]; if(i===onIdx)b.classList.add("on");
+    b.onclick=()=>{ sel.querySelectorAll("button").forEach(x=>x.classList.remove("on")); b.classList.add("on");
+      if(typeof segChanged==="function") segChanged(sel.dataset.f, +b.dataset.v); };
+    sel.appendChild(b); });
+}
+document.querySelectorAll(".seg[data-f]").forEach(seg=>{
+  const f=seg.dataset.f;
+  const M={octSh:[[-1,0],[0,1],[1,2],[2,3]], octR:[[-1,0],[0,1],[1,2],[2,3]], octL:[[-1,0],[0,1],[1,2],[2,3]],
+    wheelMode:[["MOD",0],["VIB",1]], // 22/10 : ordre inversé après test terrain — bit3=1 → VIB sur le KN2000 (A-1), à recouper sur un son en MOD sustain:[["LONG",0],["HOLD",1]],
+    atOn:[["OFF",0],["ON",1],["TOUCH",2]], atMode:[["1ST",0],["2ND",1],["ALL",2],["INVERSE",3]],
+    atType:[["BEND",0],["TRILL",1]], atPat:[["P0",0],["P1",1],["P2",2],["P3",3]],
+    modMode:[["1ST",0],["2ND",1],["ALL",2],["INVERSE",3]], modWave:[["SIN",0],["TRI",1],["SQR",2],["SAW",3]],
+    disType:[["DIST",0],["GROWL",1]], fxPan:[["MONO",0],["STEREO",1]]}[f];
+  if(M) buildSeg(seg,M,-1);
+});
+function setSeg(f, idx){ const seg=document.querySelector(`.seg[data-f="${f}"]`);
+  if(!seg) return; [...seg.children].forEach((b,i)=>b.classList.toggle("on", i===idx)); }
+function segVal(f){ const seg=document.querySelector(`.seg[data-f="${f}"]`);
+  const b=[...seg.children].find(x=>x.classList.contains("on")); return b?+b.dataset.v:null; }
+// Clic sur un bouton de segment → rafraîchit l'aperçu associé
+function segChanged(f,v){
+  if(f==="atPat"){ const t=segVal("atType"); drawAtPattern(t==null?0:t, v==null?0:v); }
+  else if(f==="atType"){ refreshAtPatterns(); }
+  else if(f==="modWave"){ drawModWave(v); }
+  else if(f==="disType"){ // DIST/GROWL = bit7 de 0x1C (depth = bits 0-5 préservés)
+    if(typeof raw==="undefined"||!raw){ log("ℹ️ Distortion type : lis d'abord le son.","status-ko"); return; }
+    if(!ARMED){ log("ℹ️ Distortion type "+(v?"GROWL":"DIST")+" (écran) — écriture non armée.","status-ko"); return; }
+    const val=((v?raw[0x1C]|0x80:raw[0x1C]&0x7F)&0xff);
+    send(msgITR(curSlot,0x1C,val)); raw[0x1C]=val;
+    log("✍️ Distortion type "+(v?"GROWL":"DIST")+" → 0x1C = 0x"+val.toString(16).padStart(2,"0"));
+    scheduleApply(); }
+  else if(f==="fxPan"){ // MONO/STEREO = bit6 de 0x1F
+    if(typeof raw==="undefined"||!raw){ log("ℹ️ Effect Pan : lis d'abord le son.","status-ko"); return; }
+    if(!ARMED){ log("ℹ️ Effect Pan "+(v?"STEREO":"MONO")+" (écran) — écriture non armée.","status-ko"); return; }
+    const val=((v?raw[0x1F]|0x40:raw[0x1F]&~0x40)&0xff);
+    send(msgITR(curSlot,0x1F,val)); raw[0x1F]=val;
+    log("✍️ Effect Pan "+(v?"STEREO":"MONO")+" → 0x1F = 0x"+val.toString(16).padStart(2,"0"));
+    scheduleApply(); }
+}
+function setSwitch(f,on){ const s=document.querySelector(`.switch[data-f="${f}"]`); if(s) s.classList.toggle("on",!!on); }
+// Interrupteurs : le clic bascule l'état visuel (+ synchro des paires VIB) et ÉCRIT si armé
+document.addEventListener("click",e=>{
+  const sw=e.target.closest(".switch[data-f]"); if(!sw) return;
+  sw.classList.toggle("on");
+  const f=sw.dataset.f, on=sw.classList.contains("on");
+  const mT=f.match(/^t(\d)_on$/);
+  if(mT){ const c=$("tone"+mT[1]); if(c) c.classList.toggle("tone-off",!on); }
+  const mV=f.match(/^t(\d)_vib$/);
+  if(mV){ setSwitch("vibT"+mV[1], on); }
+  const mW=f.match(/^vibT(\d)$/);
+  if(mW){ setSwitch("t"+mW[1]+"_vib", on); }
+  // ---- écriture (read-modify-write du flag) si armée ----
+  let off=null,bit=0,nm=f;
+  if(f==="glide"){ off=0x10; bit=0x80; }
+  else if(f==="wheel"){ off=0x10; bit=0x40; }
+  else if(f==="modOn"){ off=0x19; bit=0x40; }
+  else if(mV){ off=[0x28,0x4A,0x6C][+mV[1]]; bit=0x40; nm="Tone "+TAGS[+mV[1]]+" Vib"; }
+  else if(mT){ off=[0x28,0x4A,0x6C][+mT[1]]; bit=0x80; nm="Tone "+TAGS[+mT[1]]+" ON/OFF"; }
+  else if(mW){ off=[0x28,0x4A,0x6C][+mW[1]]; bit=0x40; nm="Vib "+TAGS[+mW[1]]; }
+  else if(f==="disOn"){ off=0x1C; bit=0x40; nm="Distortion ON/OFF"; }
+  else if(f==="fxOn"){ off=0x1F; bit=0x80; nm="Effect ON/OFF"; }
+  else return;
+  if(off==null || typeof raw==="undefined" || !raw){ log(`ℹ️ ${nm} = ${on?"ON":"OFF"} (écran) — lis d'abord le son.`); return; }
+  if(!ARMED){ log(`ℹ️ ${nm} = ${on?"ON":"OFF"} (écran) — écriture non armée, rien envoyé.`); return; }
+
+  const val = on ? (raw[off]|bit)&0xff : (raw[off]&~bit)&0xff;
+  send(msgITR(curSlot,off,val)); raw[off]=val;
+  log(`✍️ ${nm} ${on?"ON":"OFF"} → 0x${off.toString(16)} = 0x${val.toString(16).padStart(2,"0")}`);
+  scheduleApply();
+  toast(nm+" "+(on?"ON":"OFF"));
+});
+function setSlider(f,v){ const s=document.querySelector(`input[data-f="${f}"]`); if(s){ s.value=v; } const t=document.querySelector(`[data-v="${f}"]`); if(t) t.textContent=v; }
+// Maj live (délégué global : couvre AUSSI les cartes TONE créées dynamiquement, contrairement au binding statique d'origine)
+const ENVF={atk:1,dc1:1,s1:1,dc2:1,s2:1,rls:1};
+document.addEventListener("input",e=>{
+  const s=e.target; if(!s||s.tagName!=="INPUT"||s.type!=="range"||!s.dataset.f) return;
+  const t=document.querySelector(`[data-v="${s.dataset.f}"]`); if(t) t.textContent=s.value;
+  const m=s.dataset.f.match(/^t(\d)_(\w+)$/);
+  if(m && ENVF[m[2]]){ // champ d'enveloppe → maj du modèle + redessin du schéma en direct
+    const i=+m[1];
+    if(typeof model!=="undefined"&&model&&model.tones&&model.tones[i]) model.tones[i][m[2]]=+s.value;
+    const g=f=>{ const el=document.querySelector(`input[type=range][data-f="t${i}_${f}"]`); return el?+el.value:0; };
+    try{ drawEnv(i,{atk:g("atk"),dc1:g("dc1"),s1:g("s1"),dc2:g("dc2"),s2:g("s2"),rls:g("rls")}); }
+    catch(err){ console.warn("drawEnv:",err); }
+  }
+  if(m && (m[2]==="tcur"||m[2]==="fcur")){ // courbe de vélocité → redessin en direct
+    try{ drawVCurve("t"+m[1]+"_"+m[2]+"Svg", +s.value); }catch(err){ console.warn("drawVCurve:",err); }
+  }
+});
+// Clic sur une valeur = saisie numérique directe (bornée au min/max du curseur lié)
+document.addEventListener("click",e=>{
+  const v=e.target.closest(".val"); if(!v||!v.dataset.v) return;
+  const f=v.dataset.v, s=document.querySelector(`input[type=range][data-f="${f}"]`);
+  if(!s||v.nextSibling?.tagName==="INPUT") return;
+  const inp=document.createElement("input");
+  inp.type="number"; inp.min=s.min; inp.max=s.max; inp.step=1; inp.value=s.value;
+  inp.style.cssText="width:54px;font-family:monospace;font-size:.75rem;background:#0b1220;color:#fbbf24;border:1px solid #38bdf8;border-radius:4px;text-align:right";
+  v.style.display="none"; v.after(inp); inp.focus(); inp.select();
+  const done=ok=>{ if(ok&&inp.value!==""){ const x=Math.max(+s.min,Math.min(+s.max,Math.round(+inp.value)||0)); s.value=x; s.dispatchEvent(new Event("input",{bubbles:true})); s.dispatchEvent(new Event("change",{bubbles:true})); } inp.remove(); v.style.display=""; };
+  inp.onblur=()=>done(true);
+  inp.onkeydown=k=>{ if(k.key==="Enter") inp.blur(); if(k.key==="Escape") done(false); k.stopPropagation(); };
+});
+// ============ Écriture par curseur (si armée) ============
+// Champ tone t{i}_{f} → offset bloc (b + TOFF[f]) ; champ simple vXX → offset 0xXX.
+const TOFF={key:3,tune:4,vol:5,tch:6,tcur:7,lkf:8,atk:11,tat:12,dc1:13,s1:14,dc2:15,s2:16,rls:17,ekfA:18,ekfD:21,ekfR:24,cut:27,ftch:28,fcur:29,fsl:31};
+function encS(v){ return v<0? v+256 : v; }
+document.addEventListener("change",e=>{
+  const s=e.target;
+  if(!s || s.tagName!=="INPUT" || s.type!=="range" || !s.dataset.f) return;
+  const f=s.dataset.f; let off=null;
+  const mT=f.match(/^t(\d)_(\w+)$/);
+  if(mT && TOFF[mT[2]]!=null){ off=[0x28,0x4A,0x6C][+mT[1]]+TOFF[mT[2]]; }
+  else if(/^v[0-9A-Fa-f]{2}$/.test(f)){ off=parseInt(f.slice(1),16); }
+  if(off==null) return;
+  if(!ARMED){ log(`ℹ️ ${f} = ${s.value} (écran) — écriture non armée, rien envoyé.`); return; }
+  const val=encS(Math.round(+s.value)) & 0xff;
+  send(msgITR(curSlot,off,val));
+  if(typeof raw!=="undefined"&&raw) raw[off]=val;
+  scheduleApply();
+  const info=MAP_DESC[off];
+  log(`✍️ ${f} = ${s.value} → 0x${off.toString(16)} (${info?info[1]:"?"})`);
+  toast("Écrit "+f+" = "+s.value);
+});
+
+// ============ TONE : construction des 3 cartes ============
+const TBASE=[0x28,0x4A,0x6C], TAGS=["1st","2nd","sub"];
+function keyLabel(v){ if(v==null) return "—"; const n=Math.round(v); const o=Math.floor(n/12)-1; return ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"][n%12]+o; }
+function envPath(atk,dcy1,sus1,dcy2,sus2,rls,W,H,pad){
+  // Forme conforme au graphique KN2000 : ATK montée au max (100%), DCY1 chute → SUS1,
+  // plateau (touche tenue), DCY2 chute → SUS2, plateau, key-off → RLS descente à 0.
+  const y = v => pad + (1 - Math.max(0,Math.min(1,v/50)))*(H-2*pad);
+  const iw = W-2*pad, plate = iw*0.12;
+  const dur = Math.max(1, atk+dcy1+dcy2+rls);
+  const dw = iw - 2*plate;
+  const x0 = pad;
+  const xa = x0 + atk/dur*dw;          // fin attack (sommet)
+  const xd1 = xa + dcy1/dur*dw;        // fin decay1 → niveau SUS1
+  const xk1 = xd1 + plate;            // fin plateau SUS1
+  const xd2 = xk1 + dcy2/dur*dw;       // fin decay2 → niveau SUS2
+  const xk2 = xd2 + plate;             // key-off (fin plateau SUS2)
+  const xr = xk2 + rls/dur*dw;         // fin release
+  const y0 = y(0), yTop = y(50);
+  const path = `M ${x0} ${y0} L ${xa} ${yTop} L ${xd1} ${y(sus1)} L ${xk1} ${y(sus1)} L ${xd2} ${y(sus2)} L ${xk2} ${y(sus2)} L ${xr} ${y0}`;
+  return { path,
+    pts:[[xa,yTop,"ATK "+atk],[xd1,y(sus1),"SUS1 "+sus1],[xd2,y(sus2),"SUS2 "+sus2],[xk2,y(sus2),"Key-off → RLS "+rls]],
+    koff:xk2 };
+}
+function toneCard(i){
+  const b=TBASE[i], c=document.createElement("div"); c.className="card"; c.id="tone"+i;
+  const trow=(lab,f,min,max,extra)=>`<div class="prow"><label>${lab}</label><input type="range" min="${min}" max="${max}" data-f="t${i}_${f}"><span class="val" data-v="t${i}_${f}"></span>${extra||""}</div>`;
+  c.innerHTML=`<h2>Tone ${TAGS[i]} — <span id="t${i}_nameH" style="color:#e2e8f0">—</span> <span class="off">0x${b.toString(16)}-0x${(b+0x21).toString(16)}</span></h2>
+  <div class="prow"><span class="swgrp"><label>ON/OFF</label><div class="switch" data-f="t${i}_on"></div></span>
+    <span class="swgrp"><label>Vib</label><div class="switch" data-f="t${i}_vib"></div></span></div>
+  <div class="prow"><label>Changer tone</label><select id="t${i}_sel" style="max-width:240px"><option value="">— table 250 sons —</option></select></div>
+  <div class="prow"><label>TTN · SFX</label><span class="val" id="t${i}_ttn"></span><span class="hexv">base+1/+2 = 0x${(b+1).toString(16)}/0x${(b+2).toString(16)}</span></div>
+  <div class="sect"><h3>Pitch</h3><div class="grid2">${trow("Key (±24)","key",-24,24)}${trow("Tune (±50)","tune",-50,50)}</div></div>
+  <div class="sect"><h3>Volume · Touche</h3><div class="grid2">${trow("Volume","vol",0,127)}${trow("Touch depth","tch",0,127)}${trow("Touch curve","tcur",-3,3)}${trow("Lvl KF slope","lkf",-50,50)}</div>
+  <svg viewBox="0 0 100 56" id="t${i}_tcurSvg" style="background:#0b1220;border-radius:6px;width:100%;height:52px"></svg>
+  <div class="envlegend">Touch curve — réponse à la vélocité (Reference Guide p.13, courbes -3 à +3)</div></div>
+  <div class="sect"><h3>Envelope (0x33-0x39)</h3>
+  <div class="envbox"><svg viewBox="0 0 360 120" id="t${i}_env">
+    <line x1="10" y1="110" x2="350" y2="110" stroke="#1e293b"/>
+    <path d="" fill="none" stroke="#38bdf8" stroke-width="2" id="t${i}_envp"/>
+    <g id="t${i}_envg"></g>
+  </svg>
+  <div class="envlegend" id="t${i}_envl">ATK · DCY1 · SUS1 · DCY2 · SUS2 · RLS</div></div>
+  <div class="grid2">${trow("Attack","atk",0,50)}${trow("Decay 1","dc1",0,50)}
+  ${trow("Sustain 1","s1",0,50)}${trow("Decay 2","dc2",0,50)}
+  ${trow("Sustain 2","s2",0,50)}${trow("Release","rls",0,50)}
+  ${trow("Touch attack","tat",-50,50)}${trow("EKF atk slope","ekfA",-50,50)}
+  ${trow("EKF dcy slope","ekfD",-50,50)}${trow("EKF rls slope","ekfR",-50,50)}</div>
+  <div class="prow"><label>Atk KF lim</label><span class="val" id="t${i}_alim">—</span>
+    <label>Dcy KF lim</label><span class="val" id="t${i}_dlim">—</span></div></div>
+  <div class="sect"><h3>Filter</h3><div class="grid2">
+  ${trow("Cutoff","cut",0,127)}${trow("Touch depth","ftch",0,50)}
+  ${trow("Touch curve","fcur",-3,3)}${trow("Slope","fsl",-50,50)}</div>
+  <svg viewBox="0 0 100 56" id="t${i}_fcurSvg" style="background:#0b1220;border-radius:6px;width:100%;height:52px"></svg>
+  <div class="envlegend">Flt touch curve — coupure vs vélocité (Reference Guide p.13)</div></div>
+  <div class="prow"><label>Filter type</label><div class="seg" data-f="t${i}_ftype"></div><label>Flt key lim</label><span class="val" id="t${i}_flim">—</span></div></div>`;
+  return c;
+}
+const toneGrid=$("toneGrid"); TBASE.forEach((b,i)=>toneGrid.appendChild(toneCard(i)));
+// Remplissage des sélecteurs 250 sons (groupes A→N)
+const byGroup={};
+Object.keys(TTABLE).forEach(k=>{ const [g,nm]=TTABLE[k]; (byGroup[g]=byGroup[g]||[]).push([k,nm]); });
+[0,1,2].forEach(i=>{
+  const sel=$("t"+i+"_sel");
+  Object.keys(byGroup).sort().forEach(g=>{
+    const og=document.createElement("optgroup"); og.label=g;
+    byGroup[g].sort((a,b)=>a[1].localeCompare(b[1])).forEach(([k,nm])=>{
+      const o=document.createElement("option"); o.value=k; o.textContent=nm+" ("+k.replace("|","·")+")"; og.appendChild(o);
+    });
+    sel.appendChild(og);
+  });
+  sel.onchange=()=>{ const k=sel.value; if(!k) return;
+    const [ttn,sfx]=k.split("|").map(Number); const b=TBASE[i];
+    $("t"+i+"_nameH").textContent=TTABLE[k][1];
+    $("t"+i+"_ttn").textContent=ttn+" · "+sfx+" ("+TTABLE[k][0]+")";
+    if(ARMED){
+      send(msgITR(curSlot,b+1,ttn));
+      setTimeout(()=>{ send(msgITR(curSlot,b+2,sfx)); scheduleApply(); },250);
+      log(`✍️ Tone ${TAGS[i]} ← « ${TTABLE[k][1]} » : TTN ${ttn} (0x${(b+1).toString(16)}) puis SFX ${sfx} (0x${(b+2).toString(16)}) envoyés au KN2000.`,"status-ok");
+    } else {
+      log(`ℹ️ Tone ${TAGS[i]} : sélection « ${TTABLE[k][1]} » (TTN ${ttn} · SFX ${sfx}) — écriture non armée, rien envoyé (bouton 🔒 Écriture dans la barre d'outils).`);
+    } };
+});
+TBASE.forEach((b,i)=>{
+  buildSeg(document.querySelector(`.seg[data-f="t${i}_ftype"]`),[["THRU",255],["0",0],["1",1],["2",2],["3",3],["4",4],["5",5],["6",6]],-1);
+});
+
+// ============ FX type select ============
+const fxSel=$("fxType");
+FX_TYPES.forEach((t,i)=>fxSel.add(new Option(t,i)));
+fxSel.onchange=()=>{
+  renderFx();
+  // Écriture du type : bits 0-5 de 0x1F (on garde bit7 ON et bit6 STEREO)
+  if(typeof raw==="undefined"||!raw){ return; }
+  if(!ARMED){ log("ℹ️ Effect type "+fxSel.value+" (écran) — écriture non armée.","status-ko"); return; }
+  const t=Math.max(0,Math.min(63,+fxSel.value||0));
+  const val=((raw[0x1F]&0xC0)|t)&0xff;
+  send(msgITR(curSlot,0x1F,val)); raw[0x1F]=val;
+  $("fxCode").textContent="0x"+t.toString(16);
+  log("✍️ Effect type "+FX_TYPES[t]+" → 0x1F = 0x"+val.toString(16).padStart(2,"0"));
+  scheduleApply(); renderFx();
+};
+
+// ============ Parseur Bloc 1 ============
+function parse(raw){
+  const m = {};
+  m.name = String.fromCharCode(...raw.slice(0,16)).replace(/\0.*$/,"");
+  m.glide = !!(raw[0x10]&0x80); m.wheel = !!(raw[0x10]&0x40);
+  m.wheelMode = (raw[0x10]>>3)&1; m.sustain = (raw[0x10]>>2)&1;
+  const OCT=[0,-1,0,1,2]; // 00=-1,01=0,10=+1,11=+2
+  m.octShift=OCT[(raw[0x11]>>6)&3]; m.octR=OCT[(raw[0x11]>>4)&3]; m.octL=OCT[(raw[0x11]>>2)&3]; m.octB0=raw[0x11]&3;
+  m.vib={vol:raw[0x12],pitch:raw[0x13],speed:raw[0x14],delay:raw[0x15]};
+  m.at={on:(raw[0x16]>>6)&3, mode:(raw[0x16]>>4)&3, type:(raw[0x16]>>2)&1, pat:raw[0x16]&3,
+        depth:signed(raw[0x17]), speed:raw[0x18]};
+  m.mod={on:!!(raw[0x19]&0x40), mode:(raw[0x16]>>4)&3, wave:(raw[0x19]>>1)&3, depth:raw[0x1A], speed:raw[0x1B]};
+  m.dis={type:(raw[0x1C]>>7)&1, on:!!(raw[0x1C]&0x40), depth:raw[0x1C]&0x3f, touch:raw[0x1D]};
+  m.reverb=raw[0x1E];
+  m.fx={on:!!(raw[0x1F]&0x80), stereo:!!(raw[0x1F]&0x40), type:raw[0x1F]&0x3f,
+        p:[...raw.slice(0x20,0x28)]};
+  m.tones=[0,1,2].map(i=>{ const b=TBASE[i]; return {
+    on:!!(raw[b]&0x80), vib:!!(raw[b]&0x40),
+    ttn:raw[b+1], sfx:raw[b+2], key:signed(raw[b+3]), tune:signed(raw[b+4]),
+    vol:raw[b+5], touch:raw[b+6], tcur:signed(raw[b+7]),
+    lkf:signed(raw[b+8]), llo:raw[b+9], lhi:raw[b+10],
+    atk:raw[b+11], tat:signed(raw[b+12]), dc1:raw[b+13], s1:raw[b+14], dc2:raw[b+15], s2:raw[b+16], rls:raw[b+17],
+    ekfA:signed(raw[b+18]), aLo:raw[b+19], aHi:raw[b+20], ekfD:signed(raw[b+21]), dLo:raw[b+22], dHi:raw[b+23],
+    ekfR:signed(raw[b+24]), rLo:raw[b+25], rHi:raw[b+26],
+    cut:raw[b+27], ftch:raw[b+28], fcur:signed(raw[b+29]), ftype:raw[b+30], fsl:signed(raw[b+31]),
+    fLo:raw[b+32], fHi:raw[b+33] };});
+  return m;
+}
+// ============ Binding modèle → écrans ============
+function bind(m){
+  $("nameIn").value=m.name;
+  setSwitch("glide",m.glide); setSwitch("wheel",m.wheel);
+  setSeg("wheelMode",m.wheelMode); setSeg("sustain",m.sustain);
+  setSeg("octSh",[0,-1,0,1,2].indexOf(m.octShift)); setSeg("octR",[0,-1,0,1,2].indexOf(m.octR)); setSeg("octL",[0,-1,0,1,2].indexOf(m.octL));
+  $("octB0").textContent=m.octB0;
+  setSlider("v12",m.vib.vol); setSlider("v13",m.vib.pitch); setSlider("v14",m.vib.speed); setSlider("v15",m.vib.delay);
+  setSeg("atOn",m.at.on); setSeg("atMode",m.at.mode); setSeg("atType",m.at.type);
+  setSlider("v17",m.at.depth); setSlider("v18",m.at.speed);
+  refreshAtPatterns();
+
+  setSeg("atPat",m.at.pat); drawAtPattern(m.at.type, m.at.pat);
+  setSwitch("modOn",m.mod.on); setSeg("modMode",m.mod.mode); setSeg("modWave",m.mod.wave);
+  setSlider("v1A",m.mod.depth); setSlider("v1B",m.mod.speed); drawModWave(m.mod.wave);
+  setSeg("disType",m.dis.type); setSwitch("disOn",m.dis.on); setSlider("v1C",m.dis.depth); setSlider("v1D",m.dis.touch);
+  setSlider("v1E",m.reverb);
+  setSwitch("fxOn",m.fx.on); setSeg("fxPan",m.fx.stereo?1:0);
+  fxSel.value=String(m.fx.type); $("fxCode").textContent="0x"+m.fx.type.toString(16);
+  renderFx();
+  m.tones.forEach((t,i)=>{
+    setSwitch("t"+i+"_on",t.on); setSwitch("t"+i+"_vib",t.vib); setSwitch("vibT"+i,t.vib);
+    $("tone"+i).classList.toggle("tone-off",!t.on);
+    const nm=t.ttn!==undefined?toneName(t.ttn,t.sfx):"—";
+    $("t"+i+"_nameH").textContent=nm;
+    const tkey=t.ttn+"|"+t.sfx, tsel=$("t"+i+"_sel"); if(tsel) tsel.value = TTABLE[tkey]?tkey:"";
+    $("t"+i+"_ttn").textContent=t.ttn+" · "+t.sfx+(toneGrp(t.ttn,t.sfx)?" ("+toneGrp(t.ttn,t.sfx)+")":"");
+    setSlider("t"+i+"_vol",t.vol); setSlider("t"+i+"_tch",t.touch); setSlider("t"+i+"_tcur",t.tcur);
+    setSlider("t"+i+"_key",t.key); setSlider("t"+i+"_tune",t.tune); setSlider("t"+i+"_lkf",t.lkf);
+    setSlider("t"+i+"_atk",t.atk); setSlider("t"+i+"_tat",t.tat); setSlider("t"+i+"_dc1",t.dc1);    setSlider("t"+i+"_s1",t.s1); setSlider("t"+i+"_dc2",t.dc2); setSlider("t"+i+"_s2",t.s2); setSlider("t"+i+"_rls",t.rls);
+    setSlider("t"+i+"_ekfA",t.ekfA); setSlider("t"+i+"_ekfD",t.ekfD); setSlider("t"+i+"_ekfR",t.ekfR);
+    drawVCurve("t"+i+"_tcurSvg", t.tcur); drawVCurve("t"+i+"_fcurSvg", t.fcur);
+    $("t"+i+"_alim").textContent=keyLabel(t.aLo)+"-"+keyLabel(t.aHi);
+    $("t"+i+"_dlim").textContent=keyLabel(t.dLo)+"-"+keyLabel(t.dHi);
+    $("t"+i+"_flim").textContent=keyLabel(t.fLo)+"-"+keyLabel(t.fHi);
+    setSlider("t"+i+"_cut",t.cut); setSlider("t"+i+"_ftch",t.ftch); setSlider("t"+i+"_fcur",t.fcur); setSlider("t"+i+"_fsl",t.fsl);
+    setSeg("t"+i+"_ftype", t.ftype===255?0:([255,0,1,2,3,4,5,6].indexOf(t.ftype)));
+    drawEnv(i,t);
+  });
+}
+function drawVCurve(id,cur){
+  const svg=$(id); if(!svg) return;
+  const W=100,H=56,pad=5; let paths="";
+  for(let k=-3;k<=3;k++){
+    const p = k===0 ? 1 : (k>0 ? 1/(1+0.55*k) : 1+0.55*(-k)); // + : concave (monte vite), − : convexe (monte lentement)
+    let d="";
+    for(let x=0;x<=20;x++){
+      const vx=(pad+x/20*(W-2*pad)).toFixed(1);
+      const vy=(H-pad-Math.pow(x/20,p)*(H-2*pad)).toFixed(1);
+      d+=(x?" L ":"M ")+vx+" "+vy;
+    }
+    const on = k===cur;
+    paths+=`<path d="${d}" fill="none" stroke="${on?'#fbbf24':'#334155'}" stroke-width="${on?2:1}"/>`;
+  }
+  svg.innerHTML=`<line x1="${pad}" y1="${H-pad}" x2="${W-pad}" y2="${H-pad}" stroke="#1e293b"/>`+paths;
+}
+function drawEnv(i,t){
+  const e=envPath(t.atk,t.dc1,t.s1,t.dc2,t.s2,t.rls,360,120,10);
+  $("t"+i+"_envp").setAttribute("d",e.path);
+  $("t"+i+"_envg").innerHTML=(e.koff!=null?`<line x1="${e.koff}" y1="10" x2="${e.koff}" y2="110" stroke="#f59e0b" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/><text x="${Math.min(e.koff+3,320)}" y="18" fill="#f59e0b" font-size="8">OFF</text>`:"")+e.pts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="5" fill="#fbbf24"><title>${p[2]}</title></circle>`).join("");
+  $("t"+i+"_envl").textContent=`ATK ${t.atk} · DCY1 ${t.dc1} · SUS1 ${t.s1} · DCY2 ${t.dc2} · SUS2 ${t.s2} · RLS ${t.rls}`;
+}
+function refreshAtPatterns(){
+  const type=segVal("atType")??0;
+  buildSeg(document.querySelector('.seg[data-f="atPat"]'),
+    AT_PATTERNS[type?"trill":"bend"].map((n,i)=>[n,i]), -1);
+  const p=segVal("atPat"); drawAtPattern(type, p??0);
+  $("atPatNote").textContent = type? "patterns TRILL" : "patterns BEND";
+}
+document.querySelector('.seg[data-f="atType"]').addEventListener("click",()=>setTimeout(refreshAtPatterns,10));
+function drawAtPattern(type,pat){
+  const P={ // chemins selon Reference Guide p.12 (BEND UP/UP-DOWN/UP-DROP/DELAY-UP · TRILL DOWN-UP/UP-DOWN/MELODY/5-UP)
+    0:["M 10 80 C 40 55, 70 20, 110 20 L 350 20","UP"],
+    1:["M 10 80 C 50 30, 80 20, 120 20 C 170 20, 230 80, 300 80 L 350 80","UP-DOWN"],
+    2:["M 10 80 C 50 30, 80 20, 120 20 L 132 20 L 142 78 L 350 80","UP-DROP"],
+    3:["M 10 80 L 120 80 C 160 80, 200 20, 260 20 L 350 20","DELAY-UP"],
+    4:["M 10 60 L 50 82 C 120 30, 170 20, 230 20 L 350 20","DOWN-UP"],
+    5:["M 10 80 C 50 30, 80 20, 120 20 C 170 20, 230 80, 300 80 L 350 80","UP-DOWN"],
+    6:["M 10 80 C 40 45, 65 45, 95 45 L 135 80 C 200 35, 240 20, 280 20 L 350 20","MELODY"],
+    7:["M 10 82 L 62 82 L 62 68 L 106 68 L 106 54 L 150 54 L 150 40 L 194 40 L 194 26 L 238 26 L 238 14 L 350 14","5-UP"]};
+  const key = type? 4+pat : pat;
+  const svg=$("atSvg");
+  svg.innerHTML=`<line x1="10" y1="85" x2="350" y2="85" stroke="#1e293b"/>
+    <path d="${P[key][0]}" stroke="#c084fc" fill="none" stroke-width="2"/>
+    <text x="12" y="16" fill="#64748b" font-size="9">${P[key][1]}</text>`;
+}
+function drawModWave(w){
+  const paths=["M 5 15 Q 22.5 -5 40 15 T 75 15 T 110 15","M 5 15 L 40 3 L 75 27 L 110 15","M 5 27 L 22 27 L 22 3 L 40 3 L 40 27 L 60 27 L 60 3 L 80 3 L 80 27 L 100 27 L 100 3 L 110 3","M 5 3 L 40 27 L 75 3 L 110 27"];
+  document.querySelector("#modSvg path").setAttribute("d",paths[w]||paths[0]);
+}
+function renderFx(){
+  const type=+fxSel.value, list=FX_PARAMS[type]||[];
+  const host=$("fxParams"); host.innerHTML="";
+  (list.length?list:[["—",0x20,0,127,0]]).forEach(p=>{
+    const [lab,off,min,max,sg]=p;
+    const fid="v"+off.toString(16).toUpperCase();
+    const row=document.createElement("div"); row.className="prow";
+    const v = raw ? (sg?signed(raw[off]):raw[off]) : null;
+    row.innerHTML=`<label>${lab} <span class="hexv">0x${off.toString(16)}</span></label>
+      <input type="range" min="${min}" max="${max}" value="${v==null?0:v}" data-f="${fid}">
+      <span class="val" data-v="${fid}">${v==null?"?":v}</span>`;
+    host.appendChild(row);
+  });
+}
+// ============ MIDI ============
+let access=null, pending=null;
+function refreshPorts(){
+  if(!navigator.requestMIDIAccess){ log("Web MIDI indisponible — sers le fichier via http://localhost (file:// refuse le sysex).","status-ko"); return; }
+  navigator.requestMIDIAccess({sysex:true}).then(acc=>{
+    access=acc; const ins=$("inSel"),outs=$("outSel"); ins.innerHTML=""; outs.innerHTML="";
+    acc.inputs.forEach(p=>ins.add(new Option(p.name,p.id)));
+    acc.outputs.forEach(p=>outs.add(new Option(p.name,p.id)));
+    log(`Ports : ${acc.inputs.size} in / ${acc.outputs.size} out.`);
+    if(acc.inputs.size) ins.selectedIndex=0;
+    if(acc.outputs.size){ outs.selectedIndex=0; connect(); }
+    // Ports APC (surface de contrôle)
+    if($("apcIn")&&$("apcOut")){
+      const ai=$("apcIn"),ao=$("apcOut"); ai.innerHTML=""; ao.innerHTML="";
+      acc.inputs.forEach(p=>ai.add(new Option(p.name,p.id)));
+      acc.outputs.forEach(p=>ao.add(new Option(p.name,p.id)));
+      if(APC.inId&&[...ai.options].some(o=>o.value===APC.inId)) ai.value=APC.inId;
+      if(APC.outId&&[...ao.options].some(o=>o.value===APC.outId)) ao.value=APC.outId;
+      apcAttach(); apcUI();
+    }
+  }).catch(e=>log("Accès MIDI refusé : "+e.message,"status-ko"));
+}
+function connect(){
+  if(!access){ log("Clique d'abord sur « 🔄 Ports ».","status-ko"); return; }
+  midiIn=access.inputs.get($("inSel").value)||null;
+  midiOut=access.outputs.get($("outSel").value)||null;
+  if(midiIn) midiIn.onmidimessage=onMidi;
+  const ok=!!(midiIn&&midiOut);
+  $("stMidi").textContent=ok?"● connecté":"non connecté";
+  $("stMidi").className="pill "+(ok?"on":"off");
+  log(ok?"Connecté. Mode lecture seule (écriture à armer en bas).":"Choisis les ports.","",ok?null:"status-ko");
+  if(ok){ log("📖 Lecture automatique du slot "+slotName(curSlot)+"…"); readSlot(); }
+}
+function onMidi(ev){
+  const data=Array.from(ev.data);
+  if(data[0]!==0xf0) return;
+  if(bankMode){ bankFeed(data); return; }
+  if(data[2]===0x2c && data.length>=16){
+    const adr=(data[6]<<14)|(data[7]<<7)|data[8];
+    const siz=(data[9]<<14)|(data[10]<<7)|data[11];
+    const out=[];
+    for(let i=0;i<siz && (13+2*i)<data.length;i++){ out.push((data[12+2*i]<<4)|data[13+2*i]); }
+    if(pending){
+      if(adr===pending.want){ const r=pending.resolve; pending=null; r(out); }
+      else { pending.stale=(pending.stale||0)+1; if(pending.stale<=3) log("RX hors séquence (adr 0x"+adr.toString(16)+") ignoré.","status-ko"); }
+      return;
+    }
+    log("RX ← "+hex(data)+" = "+out.join(","), "status-ok");
+  }
+}
+function send(bytes){ if(!midiOut){ log("Pas de sortie MIDI.","status-ko"); return false; }
+  try{ midiOut.send(bytes); }catch(e){ log("Échec envoi : "+e.message,"status-ko"); return false; }
+  return true; }
+function readByte(n,off){ return readAddr(addrOf(n,off),1).then(dt=>dt?dt[0]:null); }
+function readAddr(a,siz){
+  return new Promise(res=>{
+    let done=false;
+    const want=(a[0]<<14)|(a[1]<<7)|a[2];      // adresse 21 bits complète
+    pending={ want:want, resolve:(dt)=>{ done=true; res(dt); } };
+    send(msgDRQaddr(a,siz));
+    setTimeout(()=>{ if(!done){ done=true; if(pending&&pending.want===want) pending=null; res(null); } },500);
+  });
+}
+async function readSlot(){
+  const n=curSlot;
+  $("log").innerHTML="";                       // log vidé à chaque lecture
+  raw=new Uint8Array(144); const got=new Array(144).fill(false);
+  log("Lecture du slot "+slotName(n)+" : 144 octets, DRQ séquentiels…");
+  for(let pass=1; pass<=2; pass++){
+    for(let off=0; off<144; off++){
+      if(got[off]) continue;
+      const v=await readByte(n,off);
+      if(v!=null){ raw[off]=v; got[off]=true; }
+      if(off%16===0){ const miss=got.filter(g=>!g).length;
+        $("progress").textContent=`pass ${pass} · ${144-miss}/144${miss?" · "+miss+" en attente":""}`; }
+    }
+  }
+  const miss=got.filter(g=>!g).length;
+  if(miss>4){
+    $("progress").textContent=`⚠️ ${miss}/144 octets perdus — écrans NON rafraîchis, relance la lecture`;
+    log(`⚠️ ${miss} octets manquants après 2 passes — ancien affichage conservé. Vérifie la connexion (réessaie « 🔄 Ports »).`,"status-ko");
+    toast("Lecture incomplète — ancien affichage conservé");
+    return;
+  }
+  $("progress").textContent="✓ 144/144";
+  model=parse(raw); bind(model); cacheSave();
+  setSource("● machine "+new Date().toLocaleTimeString(),"Données lues sur le KN2000");
+  log(`Son lu : « ${model.name} » — écrans mis à jour.`, "status-ok");
+  toast("Son lu : "+model.name);
+  if(!origGet(n)){ origSave(n,raw,model.name);
+    log("📸 Original « "+model.name+" » capturé pour "+slotName(n)+" — rétablissable via ↩️.","status-ok"); }
+  refreshSessionUI();
+}
+function slotName(n){ return (n<18?"A-":"B-")+(n%18+1); }
+// ============ Originaux de session (📸) — un par slot, capturés à la 1re lecture ============
+function origAll(){ try{ return JSON.parse(localStorage.getItem("kn2000_se_v06_orig")||"{}"); }catch(e){ return {}; } }
+function origGet(n){ return origAll()[n]||null; }
+function origSave(n,bytes,name){ const a=origAll(); a[n]={ts:Date.now(), name:name, bytes:[...bytes]};
+  try{ localStorage.setItem("kn2000_se_v06_orig",JSON.stringify(a)); }catch(e){ log("📸 Impossible de sauver l'original (stockage plein ?).","status-ko"); } }
+function origDel(n){ const a=origAll(); delete a[n]; try{ localStorage.setItem("kn2000_se_v06_orig",JSON.stringify(a)); }catch(e){} }
+function refreshSessionUI(){
+  const s=origGet(curSlot);
+  $("origInfo").textContent = s ? "📸 Original de "+slotName(curSlot)+" : « "+s.name+" » (capturé "+new Date(s.ts).toLocaleTimeString()+")" : "aucun original capturé pour "+slotName(curSlot);
+  $("btnRestore").disabled=!s; $("btnKeepNew").disabled=!s;
+}
+// Écrit les 144 octets dans le slot courant (raw mis à jour + écrans rebindés + auto-apply éventuel)
+async function writeAllBytes(bytes,label){
+  for(let off=0; off<144; off++){
+
+    send(msgITR(curSlot,off,bytes[off])); raw[off]=bytes[off];
+    if(off%36===35) log("… "+(off+1)+"/144 octets écrits.");
+    $("progress").textContent="écriture "+(off+1)+"/144";
+    await new Promise(r=>setTimeout(r,60));
+  }
+  $("progress").textContent="✓ 144/144 écrits";
+  model=parse(raw); bind(model); cacheSave();
+  log(label+" — 144 octets écrits sur "+slotName(curSlot)+".","status-ok");
+  scheduleApply();
+}
+$("btnRestore").onclick=async()=>{
+  const s=origGet(curSlot);
+  if(!s||!s.bytes||s.bytes.length!==144){ log("↩️ Aucun original 144 octets pour "+slotName(curSlot)+".","status-ko"); return; }
+  if(!ARMED){ log("ℹ️ Rétablir l'original exige l'écriture ARMÉE (bouton 🔒).","status-ko"); return; }
+  if(typeof raw==="undefined"||!raw){ log("ℹ️ Lis d'abord le son.","status-ko"); return; }
+  if(!confirm("Rétablir l'original « "+s.name+" » sur "+slotName(curSlot)+" ? (144 octets, ~10 s)")) return;
+  $("btnRestore").disabled=true;
+  log("↩️ Rétablissement de "+slotName(curSlot)+" « "+s.name+" » : écriture des 144 octets…","status-ok");
+  await writeAllBytes(s.bytes,"↩️ Original « "+s.name+" »");
+  origDel(curSlot); refreshSessionUI();
+};
+$("btnKeepNew").onclick=()=>{
+  const s=origGet(curSlot);
+  if(!s) return;
+  if(!confirm("Garder le nouveau son sur "+slotName(curSlot)+" et oublier l'original « "+s.name+" » ?")) return;
+  origDel(curSlot); refreshSessionUI();
+  log("✅ Nouveau son validé sur "+slotName(curSlot)+" — original « "+s.name+" » oublié.","status-ok");
+};
+// ✍️ nom : écrit les 16 octets 0x00-0x0F
+$("btnNameWrite").onclick=async()=>{
+  if(typeof raw==="undefined"||!raw){ log("ℹ️ Lis d'abord le son avant de renommer.","status-ko"); return; }
+  if(!ARMED){ log("ℹ️ Renommage exige l'écriture ARMÉE (bouton 🔒).","status-ko"); return; }
+  const nm=($("nameIn").value||"").slice(0,16);
+  if(!nm){ log("ℹ️ Champ nom vide.","status-ko"); return; }
+  if(!confirm("Écrire le nom « "+nm+" » sur "+slotName(curSlot)+" ?")) return;
+  for(let i=0;i<16;i++){ const v=i<nm.length?nm.charCodeAt(i)&0x7f:0x00;
+    send(msgITR(curSlot,i,v)); raw[i]=v; await new Promise(r=>setTimeout(r,60)); }
+  model=parse(raw); bind(model);
+  log("✍️ Nom « "+nm+" » écrit (16 octets 0x00-0x0F).","status-ok");
+  scheduleApply();
+};
+function setSource(src, extra){ const p=$("srcPill"); p.textContent=src; p.className="pill "+(src.startsWith("●")?"on":"off");
+  p.title = extra||src; }
+function cacheSave(){ try{ localStorage.setItem("kn2000_se_v06_"+curSlot, JSON.stringify({ts:Date.now(), bytes:[...raw]})); }catch(e){} }
+function cacheLoad(){ try{ const c=JSON.parse(localStorage.getItem("kn2000_se_v06_"+curSlot)||"null");
+  if(c&&c.bytes&&c.bytes.length===144){ raw=Uint8Array.from(c.bytes); model=parse(raw); bind(model);
+    setSource("cache "+new Date(c.ts).toLocaleTimeString(),"Données du cache navigateur — clique LIRE pour rafraîchir"); return true; } }catch(e){} return false; }
+
+// ============ Dump bulk banque (36 slots) ============
+let bankMode=false, bankTokens=[], bankMsgs=0, bankCkErr=0, bankTimer=null, bankHrt=false;
+function bankStart(){
+  if(!midiOut){ log("Connecte d'abord le MIDI.","status-ko"); return; }
+  $("log").innerHTML="";
+  bankMode=true; bankTokens=[]; bankMsgs=0; bankCkErr=0; bankHrt=false;
+  log("🏦 Dump request SOUND MEMORY envoyé — réception en cours (ne change pas d'onglet)…");
+  send([0xf0,0x50,0x2b,0x01,0x18,0x10,0x30,0x00,0x00,0x00,0x00,0x42,0x00, xorChecksum([0x50,0x2b,0x01,0x18,0x10,0x30,0x00,0x00,0x00,0x00,0x42,0x00]), 0xf7]);
+  $("bankStatus").textContent="réception…";
+  clearTimeout(bankTimer); bankTimer=setTimeout(bankFinish, 4000);
+}
+function bankFeed(data){
+  const n=data.length, cmd=data[2];
+  if(cmd===0x21){ if(!bankHrt){ bankHrt=true; send([0xf0,0x50,0x22,0x01,0x18,0x10,0xf7]); log("HRQ reçu → HRT renvoyé."); } }
+  else if(cmd===0x2d || cmd===0x7e){
+    let x=0; for(let i=1;i<n-2;i++) x^=data[i];
+    if(x!==data[n-2]) bankCkErr++;
+    const start = cmd===0x7e ? 3 : 13;
+    for(let i=start;i<n-3;i++) bankTokens.push(data[i]);
+    bankMsgs++;
+    const nb=Math.floor(bankTokens.length/2);
+    if(bankMsgs%8===0) log(`📦 Réception : ${bankMsgs} paquets · ${nb} octets…`);
+    $("bankStatus").textContent=`${bankMsgs} paquets · ${nb} octets${bankCkErr?" · ⚠ "+bankCkErr+" ck":""}`;
+  }
+  else if(cmd===0x27||cmd===0x28){ log(cmd===0x27?"EOK (fin de bloc).":"END (fin de transmission)."); }
+  clearTimeout(bankTimer); bankTimer=setTimeout(bankFinish, 1500);
+}
+function bankFinish(){
+  if(!bankMode) return; bankMode=false; clearTimeout(bankTimer);
+  const toks=bankTokens;
+  if(toks.length<2){ $("bankStatus").textContent="⚠ rien reçu"; log("⚠️ Aucun paquet reçu — vérifie la connexion et réessaie.","status-ko"); return; }
+  // dé-nibblisation (flux continu hi|lo) + essai inverse si les noms ne sont pas lisibles
+  const deNib=(swap)=>{ const out=[];
+    for(let i=0;i+1<toks.length;i+=2){ out.push(swap ? (toks[i]|(toks[i+1]<<4)) : ((toks[i]<<4)|toks[i+1])); }
+    return out; };
+  let bytes=deNib(false);
+  const printable=b=>b.slice(0,15).every(c=>c===0||(c>=32&&c<127));
+  const slotsA=bytes.slice(Math.max(0,bytes.length-5184));
+  if(!printable(slotsA)){ const bytes2=deNib(true);
+    if(printable(bytes2.slice(Math.max(0,bytes2.length-5184)))){ bytes=bytes2; log("⚠️ Ordre des nibbles inversé détecté — ajusté automatiquement."); } }
+  const slots=bytes.slice(Math.max(0,bytes.length-5184));
+  if(slots.length<5184){
+    const miss=5184-slots.length;
+    $("bankStatus").textContent=`⚠ incomplet : ${slots.length}/5184`;
+    log(`⚠️ Dump incomplet : ${slots.length}/5184 octets (${miss} perdus) · ${bankMsgs} paquets reçus · ${bankCkErr} erreur(s) checksum.`,"status-ko");
+    if(bankCkErr===0) log("→ Checksums OK : ce sont des paquets entiers perdus sur la chaîne (pas de corruption de contenu).");
+    // Récupération partielle : le début du flux est-il aligné (nom de slot lisible en tête) ?
+    const head=bytes.slice(0,Math.min(bytes.length,5184));
+    const nOk=printable(head)? Math.floor(head.length/144) : 0;
+    if(nOk>0){
+      log(`ℹ️ Le début du flux est exploitable : ${nOk} slot(s) lisible(s) depuis A-1 — stockage PARTIEL.`);
+      const padded=head.concat(new Array(5184-head.length).fill(0xff)).slice(0,5184);
+      const bank={ ts:Date.now(), bytes:padded, partial:nOk };
+      try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){}
+      renderBank(bank);
+      document.querySelector('.tab[data-t="bank"]').click();
+      log(`⚠️ Banque PARTIELLE stockée : slots 1 à ${nOk} valides, les suivants marqués « perdu ». Refais un dump plus tard pour compléter.`,"status-ko");
+      bankRepair(bank);
+    } else {
+      log("→ Impossible d'aligner les octets : la perte est en plein milieu du flux, tout est décalé. Réessaie : ferme les autres applis qui écoutent le même port MIDI, connecte l'interface en direct (sans hub USB).","status-ko");
+    }
+    return;
+  }
+  const bank={ ts:Date.now(), bytes:slots.slice(0,5184) };
+  try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){}
+  renderBank(bank);
+  bankRepair(bank);
+  log(`✅ Banque complète : 36 slots reçus (${bankMsgs} paquets, ${bankCkErr} erreur(s) checksum) et stockés localement.`,"status-ok");
+  $("bankStatus").textContent="✓ 36 slots stockés";
+  toast("Banque reçue : 36 slots");
+  document.querySelector('.tab[data-t="bank"]').click();
+}
+function bankLoad(){ try{ return JSON.parse(localStorage.getItem("kn2000_se_v06_bank")||"null"); }catch(e){ return null; } }
+// Réparation de l'octet 0 (nom du slot A-1) : le flux bulk perd parfois le nibble haut
+// du tout premier octet (constaté terrain : « D » 0x44 reçu 0x04). Vérification + relecture DRQ.
+async function bankRepair(bank){
+  if(!bank || !bank.bytes || bank.bytes.length<16) return;
+  const b0=bank.bytes[0];
+  const suspect=(b0&0xf0)===0 && bank.bytes.slice(1,16).some(c=>c>=32&&c<127);
+  if(!suspect) return;
+  log(`🔎 Octet 0 du dump suspect (0x${b0.toString(16).padStart(2,"0")}, nibble haut perdu) — relise DRQ de l'octet 0 (nom du slot A-1)…`);
+  const v=await readByte(0,0);
+  if(v==null){ log("⚠️ Pas de réponse DRQ pour la réparation — le nom A-1 restera tel quel (une lecture du slot A-1 le corrigera).","status-ko"); return; }
+  log(`🔧 Nom A-1 réparé : 0x${b0.toString(16).padStart(2,"0")} → 0x${v.toString(16).padStart(2,"0")} (« ${String.fromCharCode(v)||"∅"} »).`,"status-ok");
+  bank.bytes[0]=v;
+  try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){}
+  renderBank(bank);
+}
+function renderBank(bank){
+  const tb=$("bankTbl").querySelector("tbody"); tb.innerHTML="";
+  for(let n=0;n<36;n++){
+    const lost = bank.partial!=null && n>=bank.partial;
+    const sraw=Uint8Array.from(bank.bytes.slice(n*144,(n+1)*144));
+    const m=parse(sraw);
+    const tr=document.createElement("tr");
+    tr.style.cursor=lost?"not-allowed":"pointer"; tr.style.borderBottom="1px solid #1e293b";
+    if(lost) tr.style.opacity=".45";
+    const td=(txt,mono)=>{ const c=document.createElement("td"); c.textContent=txt;
+      c.style.padding="3px 8px"; if(mono){c.style.fontFamily="monospace";c.style.textAlign="center";} return c; };
+    tr.appendChild(td(slotName(n),true));
+    tr.appendChild(td(lost?"(perdu)":(m.name||"(vide)")));
+    tr.appendChild(td(m.tones[0].on?toneName(m.tones[0].ttn,m.tones[0].sfx):"—",true));
+    tr.appendChild(td(m.tones[1].on?toneName(m.tones[1].ttn,m.tones[1].sfx):"—",true));
+    tr.appendChild(td(m.tones[2].on?toneName(m.tones[2].ttn,m.tones[2].sfx):"—",true));
+    tr.appendChild(td(m.fx.on?FX_TYPES[m.fx.type]||("0x"+m.fx.type):"OFF",true));
+    if(!lost) tr.onclick=()=>{
+      curSlot=n; $("slotSel").value=String(n);
+      raw=Uint8Array.from(bank.bytes.slice(n*144,(n+1)*144)); model=parse(raw); bind(model); cacheSave();
+      setSource("● banque (dump "+new Date(bank.ts).toLocaleTimeString()+")","Données du dump bulk complet");
+      log("Slot "+slotName(n)+" (« "+(model.name||"vide")+" ») chargé depuis le dump banque.");
+      document.querySelector('.tab[data-t="general"]').click();
+    };
+    const tdC=document.createElement("td"); tdC.style.padding="2px 4px"; tdC.style.textAlign="center";
+    if(!lost){
+      const bt=document.createElement("button"); bt.className="ghost"; bt.textContent="📚";
+      bt.title="Importer ce slot dans le catalogue";
+      bt.onclick=ev=>{ ev.stopPropagation();
+        const sr=bank.bytes.slice(n*144,(n+1)*144); const mm=parse(Uint8Array.from(sr));
+        const c=catLoad(); c.push({id:Date.now(), name:mm.name||slotName(n), slot:n, ts:Date.now(), bytes:sr});
+        catSave(c); catRefresh(); $("catSel").value=String(c.length-1);
+        log(`📚 Slot ${slotName(n)} (« ${mm.name||"vide"} ») importé dans le catalogue.`,"status-ok");
+        toast("Slot "+slotName(n)+" importé dans le catalogue"); };
+      tdC.appendChild(bt);
+    }
+    tr.appendChild(tdC);
+    tb.appendChild(tr);
+  }
+}
+$("btnBankDump").onclick=bankStart;
+
+// ============ Envoi d'un package complet vers le KN2000 (séquentiel ITR) ============
+let bankSending=false;
+$("btnBankSend").onclick=async()=>{
+  if(bankSending){ toast("Envoi déjà en cours"); return; }
+  const bank=bankLoad(); if(!bank||!bank.bytes||bank.bytes.length<144){ toast("Pas de banque chargée — dump, import ou 📂 Charger d'abord"); return; }
+  const nSlots=Math.floor(bank.bytes.length/144);
+  if(nSlots<36) log(`⚠️ Banque partielle : ${nSlots}/36 slots — seuls ces ${nSlots} slots seront envoyés.`,"status-ko");
+  if(!ARMED){ log("ℹ️ Envoyer le package exige l'écriture ARMÉE (bouton 🔒).","status-ko"); toast("Écriture non armée"); return; }
+  if(!midiIn||!midiOut){ toast("Non connecté au KN2000"); return; }
+  if(!confirm("Envoyer la banque chargée vers le KN2000 ?\n"+nSlots+" slots × 144 octets ("+(nSlots*144)+" octets, ~"+Math.ceil(nSlots*144*60/60000)+" min)\nLa Sound Memory sera écrasée — garde un dump/package de sauvegarde !")) return;
+  bankSending=true; $("btnBankSend").disabled=true;
+  log(`📤 Envoi de la banque chargée vers le KN2000 : ${nSlots} slots, ITR séquencés 60 ms…`,"status-ok");
+  for(let n=0;n<nSlots;n++){
+    for(let off=0;off<144;off++){
+      send(msgITR(n,off,bank.bytes[n*144+off]));
+      await new Promise(r=>setTimeout(r,60));
+    }
+    $("progress").textContent=`📤 envoi ${n+1}/${nSlots} slots`;
+    log(`📤 Slot ${slotName(n)} envoyé (${n+1}/${nSlots}).`);
+  }
+  $("progress").textContent="✓ package envoyé";
+  log("📤 Package entièrement envoyé vers le KN2000 — vérifie en relisant un slot ou en refaisant un dump.","status-ok");
+
+  toast("Package envoyé vers le clavier");
+  bankSending=false; $("btnBankSend").disabled=false;
+  scheduleApply();
+};
+
+$("btnBankExport").onclick=()=>{
+  const bank=bankLoad(); if(!bank){ toast("Pas de banque en mémoire — fais un dump d'abord"); return; }
+  const out={ ts:new Date(bank.ts).toISOString(), slots:[], raw_hex: bank.bytes.map(x=>x.toString(16).padStart(2,"0")).join("") };
+  for(let n=0;n<36;n++){ const m=parse(Uint8Array.from(bank.bytes.slice(n*144,(n+1)*144)));
+    out.slots.push({ slot:slotName(n), name:m.name, model:m }); }
+  const blob=new Blob([JSON.stringify(out,null,1)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download="kn2000_soundmemory_bank.json"; a.click(); URL.revokeObjectURL(a.href);
+};
+
+// ============ Bibliothèque de packages de sonorités ============
+function hexToBytes(h){ const o=[]; for(let i=0;i+1<h.length;i+=2) o.push(parseInt(h.substr(i,2),16)); return o; }
+function libLoad(){ try{ return JSON.parse(localStorage.getItem("kn2000_se_v06_banks")||"[]"); }catch(e){ return []; } }
+function libSave(l){ try{ localStorage.setItem("kn2000_se_v06_banks", JSON.stringify(l)); }
+  catch(e){ log("⚠️ Stockage navigateur plein — exporte en JSON et supprime des packages.","status-ko"); } }
+function pkgFileName(nm){ return "kn2000_package_"+String(nm).replace(/[^\wÀ-ÿ\- ]+/g,"").trim().replace(/\s+/g,"_")+".json"; }
+async function pkgListFiles(){ // packages du dossier utilisateur (fichiers kn2000_package_*.json)
+  const out=[];
+  if(!catDir) return out;
+  try{
+    for await (const [name,h] of catDir.entries()){
+      if(h.kind==="file"&&/^kn2000_package_.*\.json$/i.test(name)){
+        try{ const j=JSON.parse(await (await h.getFile()).text());
+          if(j.raw_hex&&/^[0-9a-f]+$/i.test(j.raw_hex))
+            out.push({ fname:name, name:j.name||name, ts:j.ts||0, partial:j.partial||null, raw_hex:j.raw_hex });
+        }catch(e){}
+      }
+    }
+  }catch(e){}
+  return out;
+}
+async function pkgWriteFile(nm,ts,partial,bytes,fname){
+  if(!catDir||!(await dirPerm(catDir))) return false;
+  try{
+    const obj={ name:nm, ts:ts, partial:partial||null, raw_hex:bytes.map(x=>x.toString(16).padStart(2,"0")).join("") };
+    const fh=await catDir.getFileHandle(fname||pkgFileName(nm),{create:true});
+    const w=await fh.createWritable(); await w.write(JSON.stringify(obj,null,1)); await w.close();
+    return true;
+  }catch(e){ log("⚠️ Écriture du fichier package impossible : "+e.message,"status-ko"); return false; }
+}
+async function libRefresh(){
+  const sel=$("bankLib"); if(!sel) return;
+  const files=await pkgListFiles();
+  const l=libLoad();
+  let html='<option value="">— bibliothèque ('+(files.length+l.length)+') —</option>';
+  if(catDir||files.length){
+    html+='<optgroup label="📁 Dossier utilisateur">'+(files.length
+      ? files.map(f=>`<option value="f:${f.fname}">${f.name} · ${new Date(f.ts).toLocaleString()}</option>`).join("")
+      : '<option value="" disabled>(aucun package)</option>')+'</optgroup>';
+  }
+  html+='<optgroup label="💾 Navigateur">'+(l.length
+    ? l.map((b,i)=>`<option value="l:${i}">${b.name} · ${new Date(b.ts).toLocaleDateString()}</option>`).join("")
+    : '<option value="" disabled>(aucun package)</option>')+'</optgroup>';
+  sel.innerHTML=html;
+}
+$("btnBankImport").onclick=()=>$("bankFile").click();
+$("bankFile").onchange=async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{
+    const j=JSON.parse(await f.text());
+    let bytes=null;
+    if(j.raw_hex && /^[0-9a-f]+$/i.test(j.raw_hex)) bytes=hexToBytes(j.raw_hex);
+    else if(Array.isArray(j.bytes)) bytes=j.bytes;
+    if(!bytes || bytes.length<144) throw new Error("pas de champ raw_hex valide");
+    if(bytes.length<5184) log(`⚠️ Fichier partiel : ${bytes.length} octets (${Math.floor(bytes.length/144)} slots).`);
+    else bytes=bytes.slice(0,5184);
+    const bank={ ts:j.ts?new Date(j.ts).getTime():Date.now(), bytes, partial: bytes.length<5184?Math.floor(bytes.length/144):null };
+    try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(err){}
+    renderBank(bank); bankRepair(bank); libRefresh();
+    log(`📥 Banque importée : « ${f.name} » (${Math.floor(bytes.length/144)} slots).`,"status-ok");
+    toast("Banque importée");
+  }catch(err){ log(`⚠️ Import impossible (« ${f.name} ») : ${err.message}`,"status-ko"); }
+  e.target.value="";
+};
+$("btnBankSaveLib").onclick=async()=>{
+  const bank=bankLoad(); if(!bank||!bank.bytes){ toast("Pas de banque en mémoire — dump ou import d'abord"); return; }
+  const nm=prompt("Nom du package de sonorités :","Banque "+new Date().toLocaleDateString());
+  if(!nm) return;
+  if(catDir && await pkgWriteFile(nm,Date.now(),bank.partial,bank.bytes)){
+    bank.srcF=pkgFileName(nm); bank.srcName=nm; bank.srcIdx=null;
+    try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){}
+    await libRefresh(); $("bankLib").value="f:"+bank.srcF;
+    log(`💾 Package « ${nm} » archivé dans le dossier utilisateur (📁 ${bank.srcF}) — les copies 📦 mettront à jour ce fichier.`,"status-ok");
+  } else {
+    const l=libLoad(); l.push({ name:nm, ts:Date.now(), bytes:bank.bytes, partial:bank.partial||null });
+    bank.srcIdx=l.length-1; bank.srcF=null; bank.srcName=nm;
+    try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){}
+    libSave(l); await libRefresh(); $("bankLib").value="l:"+(l.length-1);
+    log(`💾 Package « ${nm} » archivé (stockage navigateur${catDir?" — dossier refusé/indisponible":" — pas de dossier choisi"}).`,"status-ok");
+  }
+};
+$("btnBankLoad").onclick=async()=>{
+  const v=$("bankLib").value; if(!v){ toast("Choisis un package dans la liste"); return; }
+  if(v[0]==="f"){
+    const fname=v.slice(2);
+    try{
+      const fh=await catDir.getFileHandle(fname); const j=JSON.parse(await (await fh.getFile()).text());
+      const bytes=hexToBytes(j.raw_hex||"");
+      if(!bytes||bytes.length<144) throw new Error("données invalides");
+      const bank={ ts:j.ts||Date.now(), bytes, partial:j.partial||null, srcF:fname, srcName:j.name||fname };
+      try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){}
+      renderBank(bank);
+      $("bankStatus").textContent=(bank.partial?"⚠ PARTIEL ("+bank.partial+"/36)":"✓ 36 slots")+" : "+bank.srcName;
+      log(`📂 Package « ${bank.srcName} » chargé depuis le dossier utilisateur (📁 ${fname}).`,"status-ok");
+    }catch(e){ toast("Lecture du package impossible : "+e.message); }
+  } else {
+    const i=+v.slice(2); if(isNaN(i)){ toast("Choisis un package dans la liste"); return; }
+    const l=libLoad(); const b=l[i]; if(!b){ toast("Package introuvable"); return; }
+    try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify({ts:b.ts,bytes:b.bytes,partial:b.partial||null,srcIdx:i})); }catch(e){}
+    renderBank({ts:b.ts,bytes:b.bytes,partial:b.partial||null,srcIdx:i});
+    $("bankStatus").textContent=(b.partial?"⚠ PARTIEL ("+b.partial+"/36)":"✓ chargé")+" : "+b.name;
+    log(`📂 Package « ${b.name} » chargé (stockage navigateur).`,"status-ok");
+  }
+};
+$("btnBankDel").onclick=async()=>{
+  const v=$("bankLib").value; if(!v){ toast("Choisis un package à supprimer"); return; }
+  if(v[0]==="f"){
+    const fname=v.slice(2);
+    if(!confirm("Supprimer le fichier package « "+fname+" » du dossier utilisateur ?")) return;
+    try{ await catDir.removeEntry(fname); log(`🗑 Fichier package « ${fname} » supprimé du dossier.`); }
+    catch(e){ toast("Suppression impossible : "+e.message); return; }
+    const bank=bankLoad();
+    if(bank&&bank.srcF===fname){ bank.srcF=null; try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){} log("ℹ️ Banque chargée déliée de son package (supprimé)."); }
+  } else {
+    const i=+v.slice(2); if(isNaN(i)){ toast("Choisis un package à supprimer"); return; }
+    const l=libLoad(); const b=l.splice(i,1)[0]; libSave(l);
+    if(b) log(`🗑 Package « ${b.name} » supprimé du stockage navigateur.`);
+    const bank=bankLoad();
+    if(bank&&bank.srcIdx!=null){
+      if(bank.srcIdx===i){ bank.srcIdx=null; try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){} log("ℹ️ Banque chargée déliée de son package (supprimé)."); }
+      else if(bank.srcIdx>i){ bank.srcIdx--; try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){} }
+    }
+  }
+  await libRefresh();
+};
+
+// ============ Catalogue de sonorités (sons isolés 144 octets) ============
+function catLoad(){ try{ return JSON.parse(localStorage.getItem("kn2000_se_v06_catalog")||"[]"); }catch(e){ return []; } }
+function catSave(c){ try{ localStorage.setItem("kn2000_se_v06_catalog", JSON.stringify(c)); }
+  catch(e){ log("⚠️ Stockage navigateur plein — exporte le catalogue en JSON et supprime des sons.","status-ko"); } }
+function catRefresh(){
+  const sel=$("catSel"); if(!sel) return; const c=catLoad();
+  sel.innerHTML='<option value="">— catalogue ('+c.length+') —</option>'+
+    c.map((s,i)=>`<option value="${i}">${s.name} · ${slotName(s.slot)} · ${new Date(s.ts).toLocaleDateString()}</option>`).join("");
+}
+$("btnCatAdd").onclick=()=>{
+  if(!raw||!model){ toast("Rien à ajouter — lis d'abord un son"); return; }
+  let nm=prompt("Nom de la sonorité :", model.name || slotName(curSlot)); if(!nm) return;
+  const c=catLoad(); c.push({ id:Date.now(), name:nm, slot:curSlot, ts:Date.now(), bytes:[...raw] });
+  catSave(c); catRefresh(); $("catSel").value=String(c.length-1);
+  log(`💾 Son « ${nm} » (${slotName(curSlot)}) ajouté au catalogue (${c.length} son(s)).`,"status-ok");
+  toast("Son ajouté au catalogue");
+};
+$("btnCatSend").onclick=async()=>{
+  const i=+$("catSel").value; if(isNaN(i)){ toast("Choisis un son dans le catalogue"); return; }
+  const c=catLoad(); const s=c[i]; if(!s||!s.bytes||s.bytes.length!==144){ toast("Son introuvable"); return; }
+  if(!ARMED){ log("ℹ️ Envoyer vers le slot exige l'écriture ARMÉE (bouton 🔒).","status-ko"); toast("Écriture non armée"); return; }
+  if(!confirm("Écraser "+slotName(curSlot)+" avec « "+s.name+" » (du catalogue) ? (144 octets, ~10 s)")) return;
+  if(typeof raw==="undefined"||!raw) raw=new Uint8Array(144);
+  log("📚 Envoi de « "+s.name+" » vers "+slotName(curSlot)+" : écriture des 144 octets…","status-ok");
+  await writeAllBytes(s.bytes,"📚 « "+s.name+" »");
+  toast("Son « "+s.name+" » envoyé sur "+slotName(curSlot));
+};
+$("btnCatSendBank").onclick=async()=>{
+  const i=+$("catSel").value; if(isNaN(i)){ toast("Choisis un son dans le catalogue"); return; }
+  const dst=+$("catDstSlot").value; if(isNaN(dst)){ toast("Choisis le slot de destination"); return; }
+  const c=catLoad(); const s=c[i]; if(!s||!s.bytes||s.bytes.length!==144){ toast("Son introuvable"); return; }
+  const bank=bankLoad(); if(!bank||!bank.bytes){ toast("Pas de banque chargée — dump, import ou 📂 Charger d'abord"); return; }
+  if(bank.bytes.length<(dst+1)*144){ toast("Données trop courtes pour "+slotName(dst)); return; }
+  if(!confirm("Remplacer "+slotName(dst)+" de la banque chargée par « "+s.name+" » (catalogue) ? (navigateur seulement, rien vers le clavier)")) return;
+  for(let o=0;o<144;o++) bank.bytes[dst*144+o]=s.bytes[o];
+  bank.ts=Date.now();
+  let srcF=bank.srcF||null, srcName=bank.srcName||null, pkgIdx=bank.srcIdx;
+  if(srcF==null && pkgIdx==null){
+    const v=$("bankLib").value;
+    if(v && v[0]==="f"){ if(!confirm("La banque chargée n'est pas liée à un package. Mettre à jour le package du dossier sélectionné dans la liste ?")) { log("ℹ️ Copie annulée — aucun package lié."); return; } srcF=v.slice(2); }
+    else if(v && v[0]==="l"){ const ii=+v.slice(2); const l0=libLoad();
+      if(!isNaN(ii)&&l0[ii]){ if(!confirm("La banque chargée n'est pas liée à un package. Mettre à jour le package « "+l0[ii].name+" » (navigateur) sélectionné ?")) { log("ℹ️ Copie annulée — aucun package lié."); return; } pkgIdx=ii; } }
+    else log("⚠️ Aucun package lié ni sélectionné — SEULE la banque chargée sera modifiée (💾 Archiver en package pour la lier).","status-ko");
+  }
+  try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){}
+  if(srcF!=null){
+    if(await pkgWriteFile(srcName||srcF, bank.ts, bank.partial, bank.bytes, srcF)){
+      bank.srcF=srcF; if(srcName) bank.srcName=srcName;
+      try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){}
+      await libRefresh(); $("bankLib").value="f:"+srcF;
+      log(`📦 Package « ${srcName||srcF} » mis à jour dans le dossier utilisateur.`,"status-ok");
+    } else log("⚠️ Écriture du package impossible — seule la banque chargée a été modifiée.","status-ko");
+  } else if(pkgIdx!=null){
+    const l=libLoad();
+    if(l[pkgIdx]){ l[pkgIdx].bytes=bank.bytes; l[pkgIdx].ts=bank.ts; l[pkgIdx].partial=bank.partial||null;
+      libSave(l); await libRefresh(); $("bankLib").value="l:"+pkgIdx;
+      bank.srcIdx=pkgIdx; try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){}
+      log(`📦 Package « ${l[pkgIdx].name} » mis à jour (stockage navigateur).`,"status-ok");
+    } else log("⚠️ Package source introuvable — seule la banque chargée a été modifiée.","status-ko");
+
+  }
+  renderBank(bank);
+  $("bankStatus").textContent=(bank.partial?"⚠ PARTIEL ("+bank.partial+"/36)":"✓ 36 slots")+" · modifié "+new Date(bank.ts).toLocaleTimeString();
+  log(`📦 « ${s.name} » copié dans ${slotName(dst)} de la banque chargée.`,"status-ok");
+  toast("« "+s.name+" » → "+slotName(dst));
+};
+$("btnCatRename").onclick=()=>{
+  const i=+$("catSel").value; if(isNaN(i)){ toast("Choisis un son à renommer"); return; }
+  const c=catLoad(); if(!c[i]) return;
+  const nm=prompt("Nouveau nom :", c[i].name); if(!nm) return;
+  c[i].name=nm; catSave(c); catRefresh(); $("catSel").value=String(i);
+};
+$("btnCatDel").onclick=()=>{
+  const i=+$("catSel").value; if(isNaN(i)){ toast("Choisis un son à supprimer"); return; }
+  const c=catLoad(); const s=c.splice(i,1)[0]; catSave(c); catRefresh();
+  if(s) log(`🗑 Son « ${s.name} » supprimé du catalogue.`);
+};
+// ---- Préférences catalogue : dossier + nom de fichier (File System Access, Chromium) ----
+let catDir=null; // FileSystemDirectoryHandle du dossier catalogue
+function catNamePref(){ try{ return localStorage.getItem("kn2000_se_v06_catname")||"kn2000_sound_catalog.json"; }catch(e){ return "kn2000_sound_catalog.json"; } }
+function catSetDirUI(){ $("btnCatDir").textContent=catDir?("📁 "+catDir.name):"📁 Dossier : non défini"; $("btnCatDirForget").style.display=catDir?"":"none"; }
+function idbOpen(){ return new Promise(res=>{ const r=indexedDB.open("kn2000_se",1);
+  r.onupgradeneeded=()=>{ r.result.createObjectStore("h"); }; r.onsuccess=()=>res(r.result); r.onerror=()=>res(null); }); }
+async function idbPutDir(h){ const db=await idbOpen(); if(!db) return; try{ const t=db.transaction("h","readwrite"); t.objectStore("h").put(h,"catDir"); }catch(e){} }
+async function idbGetDir(){ const db=await idbOpen(); if(!db) return null; return new Promise(res=>{ try{ const q=db.transaction("h","readonly").objectStore("h").get("catDir"); q.onsuccess=()=>res(q.result||null); q.onerror=()=>res(null); }catch(e){ res(null); } }); }
+async function idbDelDir(){ const db=await idbOpen(); if(!db) return; try{ db.transaction("h","readwrite").objectStore("h").delete("catDir"); }catch(e){} }
+async function dirPerm(h){ // demande (ou vérifie) l'autorisation d'écriture — doit être déclenchée par un clic
+  try{ if(await h.queryPermission({mode:"readwrite"})==="granted") return true;
+        return (await h.requestPermission({mode:"readwrite"}))==="granted"; }catch(e){ return false; } }
+const CAT_TYPE=[{description:"JSON catalogue",accept:{"application/json":[".json"]}}];
+if(window.showDirectoryPicker){ // API disponible (Chrome/Edge) : on propose la préférence dossier
+  $("btnCatDir").style.display=""; $("catDirLegend").style.display="";
+  $("btnCatDir").onclick=async()=>{
+    try{ const d=await window.showDirectoryPicker({mode:"readwrite"}); catDir=d; await idbPutDir(d); catSetDirUI();
+      log(`📁 Dossier catalogue : « ${d.name} » (utilisé par export et import).`,"status-ok");
+    }catch(e){ if(e.name!=="AbortError") log("⚠️ Choix du dossier impossible : "+e.message,"status-ko"); }
+  };
+  $("btnCatDirForget").onclick=async()=>{ catDir=null; await idbDelDir(); catSetDirUI(); log("📁 Dossier catalogue oublié."); };
+  idbGetDir().then(h=>{ if(h){ catDir=h; catSetDirUI(); libRefresh(); } });
+}
+$("btnCatExport").onclick=async()=>{
+  const c=catLoad(); if(!c.length){ toast("Catalogue vide"); return; }
+  const txt=JSON.stringify({ ts:new Date().toISOString(), sounds: c.map(s=>({ name:s.name, slot:slotName(s.slot), ts:new Date(s.ts).toISOString(), raw_hex:s.bytes.map(x=>x.toString(16).padStart(2,"0")).join("") })) },null,1);
+  if(window.showSaveFilePicker){
+    const opts={ suggestedName:catNamePref(), types:CAT_TYPE };
+    if(catDir && await dirPerm(catDir)) opts.startIn=catDir; // s'ouvre directement dans le dossier choisi
+    try{
+      const fh=await window.showSaveFilePicker(opts);
+      const w=await fh.createWritable(); await w.write(txt); await w.close();
+      try{ localStorage.setItem("kn2000_se_v06_catname", fh.name); }catch(e){}
+      log(`⬇️ Catalogue exporté : « ${fh.name} » (${c.length} son(s)).`,"status-ok");
+      toast("Catalogue exporté");
+      return;
+    }catch(e){ if(e.name==="AbortError") return; log("⚠️ Export navigateur : "+e.message+" — export classique vers Téléchargements.","status-ko"); }
+  }
+  const blob=new Blob([txt],{type:"application/json"}); // repli : Téléchargements
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download=catNamePref(); a.click(); URL.revokeObjectURL(a.href);
+  log(`⬇️ Catalogue exporté (Téléchargements) : « ${catNamePref()} ».`,"status-ok");
+};
+async function importCatJson(fname,text){
+  const j=JSON.parse(text);
+  let list=[];
+  if(Array.isArray(j.sounds)) list=j.sounds;
+  else if(j.raw_hex&&/^[0-9a-f]+$/i.test(j.raw_hex)) list=[j]; // export single d'un son (btnExport)
+  else if(Array.isArray(j)) list=j;
+  const c=catLoad(); let n=0;
+  for(const s of list){
+    let bytes=null;
+    if(s.raw_hex&&/^[0-9a-f]+$/i.test(s.raw_hex)) bytes=hexToBytes(s.raw_hex);
+    else if(Array.isArray(s.bytes)) bytes=s.bytes;
+    if(!bytes||bytes.length<144){ log(`⚠️ « ${s.name||"?"} » ignoré (pas de 144 octets valides).`,"status-ko"); continue; }
+    c.push({ id:Date.now()+n, name:s.name||"import", slot:0, ts:s.ts?new Date(s.ts).getTime():Date.now(), bytes:bytes.slice(0,144) });
+    n++;
+  }
+  catSave(c); catRefresh();
+  log(`📥 Catalogue importé : « ${fname} » — ${n} son(s) ajouté(s) (total ${c.length}).`,"status-ok");
+  toast(n+" son(s) importé(s)");
+}
+$("btnCatImport").onclick=async()=>{
+  if(window.showOpenFilePicker){
+    const opts={ types:CAT_TYPE, multiple:false };
+    if(catDir && await dirPerm(catDir)) opts.startIn=catDir; // s'ouvre dans le dossier choisi
+    try{ const [fh]=await window.showOpenFilePicker(opts); const f=await fh.getFile();
+      await importCatJson(f.name, await f.text()); return;
+    }catch(e){ if(e.name==="AbortError") return; log("⚠️ Sélecteur fichiers impossible : "+e.message+" — sélection classique.","status-ko"); }
+  }
+  $("catFile").click(); // repli : sélecteur classique
+};
+$("catFile").onchange=async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{ await importCatJson(f.name, await f.text()); }
+  catch(err){ log(`⚠️ Import impossible (« ${f.name} ») : ${err.message}`,"status-ko"); }
+  e.target.value="";
+};
+
+// ============ Exemple usine A-1 (DiPiano Piano) ============
+const DEMO=(()=>{ const b=new Uint8Array(144);
+  const nm="DiPiano Piano"; for(let i=0;i<nm.length;i++) b[i]=nm.charCodeAt(i);
+  b[0x10]=0x4C; b[0x11]=0x58; b[0x16]=0x40; b[0x19]=0x00; b[0x1C]=0x00; b[0x1E]=0x08;
+  b[0x1F]=0x40; b[0x20]=0x1E; b[0x21]=0x13; b[0x22]=0x0A; b[0x23]=0x00; b[0x24]=0x64; b[0x25]=0x40; b[0x26]=0x02;
+  b[0x28]=0xC0; b[0x29]=0x00; b[0x2A]=0x00; b[0x2D]=0x54; b[0x2E]=0x1E;
+  b[0x33]=0x00; b[0x34]=0x18; b[0x35]=0x2C; b[0x36]=0x16; b[0x39]=0x14; b[0x43]=0x7F; b[0x46]=0xFF;
+  b[0x4A]=0xC0; b[0x4B]=0x05; b[0x4C]=0x01; b[0x4D]=0x08; b[0x4E]=0x02; b[0x4D+1]=0x00; b[0x4E-2+1]=0;
+  b[0x4B+0x18]=0x00;
+  b[0x53]=0x00; b[0x55]=0x1E; b[0x56]=0x20; b[0x59]=0x18; b[0x63]=0x7F; b[0x66]=0xFF;
+  return b; })();
+
+// ============ Auto-application (⚡) : recharge le SLOT en cours sur les parts qui le jouent ============
+let applyTimer=null;
+function scheduleApply(){
+  if(!$("autoApply") || !$("autoApply").checked) return;
+  if(applyTimer) clearTimeout(applyTimer);
+  applyTimer=setTimeout(async()=>{
+    const sts=await freshParts();                    // états fraîchement relus à chaque fois (jamais de valeur périmée)
+    const targets=partsOnSlot(sts,curSlot);
+    if(!targets.length){ log("⚡ Modifs écrites dans "+slotName(curSlot)+", mais aucune part ne le joue — sélectionne-le sur une part du clavier pour l'entendre.","status-ko"); return; }
+    targets.forEach(st=>send(msgITRaddr([0x20,0x10+st.n,0x00],[curSlot,0x80])));
+    log("⚡ "+slotName(curSlot)+" rechargé sur "+targets.map(t=>PARTS[t.n][0]).join(", ")+" — modifs audibles.");
+  },400);
+}
+
+// ============ Écriture armée (bouton-état dans la barre d'outils) ============
+let ARMED=false;
+function setArmed(v){ ARMED=v;
+  const ba=$("btnArm");
+  ba.textContent=v?"🔓 ÉCRITURE ARMÉE":"🔒 Écriture : OFF";
+  ba.classList.toggle("warn",v); ba.classList.toggle("ghost",!v);
+  log(v?"⚠️ Écriture ARMÉE — prudence.":"Écriture désarmée.", v?"status-ko":null); }
+$("btnArm").onclick=()=>setArmed(!ARMED);
+// Journal sysex : masqué par défaut, bascule via le bouton 📜 de la barre d'outils
+$("btnLogToggle").onclick=()=>{
+  const c=$("logCard"); const show=c.style.display==="none";
+  c.style.display=show?"":"none";
+  $("btnLogToggle").classList.toggle("warn",show);
+  if(show) log("📜 Journal affiché."); };
+
+// ============ État clavier & application (parts R1/R2/L : 20 1n 00) ============
+const PARTS=[["RIGHT1",0],["RIGHT2",1],["LEFT",2]];
+let partStates=null;
+async function readAllParts(){
+  const out=[];
+  for(let n=0;n<3;n++){
+    const dt=await readAddr([0x20,0x10+n,0x00],2);
+    out.push(dt&&dt.length>=2?{n:n,pc:dt[0],bank:dt[1]}:null);
+  }
+  return out;
+}
+function renderPartStates(sts){
+  sts.forEach((st,n)=>{
+    const el=$("pS"+n); if(!el) return;
+    el.textContent=PARTS[n][0]+" : "+(st?interpPart(st.pc,st.bank):"pas de réponse");
+  });
+}
+async function freshParts(){ const sts=await readAllParts(); partStates=sts; renderPartStates(sts); return sts; }
+// Interprétation de l'état part : PC+bank de la sound map officielle (Reference Guide p.3-5, SMIDX).
+// Relevés terrain 25/10 : Memory A-1 = PC 0 bank 0x80 ; Piano = 0|0 ; E.Piano 2 = 5|32 ; Agogo = 122|0 — tout colle avec SMIDX.
+function interpPart(pc,bank){
+  const k=pc+"|"+bank;
+  if(SMIDX[k]) return SMIDX[k].replace("|"," — ");
+  if((bank&0x80)&&pc<36) return "SOUND MEMORY slot "+slotName(pc);
+  return "son inconnu (PC "+pc+" · bank "+bank+")";
+}
+// Parts qui jouent le slot courant (Sound Memory : PC = n° slot, bank 0x80)
+function partsOnSlot(sts,slot){ return (sts||[]).filter(st=>st&&(st.bank&0x80)&&st.pc===slot); }
+const NB=[0,0]; // voisin d'aller-retour éventuel : PC 0 · bank 0 (Piano) — codé en dur
+$("btnPartRead").onclick=async()=>{
+  const sts=await freshParts();
+  log("📍 États des 3 parts : "+sts.map((st,n)=>PARTS[n][0]+" = "+(st?interpPart(st.pc,st.bank)+" (PC "+st.pc+" bank "+st.bank+")":"?")).join(" · "),"status-ok");
+};
+
+// ============ Export / boutons ============
+$("btnExport").onclick=()=>{
+  if(!raw){ toast("Rien à exporter — lis d'abord un son"); return; }
+  const out={ slot:slotName(curSlot), ts:new Date().toISOString(), model:model, raw_hex:Array.from(raw,x=>x.toString(16).padStart(2,"0")).join("") };
+  const blob=new Blob([JSON.stringify(out,null,1)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download="kn2000_sound_"+slotName(curSlot)+".json"; a.click(); URL.revokeObjectURL(a.href);
+};
+$("btnDemo").onclick=()=>{ raw=DEMO.slice(); model=parse(raw); bind(model);
+  setSource("DÉMO (exemple usine)","Exemple A-1 usine, valeurs d'illustration — PAS les données machine");
+  log("Exemple usine A-1 « DiPiano Piano » chargé (démo — valeurs partiellement plausibles).");
+  toast("Exemple chargé (démo)"); };
+
+// ============ APC Key 25 mk2 — surface de contrôle live ============
+const APC_PART_PADS=[0,8,16]; // 1re colonne, bas → haut : RIGHT1, RIGHT2, LEFT
+const APC_PARAMS=[
+ {f:"",l:"— aucun —"},
+ {f:"t0_vol",l:"1st · Volume"},{f:"t0_tch",l:"1st · Touch depth"},{f:"t0_cut",l:"1st · Cutoff"},{f:"t0_ftch",l:"1st · Flt touch"},{f:"t0_fsl",l:"1st · Flt slope"},{f:"t0_atk",l:"1st · Attack"},{f:"t0_dc1",l:"1st · Decay 1"},{f:"t0_s1",l:"1st · Sustain 1"},{f:"t0_s2",l:"1st · Sustain 2"},{f:"t0_rls",l:"1st · Release"},{f:"t0_key",l:"1st · Key ±24"},{f:"t0_tune",l:"1st · Tune ±50"},
+ {f:"t1_vol",l:"2nd · Volume"},{f:"t1_tch",l:"2nd · Touch depth"},{f:"t1_cut",l:"2nd · Cutoff"},{f:"t1_atk",l:"2nd · Attack"},{f:"t1_rls",l:"2nd · Release"},{f:"t1_key",l:"2nd · Key ±24"},{f:"t1_tune",l:"2nd · Tune ±50"},
+ {f:"t2_vol",l:"sub · Volume"},{f:"t2_tch",l:"sub · Touch depth"},{f:"t2_cut",l:"sub · Cutoff"},{f:"t2_atk",l:"sub · Attack"},{f:"t2_rls",l:"sub · Release"},{f:"t2_key",l:"sub · Key ±24"},{f:"t2_tune",l:"sub · Tune ±50"},
+ {f:"v12",l:"Vibrato vol depth"},{f:"v13",l:"Vibrato pitch depth"},{f:"v14",l:"Vibrato speed"},{f:"v15",l:"Vibrato delay"},
+ {f:"v1A",l:"Modulation depth"},{f:"v1B",l:"Modulation speed"},
+ {f:"v1C",l:"Distortion depth"},{f:"v1E",l:"Reverb depth"},
+ {f:"v20",l:"FX param 1 (selon type)"},{f:"v21",l:"FX param 2"},{f:"v22",l:"FX param 3"},{f:"v23",l:"FX param 4"}
+];
+const APC_TOGGLES=[
+ {f:"",l:"— libre —",c:0x00},
+ {f:"glide",l:"Glide ON/OFF",c:0x29},
+ {f:"wheel",l:"Mod wheel ON/OFF",c:0x29},
+
+ {f:"t0_on",l:"Tone 1st ON/OFF",c:0x21},{f:"t1_on",l:"Tone 2nd ON/OFF",c:0x21},{f:"t2_on",l:"Tone sub ON/OFF",c:0x21},
+ {f:"vibT0",l:"Vibrato 1st ON/OFF",c:0x0D},{f:"vibT1",l:"Vibrato 2nd ON/OFF",c:0x0D},{f:"vibT2",l:"Vibrato sub ON/OFF",c:0x0D},
+ {f:"modOn",l:"Modulation ON/OFF",c:0x3D},
+ {f:"disOn",l:"Distortion ON/OFF",c:0x09},
+ {f:"fxOn",l:"Effect ON/OFF",c:0x45}
+];
+let APC=(()=>{ try{ const a=JSON.parse(localStorage.getItem("kn2000_se_v06_apc")||"null"); if(a&&a.banks) return a; }catch(e){}
+  return { inId:null,outId:null,enc:"2c",bank:0,part:null,
+    banks:[0,1,2,3].map(()=>({cc:[],par:Array(8).fill(""),btn:null})), pads:{} }; })();
+function apcSave(){ try{ localStorage.setItem("kn2000_se_v06_apc", JSON.stringify(APC)); }catch(e){} }
+let apcLearn=null;
+function apcOut(){ if(!access||!APC.outId) return null; let o=null; access.outputs.forEach(x=>{ if(x.id===APC.outId) o=x; }); return o; }
+function apcLed(note,vel){ const o=apcOut(); if(o) o.send([0x90,note,vel]); }
+function apcBtnLeds(){ // boutons Knob Control appris : vert = banque active, éteint = autres
+  APC.banks.forEach((b,i)=>{ if(b.btn!=null) apcLed(b.btn, i===APC.bank?0x21:0x00); });
+}
+function apcSt(){ const el=$("apcSt"); if(!el) return;
+  let ok=false; if(access&&APC.inId){ access.inputs.forEach(x=>{ if(x.id===APC.inId) ok=true; }); }
+  el.className="pill "+(ok?"on":"off"); el.textContent=ok?"APC connecté":"non connecté";
+}
+function apcAttach(){
+  if(!access) return;
+  access.inputs.forEach(inp=>{ inp.onmidimessage = (inp.id===APC.inId) ? apcMsg : null; });
+  apcSt();
+}
+function apcSelectPart(pi){
+  $("apcPart").textContent=PARTS[pi][0]+" : lecture…";
+  [0,1,2].forEach((p,i)=>apcLed(APC_PART_PADS[i], i===pi?0x03:0x02)); // blanc = active, gris = autres
+  APC.part=pi; apcSave();
+  if(!midiIn||!midiOut){ log("ℹ️ "+PARTS[pi][0]+" — connecte-toi au KN2000 pour lire la part.","status-ko"); return; }
+  freshParts().then(sts=>{ const st=sts[pi];
+    if(st&&(st.bank&0x80)&&st.pc<36){
+      $("apcPart").textContent=PARTS[pi][0]+" : "+slotName(st.pc);
+      log("🎛️ "+PARTS[pi][0]+" joue "+slotName(st.pc)+" — slot chargé, knobs actifs dessus.","status-ok");
+      apcLed(APC_PART_PADS[pi],0x21); // vert = Memory sous contrôle
+      if(st.pc!==curSlot){ $("slotSel").value=String(st.pc); $("slotSel").onchange(); }
+    } else {
+      $("apcPart").textContent=PARTS[pi][0]+" : pas une Sound Memory";
+      log("ℹ️ "+PARTS[pi][0]+" = "+(st?interpPart(st.pc,st.bank):"?")+" — pas une Sound Memory, les knobs n'ont pas de cible machine.","status-ko");
+      apcLed(APC_PART_PADS[pi],0x05); // rouge = pas de Memory
+    }});
+}
+function apcMsg(ev){
+  const d=ev.data, cmd=d[0]&0xf0;
+  if(cmd===0x90 && d[2]>0){ // Note On (pads & boutons)
+    const note=d[1];
+    if(apcLearn&&apcLearn.mode==="btn"){ APC.banks[apcLearn.bank].btn=note; apcSave(); apcLearn=null; apcUI();
+      log("🎓 Bouton Knob Control lié (note "+note+") — banque "+(APC.bank+1)+" active.","status-ok"); return; }
+    const bi=APC.banks.findIndex(b=>b.btn===note);
+    if(bi>=0){ APC.bank=bi; apcSave(); apcUI(); log("🎛️ Banque knobs "+(bi+1)+" active.","status-ok"); return; }
+    const pi=APC_PART_PADS.indexOf(note);
+    if(pi>=0){ apcSelectPart(pi); return; }
+    const tg=APC.pads[note];
+    if(tg){ const el=document.querySelector(`.switch[data-f="${tg}"]`);
+      if(el){ el.click(); const t=APC_TOGGLES.find(x=>x.f===tg);
+        setTimeout(()=>apcLed(note, el.classList.contains("on")?(t?t.c:0x21):0x00),60);
+      } else log("🎛️ Pad "+note+" : champ absent.","status-ko");
+      return; }
+    log("🎛️ APC note "+note+" — non mappée.");
+  } else if(cmd===0xB0){ // CC (knobs)
+    if(apcLearn&&apcLearn.mode==="cc"){
+      if(!APC.banks[apcLearn.bank].cc.includes(d[1])){ APC.banks[apcLearn.bank].cc.push(d[1]); apcSave(); apcUI();
+        log("🎓 Knob "+APC.banks[apcLearn.bank].cc.length+"/8 → CC "+d[1]);
+        if(APC.banks[apcLearn.bank].cc.length===8){ apcLearn=null; log("🎓 Banque complète.","status-ok"); } }
+      return; }
+    const b=APC.banks[APC.bank], k=b.cc.indexOf(d[1]);
+    if(k<0) return;
+    const f=b.par[k];
+    if(!f){ log("🎛️ Knob "+(k+1)+" (CC "+d[1]+") non assigné — choisis un paramètre dans l'onglet APC.","status-ko"); return; }
+    const el=document.querySelector(`input[type=range][data-f="${f}"]`);
+    if(!el){ log("⚠️ Champ « "+f+" » absent (param FX non affiché pour ce type ?).","status-ko"); return; }
+    let v;
+    if(APC.enc==="abs") v=d[2];
+    else { let delta = APC.enc==="inv" ? (d[2]<64? d[2] : d[2]-128) : (d[2]>=65? d[2]-128 : (d[2]>=64?0:d[2]));
+      v=Math.max(+el.min,Math.min(+el.max, Math.round(+el.value)+delta)); }
+    el.value=v;
+    el.dispatchEvent(new Event("input",{bubbles:true}));
+    el.dispatchEvent(new Event("change",{bubbles:true}));
+    const p=APC_PARAMS.find(x=>x.f===f);
+    log("🎛️ "+(p?p.l:f)+" = "+v+(ARMED?"":" (écran — non armé)"));
+  }
+}
+function apcLearnCC(n){ apcLearn={mode:"cc",bank:n}; APC.banks[n].cc=[]; apcSave(); apcUI();
+  log("🎓 Tourne les 8 knobs de la banque "+(n+1)+" un par un…","status-ok"); }
+function apcLearnBtn(n){ apcLearn={mode:"btn",bank:n};
+  log("🎓 Presse le bouton Knob Control "+(n+1)+" de l'APC… (s'il n'émet rien, ce bouton ne marchera pas — change de banque en cliquant la ligne)","status-ok"); }
+function apcSetBank(n){ APC.bank=n; apcSave(); apcUI(); }
+function apcSetPar(b,k,v){ APC.banks[b].par[k]=v; apcSave(); }
+function apcSetPad(p,v){ if(v) APC.pads[p]=v; else delete APC.pads[p]; apcSave(); apcUI(); }
+function apcUI(){
+  const kh=$("apcKnobs"); if(kh){
+    kh.innerHTML="";
+    for(let b=0;b<4;b++){
+      const B=APC.banks[b], row=document.createElement("div"); row.className="prow";
+      const bk=document.createElement("button"); bk.className="ghost"+(APC.bank===b?" on":"");
+      bk.textContent="Banque "+(b+1)+(B.btn!=null?" 🎹":""); bk.onclick=()=>apcSetBank(b);
+      row.appendChild(bk);
+      const lcc=document.createElement("button"); lcc.className="ghost"; lcc.textContent="🎓 CC"; lcc.onclick=()=>apcLearnCC(b);
+      row.appendChild(lcc);
+      const lbt=document.createElement("button"); lbt.className="ghost"; lbt.textContent="🎓 bouton"; lbt.onclick=()=>apcLearnBtn(b);
+      row.appendChild(lbt);
+      const cc=document.createElement("span"); cc.className="val"; cc.textContent="CC "+(B.cc.length?B.cc.join(","):"—");
+      row.appendChild(cc);
+      for(let k=0;k<8;k++){
+        const s=document.createElement("select"); s.style.maxWidth="150px";
+        s.innerHTML=APC_PARAMS.map(p=>`<option value="${p.f}"${B.par[k]===p.f?" selected":""}>K${k+1} ${p.l}</option>`).join("");
+        s.onchange=()=>apcSetPar(b,k,s.value);
+        row.appendChild(s);
+      }
+      kh.appendChild(row);
+    }
+  }
+  const ph=$("apcPads"); if(ph){
+    ph.innerHTML="";
+    for(let r=4;r>=0;r--){ // rangée du haut d'abord (pads 32-39 … jusqu'à 0-7 en bas)
+      const row=document.createElement("div"); row.className="prow";
+      for(let c=0;c<8;c++){
+        const p=r*8+c, cell=document.createElement("span"); cell.style.display="inline-flex"; cell.style.alignItems="center"; cell.style.gap="4px";
+        const lab=document.createElement("span"); lab.className="val"; lab.textContent="P"+p;
+        cell.appendChild(lab);
+        const pi=APC_PART_PADS.indexOf(p);
+        if(pi>=0){ const pl=document.createElement("span"); pl.className="pill on"; pl.textContent=PARTS[pi][0]; cell.appendChild(pl); }
+        else {
+          const s=document.createElement("select"); s.style.maxWidth="170px";
+          s.innerHTML=APC_TOGGLES.map(t=>`<option value="${t.f}"${APC.pads[p]===t.f?" selected":""}>${t.l}</option>`).join("");
+          s.onchange=()=>apcSetPad(p,s.value);
+          cell.appendChild(s);
+        }
+        row.appendChild(cell);
+      }
+      ph.appendChild(row);
+    }
+  }
+  const enc=$("apcEnc"); if(enc) enc.value=APC.enc||"2c";
+  apcSt(); apcBtnLeds();
+}
+$("apcEnc").onchange=()=>{ APC.enc=$("apcEnc").value; apcSave(); log("🎛️ Encodage knobs : "+$("apcEnc").selectedOptions[0].textContent); };
+$("apcIn").onchange=()=>{
+  const v=$("apcIn").value; APC.inId=v||null; apcSave();
+  if(v&&v===$("inSel").value){ log("⚠️ Ce port est déjà celui du KN2000 — choisis le 2e port de l'APC (surface de contrôle).","status-ko"); }
+  apcAttach(); apcUI();
+};
+$("apcOut").onchange=()=>{ APC.outId=$("apcOut").value||null; apcSave(); apcSt();
+  [0,1,2].forEach((p,i)=>apcLed(APC_PART_PADS[i],0x02)); };
+
+
+(function init(){
+  const sel=$("slotSel");
+  const cd=$("catDstSlot"); for(let n=0;n<36;n++) cd.add(new Option(slotName(n),String(n)));
+  for(let n=0;n<36;n++) sel.add(new Option(slotName(n)+" · 0x"+(0x50+n*0x90).toString(16), String(n)));
+  sel.onchange=()=>{ curSlot=+sel.value; log("Slot "+slotName(curSlot)+" sélectionné.");
+    refreshSessionUI();
+    if(midiIn&&midiOut){ log("📖 Lecture automatique du slot "+slotName(curSlot)+"…"); readSlot(); }
+    else if(!cacheLoad()){ raw=null; } };
+  $("btnRefresh").onclick=refreshPorts;
+  $("btnConnect").onclick=connect;
+$("btnClearLog").onclick=()=>{ $("log").innerHTML=""; log("Log vidé."); };
+  refreshPorts();
+  cacheLoad();
+  const bank=bankLoad(); if(bank){ renderBank(bank); $("bankStatus").textContent=(bank.partial!=null?"⚠ PARTIEL ("+bank.partial+"/36) — refais un dump":"✓ 36 slots")+" (cache "+new Date(bank.ts).toLocaleTimeString()+")"; }
+  libRefresh();
+  catRefresh();
+  refreshSessionUI();
+  apcUI();
+})();
+</script>
+</body>
+</html>
