@@ -83,11 +83,13 @@
 
 <h3>Onglet APC — Akai APC Key 25 mk2</h3>
 <ul>
-  <li>🎛️ <b>Knobs</b> : 4 banques × 8 knobs. Apprentissage (« 🎓 CC ») : tourner les 8 knobs un par un ; bouton « 🎓 bouton » pour lier le bouton Knob Control de chaque banque. Chaque knob est ensuite assigné à un paramètre via le menu déroulant.</li>
-  <li>🎛️ <b>Pads</b> : 1re colonne = parts du clavier (RIGHT1/RIGHT2/LEFT) ; les autres pads pilotent des ON/OFF (vibrato, modulation, distortion, effect…). LEDs : vert = actif, blanc = part sélectionnée.</li>
+  <li>🎛️ <b>Knobs — 8 banques × 8</b> (64 paramètres pilotables). Apprentissage (« 🎓 CC ») : tourner les 8 knobs un par un ; « 🎓 bouton » : lier un <b>n'importe quel bouton</b> de l'APC (Knob Control, Track, Scene, Stop, Play… ou un pad) comme sélecteur de cette banque. Chaque knob est ensuite assigné à un paramètre via le menu déroulant (74 paramètres disponibles : enveloppes complètes, KF, filtres des 3 tones, vibrato, auto bend, modulation, distortion, reverb, FX).</li>
+  <li>🎛️ <b>Pads</b> : 1re colonne = parts du clavier (RIGHT1/RIGHT2/LEFT) ; les autres pads pilotent des ON/OFF (tones, vibrato, modulation, distortion, effect, glide, wheel…).</li>
+  <li>🎨 <b>LEDs en continu</b> : chaque pad assigné reste allumé à la <b>couleur de sa fonction</b> (état OFF) ; la LED passe au <b>vert</b> quand la fonction est ON ; un pad libre est éteint. Couleurs paramétrables fonction par fonction (palette de 12 couleurs).</li>
+  <li>💾 <b>Export / import de la config APC</b> (JSON) : copie toute la config (banques, knobs, pads, couleurs, ports) d'une origine/navigateur/PC à un autre.</li>
   <li>Encodage des knobs configurable (2-complément ou absolu, inversion).</li>
 </ul>
-<div class="tip">💡 Le paramétrage APC est mémorisé dans le navigateur (localStorage) — il est propre à chaque origine (localhost ≠ github.io) : à refaire une fois par site.</div>
+<div class="tip">💡 Le paramétrage APC est mémorisé dans le navigateur (localStorage) — propre à chaque origine (localhost ≠ github.io) : utiliser l'export/import JSON pour le copier entre les deux.</div>
 <div class="tip">💡 <b>Après un rebranchement USB</b>, Windows peut renuméroter les ports MIDI : si le port APC mémorisé ne correspond plus (ou pointe désormais le port du KN2000), l'outil le détecte et réinitialise la config APC avec un message dans le journal — il suffit de rechoisir le port dans l'onglet APC.</div>
 
 <h3>Journal sysex</h3>
@@ -108,6 +110,7 @@
   <li><b>Lecture auto ne marche pas</b> : vérifier « Realtime sysex » sur ON.</li>
   <li><b>La connexion se dégrade puis tombe</b> : rebrancher l'interface MIDI sur un autre port USB (éviter de partager un hub USB non alimenté avec d'autres périphériques MIDI), redémarrer le clavier, puis 🔄 Ports → 🔌 Connecter.</li>
   <li><b>APC : knobs sans effet</b> : vérifier l'assignation des paramètres dans l'onglet APC et l'encodage.</li>
+  <li><b>APC : LEDs des pads n'apparaissent pas</b> : vérifier que « APC Out » est le port de la surface de contrôle (retours LED), puis refaire une action sur un pad.</li>
   <li><b>Dump incomplet</b> : le dump doit totaliser 5 184 octets ; relancer le dump.</li>
   <li><b>Sous Firefox, rien ne se passe</b> : Firefox ne supporte pas le sysex Web MIDI — utiliser Chrome ou Edge.</li>
 </ul>
@@ -162,11 +165,13 @@
 
 <h3>APC tab — Akai APC Key 25 mk2</h3>
 <ul>
-  <li>🎛️ <b>Knobs</b>: 4 banks × 8 knobs. Learning (“🎓 CC”): turn each of the 8 knobs; “🎓 button” links each bank's Knob Control button. Each knob is then assigned to a parameter via the dropdown.</li>
-  <li>🎛️ <b>Pads</b>: first column = keyboard parts (RIGHT1/RIGHT2/LEFT); other pads drive ON/OFF switches (vibrato, modulation, distortion, effect…). LEDs: green = active, white = selected part.</li>
+  <li>🎛️ <b>Knobs — 8 banks × 8</b> (64 controllable parameters). Learning (“🎓 CC”): turn each of the 8 knobs; “🎓 button”: link <b>any APC button</b> (Knob Control, Track, Scene, Stop, Play… or a pad) as this bank's selector. Each knob is then assigned to a parameter via the dropdown (74 parameters available: full envelopes, KF, filters of all 3 tones, vibrato, auto bend, modulation, distortion, reverb, FX).</li>
+  <li>🎛️ <b>Pads</b>: first column = keyboard parts (RIGHT1/RIGHT2/LEFT); other pads drive ON/OFF switches (tones, vibrato, modulation, distortion, effect, glide, wheel…).</li>
+  <li>🎨 <b>Continuous LEDs</b>: each assigned pad stays lit with its <b>function's colour</b> (OFF state); the LED turns <b>green</b> when the function is ON; a free pad is off. Colours are configurable per function (12-colour palette).</li>
+  <li>💾 <b>APC setup export / import</b> (JSON): copies the whole setup (banks, knobs, pads, colours, ports) across origins/browsers/PCs.</li>
   <li>Knob encoding configurable (two's complement or absolute, inversion).</li>
 </ul>
-<div class="tip">💡 The APC setup is stored in the browser (localStorage) — it is specific to each origin (localhost ≠ github.io): redo it once per site.</div>
+<div class="tip">💡 The APC setup is stored in the browser (localStorage) — specific to each origin (localhost ≠ github.io): use the JSON export/import to copy it between the two.</div>
 <div class="tip">💡 <b>After replugging USB</b>, Windows may renumber the MIDI ports: if the remembered APC port no longer matches (or now points to the KN2000's port), the tool detects it and resets the APC setup with a message in the log — just pick the port again in the APC tab.</div>
 
 <h3>SysEx log</h3>
@@ -187,12 +192,14 @@
   <li><b>Auto-read not working</b>: check “Realtime sysex” is ON.</li>
   <li><b>Connection degrades then drops</b>: replug the MIDI interface into another USB port (avoid sharing an unpowered USB hub with other MIDI devices), restart the keyboard, then 🔄 Ports → 🔌 Connect.</li>
   <li><b>APC: knobs do nothing</b>: check parameter assignments in the APC tab and the encoding mode.</li>
+  <li><b>APC: pad LEDs don't show</b>: make sure “APC Out” is the control surface's port (LED returns), then act on a pad again.</li>
   <li><b>Incomplete dump</b>: a dump must total 5,184 bytes; run the dump again.</li>
   <li><b>Nothing happens under Firefox</b>: Firefox does not support Web MIDI SysEx — use Chrome or Edge.</li>
 </ul>
 </div>
 
 <h2>🕐 Historique des versions / Version history</h2>
+<div class="ver"><b>v0.9.0</b><span class="date">25/10/2026</span> — Surface APC étendue : 8 banques de knobs (64 mappings), n'importe quel bouton APC comme sélecteur de banque, LEDs des pads en continu (couleur par fonction, paramétrable), 74 paramètres assignables (enveloppes complètes + KF + filtres + FX), export/import de la config APC en JSON.<br/><i>Extended APC surface: 8 knob banks, any APC button as bank selector, continuous pad LEDs (per-function, configurable colours), 74 assignable parameters, JSON setup export/import.</i></div>
 <div class="ver"><b>v0.8.2</b><span class="date">24/10/2026</span> — Robustesse connexion : « ● connecté » n'est affiché qu'après vérification que le KN2000 répond (sinon « ⚠ pas de réponse » avec diagnostic). Correctif APC : l'onglet APC ne coupe plus le récepteur du port KN2000. Détection du port APC mémorisé obsolète (renumérotation USB). Docs navigateurs corrigées (Firefox ≠ sysex).<br/><i>Connection robustness: “● connected” only shown after the KN2000 answers. APC fix: the APC tab no longer breaks the KN2000 port receiver. Stale APC port detection (USB renumbering). Browser docs fixed (Firefox ≠ SysEx).</i></div>
 <div class="ver"><b>v0.8.1</b><span class="date">24/10/2026</span> — Première publication sur GitHub Pages. Lecture auto du slot (capture de l'original), onglets GENERAL/TONE/EFFECT/BANQUE, session avec rétablissement de l'original, catalogue de sons, surface APC Key 25 mk2 (4 banques × 8 knobs, pads ON/OFF), écriture armée 🔒/🔓, auto-appliquer ⚡.<br/><i>First release on GitHub Pages. Auto slot read (original capture), GENERAL/TONE/EFFECT/BANK tabs, original-restore session, sound catalogue, APC Key 25 mk2 surface, armed writing, auto-apply.</i></div>
 <div class="ver"><b>v0.6</b><span class="date">21/10/2026</span> — Version de développement locale (serveur Python) : cartographie 144 octets, écrans de base, dump de banque.<br/><i>Local development version: 144-byte mapping, base screens, bank dump.</i></div>

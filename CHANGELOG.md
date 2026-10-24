@@ -11,6 +11,16 @@ Outils :
 
 ## [Non publié] / Unreleased
 
+## 2026-10-25
+
+### Sound Editor v0.9.0 — surface APC étendue
+- **8 banques de knobs** (64 paramètres pilotables, contre 4 banques/32 avant) ; migration automatique des configs existantes.
+- **N'importe quel bouton de l'APC comme sélecteur de banque** : Knob Control, Track, Scene, Stop, Play… ou un pad — le mécanisme d'apprentissage « 🎓 bouton » accepte tout bouton émettant un Note On.
+- **LEDs des pads en continu** : chaque pad assigné reste allumé à la couleur de sa fonction (état OFF) ; vert = fonction ON ; éteint = pad libre. Plus besoin d'appuyer pour voir l'assignation.
+- **Couleurs paramétrables par fonction** : palette de 12 couleurs (palette officielle Akai), éditeur dédié dans l'onglet APC.
+- **Paramètres manquants ajoutés aux knobs** : enveloppes complètes des 3 tones (Decay 2, Sustain 2, Touch attack, Touch curve, Lvl KF, EKF atk/dcy/rls), filtre complet des 2nd/sub (Touch depth, curve, slope), Auto bend depth/speed, Distortion touch — 74 paramètres au total.
+- **Export / import de la config APC** (JSON) : banques, assignations, pads, couleurs et ports — pour copier la config d'une origine à l'autre (localhost ↔ github.io), d'un navigateur ou d'un PC à l'autre.
+
 ## 2026-10-24
 
 ### Sound Editor v0.8.2
