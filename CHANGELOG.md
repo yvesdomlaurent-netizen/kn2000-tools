@@ -13,6 +13,11 @@ Outils :
 
 ## 2026-10-25
 
+### Sound Editor v0.9.5 — restauration des ports par nom + key limits modifiables
+- **Restauration des ports par nom** : au rechargement, si l'ID Web MIDI mémorisé n'est plus trouvé (les IDs peuvent changer entre sessions), l'éditeur retombe sur le port de même **nom** avant de prendre le premier de la liste. Les noms In/Out sont mémorisés aux côtés des IDs ; logs explicites (« Ports mémorisés : In = … restaurés »).
+- **Key limits modifiables** : les limites de clavier par tone (Atk KF lim, Dcy KF lim, Flt key lim — bas 29..127, affichage F1→G9) sont maintenant éditables via des sélecteurs et écrites dans le son (read-modify-write, armé 🔓 requis), au lieu d'être seulement affichées.
+- Aucun autre changement : Mod Wave (0x19 bits 0-1), Mod Mode (bits 4-5), LEDs pads (0x96) et protocole de connexion v0.9.3 sont conservés tels quels (validés terrain).
+
 ### Sound Editor v0.9.4 — mapping Modulation Wave corrigé
 - **Modulation Wave : bits 0-1 de 0x19** (avant : bits 1-2). Validé terrain : l'ancien encodage donnait SQR/SIN décalés (TRI→SQR, SQR→SIN, SAW→SQR) ; avec bits 0-1, l'octet lu par la machine correspond exactement à la valeur affichée. Lecture et écriture alignées (`raw[0x19]&3`).
 
