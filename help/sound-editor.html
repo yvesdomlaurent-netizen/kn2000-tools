@@ -47,11 +47,14 @@
 <div class="warn">⚠️ <b>Avant toute écriture</b> : faire un dump de sauvegarde de la banque (onglet BANQUE → Dump banque) ou un export. Le Sound Editor écrit dans les Sound Memory A/B du KN2000.</div>
 <div class="tip">💡 L'option <b>⚡ Auto-appliquer</b> recharge après chaque écriture le son en cours sur les parts du clavier qui le jouent (nécessite « Realtime sysex » sur ON dans le KN2000).</div>
 <div class="tip">💡 Sans clavier, le bouton <b>🧪 Exemple A-1 usine</b> charge un son d'exemple pour explorer les écrans.</div>
-<div class="warn">⚠️ <b>Mémoire volatile</b> : le KN2000 ne conserve les sons que ~80 minutes hors tension. Après une coupure prolongée, les réglages usine reviennent — archive tes sons (💾 package, catalogue) pour pouvoir les renvoyer (📤) après chaque remise sous tension.</div>
+<div class="warn" data-a="se-tips-volatile">⚠️ <b>Mémoire volatile</b> : le KN2000 ne conserve les sons que ~80 minutes hors tension. Après une coupure prolongée, les réglages usine reviennent — archive tes sons (💾 package, catalogue) pour pouvoir les renvoyer (📤) après chaque remise sous tension.</div>
+<div class="tip">💡 <b>Badge d'état (v0.9.13)</b> : en haut de page, trois badges discrets — 🎹 KN2000 (connexion + test de liaison), 🎛 APC, 📁 dossier de travail. Cliquer un badge ouvre l'onglet correspondant (GENERAL / APC / BANQUE).</div>
+<div class="tip">💡 <b>Commandes groupées (v0.9.13)</b> : onglets BANQUE et APC — les actions sont regroupées sous les labels 🎚 Pilotage → 💾 Sauvegarder → 📂 Charger, dans cet ordre.</div>
+<div class="tip">💡 <b>Aide contextuelle (v0.9.13)</b> : l'icône ❓ de chaque onglet ouvre cette page directement sur sa section (ancres stables <code>se-01-general</code>, <code>se-02-tone</code>…, utilisables aussi comme références de documentation).</div>
 
 <h2>📚 Fonctions détaillées</h2>
 
-<h3>Onglet GENERAL</h3>
+<h3 data-a="se-01-general">Onglet GENERAL</h3>
 <ul>
   <li>🗺️ <b>Cartographie 144 octets</b> : nom (16 caractères), octave shift, controllers, vibrato, auto bend &amp; trill, modulation, digital effect — correspond aux écrans du manual Technics (p.24/30/31 + Digital Effects).</li>
   <li>📸 <b>Session — Original</b> : la première lecture d'un slot capture automatiquement l'original (144 octets). À tout moment : « ↩️ Rétablir l'original » renvoie l'original dans la machine, « ✅ Garder le nouveau son » valide la modification. Un original par slot, conservé entre rechargements de page.</li>
@@ -59,12 +62,12 @@
   <li>📍 <b>Lire l'état</b> : affiche quel son jouent RIGHT1 / RIGHT2 / LEFT, indépendamment du son édité.</li>
 </ul>
 
-<h3>Onglet TONE (1st · 2nd · sub)</h3>
+<h3 data-a="se-02-tone">Onglet TONE (1st · 2nd · sub)</h3>
 <ul>
   <li>Édition des trois tones : paramètres, enveloppes avec schémas visuels et courbes.</li>
   <li>Code couleur : <span style="color:#4ade80">champ confirmé</span> · <span style="color:#fbbf24">partiel</span> · <span style="color:#64748b">inconnu</span>.</li>
 </ul>
-<h4>Comprendre l'enveloppe (modèle « points et pentes »)</h4>
+<h4 data-a="se-02-01-enveloppe">Comprendre l'enveloppe (modèle « points et pentes »)</h4>
 <ul>
   <li><b>Atk, Dcy 1, Dcy 2, Rls = des pentes</b> (durées) ; <b>Sus 1, Sus 2 = des niveaux</b> (amplitudes).</li>
   <li>Séquence, touche enfoncée : ouverture (Atk jusqu'au point maxi) → chute (Dcy 1) → palier 1 (Sus 1) → pente (Dcy 2) → palier 2 (Sus 2). Seul le Release joue après le relâchement.</li>
@@ -73,24 +76,24 @@
   <li>Les durées croissent de façon exponentielle (Atk 14 à peine perceptible, ~1-2 s à 34, ~5 s à 40). Le schéma est une <b>indication visuelle</b>, pas un outil de mesure — l'oreille tranche.</li>
 </ul>
 
-<h3>Onglet EFFECT</h3>
+<h3 data-a="se-03-effect">Onglet EFFECT</h3>
 <ul>
   <li>Digital Effects : sélection, paramètres et mix, selon la cartographie établie sur la machine.</li>
 </ul>
 
-<h3>Onglet BANQUE (36 slots)</h3>
+<h3 data-a="se-04-banque">Onglet BANQUE (36 slots)</h3>
 <ul>
   <li>📥 <b>Dump banque</b> : lit les 36 slots du clavier (5 184 octets) et les met en cache.</li>
   <li>📤 <b>Envoi banque</b> : écrit les 36 slots vers le clavier (écriture armée requise).</li>
   <li>📂 Import / export de banque au format JSON.</li>
 </ul>
 
-<h3>📚 Catalogue de sonorités</h3>
+<h3 data-a="se-04-01-catalogue">📚 Catalogue de sonorités</h3>
 <ul>
   <li>Sons isolés (144 octets chacun) : importer, exporter, copier d'un slot vers un autre.</li>
 </ul>
 
-<h3>Onglet APC — Akai APC Key 25 mk2</h3>
+<h3 data-a="se-05-apc">Onglet APC — Akai APC Key 25 mk2</h3>
 <ul>
   <li>🎛️ <b>Knobs — 8 banques × 8</b> (64 paramètres pilotables). Apprentissage (« 🎓 CC ») : tourner les 8 knobs un par un ; « 🎓 bouton » : lier <b>n'importe quel bouton</b> de l'APC (Knob Control, Track, Scene, Stop, Play… ou un pad) comme sélecteur de cette banque. Chaque knob est ensuite assigné à un paramètre via le menu déroulant (74 paramètres disponibles : enveloppes complètes, KF, filtres des 3 tones, vibrato, auto bend, modulation, distortion, reverb, FX).</li>
   <li>🎛️ <b>Pads</b> : 1re colonne = parts du clavier (RIGHT1/RIGHT2/LEFT) ; les autres pads pilotent des ON/OFF (tones, vibrato, modulation, distortion, effect, glide, wheel…).</li>
@@ -101,7 +104,7 @@
 <div class="tip">💡 Le paramétrage APC est mémorisé dans le navigateur (localStorage) — propre à chaque origine (localhost ≠ github.io) : utiliser l'export/import JSON pour le copier entre les deux.</div>
 <div class="tip">💡 <b>Après un rebranchement USB</b>, Windows peut renuméroter les ports MIDI : si le port APC mémorisé ne correspond plus (ou pointe désormais le port du KN2000), l'outil le détecte et réinitialise la config APC avec un message dans le journal — il suffit de rechoisir le port dans l'onglet APC.</div>
 
-<h3>Journal sysex</h3>
+<h3 data-a="se-06-journal">Journal sysex</h3>
 <ul>
   <li>📜 Le journal affiche tout le trafic MIDI. Utile pour diagnostiquer une connexion ou découvrir des commandes.</li>
 </ul>
@@ -139,11 +142,14 @@
 <div class="warn">⚠️ <b>Before any write</b>: make a bank backup dump (BANK tab → Bank dump) or an export. The Sound Editor writes to the KN2000's Sound Memory A/B.</div>
 <div class="tip">💡 The <b>⚡ Auto-apply</b> option reloads the edited sound onto the keyboard parts playing it after each write (requires “Realtime sysex” ON on the KN2000).</div>
 <div class="tip">💡 Without a keyboard, the <b>🧪 Factory A-1 example</b> button loads a sample sound to explore the screens.</div>
-<div class="warn">⚠️ <b>Volatile memory</b>: the KN2000 only keeps sounds ~80 minutes after power-off; factory settings return afterwards. Archive your sounds (💾 package, catalogue) so you can send them back (📤) after any extended power-off.</div>
+<div class="warn" data-a="se-tips-volatile">⚠️ <b>Volatile memory</b>: the KN2000 only keeps sounds ~80 minutes after power-off; factory settings return afterwards. Archive your sounds (💾 package, catalogue) so you can send them back (📤) after any extended power-off.</div>
+<div class="tip">💡 <b>Status badges (v0.9.13)</b>: at the top of the page, three discreet badges — 🎹 KN2000 (link + ping), 🎛 APC, 📁 working folder. Clicking a badge opens the matching tab (GENERAL / APC / BANK).</div>
+<div class="tip">💡 <b>Grouped commands (v0.9.13)</b>: BANK and APC tabs — actions are grouped under the labels 🎚 Live control → 💾 Save → 📂 Load, in that order.</div>
+<div class="tip">💡 <b>Contextual help (v0.9.13)</b>: the ❓ icon in each tab opens this page straight on its section (stable anchors <code>se-01-general</code>, <code>se-02-tone</code>…, also usable as documentation references).</div>
 
 <h2>📚 Detailed features</h2>
 
-<h3>GENERAL tab</h3>
+<h3 data-a="se-01-general">GENERAL tab</h3>
 <ul>
   <li>🗺️ <b>144-byte mapping</b>: name (16 chars), octave shift, controllers, vibrato, auto bend &amp; trill, modulation, digital effect — matches the Technics manual screens (p.24/30/31 + Digital Effects).</li>
   <li>📸 <b>Session — Original</b>: the first read of a slot automatically captures the original (144 bytes). At any time: “↩️ Restore original” sends the original back to the machine, “✅ Keep new sound” validates the change. One original per slot, kept across page reloads.</li>
@@ -151,12 +157,12 @@
   <li>📍 <b>Read state</b>: shows which sound RIGHT1 / RIGHT2 / LEFT are playing, independently of the edited sound.</li>
 </ul>
 
-<h3>TONE tab (1st · 2nd · sub)</h3>
+<h3 data-a="se-02-tone">TONE tab (1st · 2nd · sub)</h3>
 <ul>
   <li>Editing of the three tones: parameters, envelopes with visual diagrams and curves.</li>
   <li>Colour code: <span style="color:#4ade80">confirmed field</span> · <span style="color:#fbbf24">partial</span> · <span style="color:#64748b">unknown</span>.</li>
 </ul>
-<h4>Understanding the envelope ("points and slopes" model)</h4>
+<h4 data-a="se-02-01-enveloppe">Understanding the envelope ("points and slopes" model)</h4>
 <ul>
   <li><b>Atk, Dcy 1, Dcy 2, Rls are slopes</b> (durations); <b>Sus 1, Sus 2 are levels</b> (amplitudes).</li>
   <li>Sequence, key held: opening (Atk up to the peak) → drop (Dcy 1) → plateau 1 (Sus 1) → slope (Dcy 2) → plateau 2 (Sus 2). Only the Release plays after key-off.</li>
@@ -165,24 +171,24 @@
   <li>Durations grow exponentially (Atk 14 barely perceptible, ~1-2 s at 34, ~5 s at 40). The diagram is a <b>visual indication</b>, not a measuring tool — trust your ears.</li>
 </ul>
 
-<h3>EFFECT tab</h3>
+<h3 data-a="se-03-effect">EFFECT tab</h3>
 <ul>
   <li>Digital Effects: selection, parameters and mix, based on the mapping established on the machine.</li>
 </ul>
 
-<h3>BANK tab (36 slots)</h3>
+<h3 data-a="se-04-banque">BANK tab (36 slots)</h3>
 <ul>
   <li>📥 <b>Bank dump</b>: reads all 36 slots from the keyboard (5,184 bytes) and caches them.</li>
   <li>📤 <b>Bank send</b>: writes the 36 slots back to the keyboard (armed writing required).</li>
   <li>📂 Bank import / export as JSON.</li>
 </ul>
 
-<h3>📚 Sound catalogue</h3>
+<h3 data-a="se-04-01-catalogue">📚 Sound catalogue</h3>
 <ul>
   <li>Isolated sounds (144 bytes each): import, export, copy from one slot to another.</li>
 </ul>
 
-<h3>APC tab — Akai APC Key 25 mk2</h3>
+<h3 data-a="se-05-apc">APC tab — Akai APC Key 25 mk2</h3>
 <ul>
   <li>🎛️ <b>Knobs — 8 banks × 8</b> (64 controllable parameters). Learning (“🎓 CC”): turn each of the 8 knobs; “🎓 button”: link <b>any APC button</b> (Knob Control, Track, Scene, Stop, Play… or a pad) as this bank's selector. Each knob is then assigned to a parameter via the dropdown (74 parameters available: full envelopes, KF, filters of all 3 tones, vibrato, auto bend, modulation, distortion, reverb, FX).</li>
   <li>🎛️ <b>Pads</b>: first column = keyboard parts (RIGHT1/RIGHT2/LEFT); other pads drive ON/OFF switches (tones, vibrato, modulation, distortion, effect, glide, wheel…).</li>
@@ -193,7 +199,7 @@
 <div class="tip">💡 The APC setup is stored in the browser (localStorage) — specific to each origin (localhost ≠ github.io): use the JSON export/import to copy it between the two.</div>
 <div class="tip">💡 <b>After replugging USB</b>, Windows may renumber the MIDI ports: if the remembered APC port no longer matches (or now points to the KN2000's port), the tool detects it and resets the APC setup with a message in the log — just pick the port again in the APC tab.</div>
 
-<h3>SysEx log</h3>
+<h3 data-a="se-06-journal">SysEx log</h3>
 <ul>
   <li>📜 The log shows all MIDI traffic. Useful to diagnose a connection or discover commands.</li>
 </ul>
@@ -219,6 +225,7 @@
 </div>
 
 <h2>🕐 Historique des versions / Version history</h2>
+<div class="ver"><b>v0.9.13</b><span class="date">25/10/2026</span> — Charte d'ergonomie : badge d'état discret (🎹 KN2000 / 🎛 APC / 📁 dossier, cliquables) ; commandes des onglets BANQUE et APC regroupées sous labels 🎚 Pilotage → 💾 Sauvegarder → 📂 Charger ; icône ❓ par onglet ouvrant l'aide sur sa section (ancres stables se-01…se-06, nomenclature réutilisable pour la documentation) ; squelette i18n STR FR/EN avec bascule 🇫🇷/🇬🇧 ; bannière allégée (les avertissements détaillés restent dans l'aide — encarts Tips 💡).<br/><i>Ergonomics charter: discreet status badges (clickable, open the matching tab); BANK/APC commands grouped under Live control → Save → Load labels; per-tab ❓ icon opening the help on its section (stable se-01…se-06 anchors, reusable as documentation references); FR/EN STR i18n skeleton with a language toggle; lighter banner (detailed warnings stay in the help — Tips 💡 boxes).</i></div>
 <div class="ver"><b>v0.9.12</b><span class="date">25/10/2026</span> — Dossier de travail généralisé à TOUS les exports/imports (catalogue, packages, banque, export d'un son seul, config APC) : l'export s'écrit directement dans le dossier choisi (mémorisé par le navigateur) ; l'import lit d'abord le fichier attendu dans le dossier, sinon le sélecteur s'y ouvre. Repli Téléchargements/sélecteur si aucun dossier.<br/><i>Single working folder for ALL exports/imports (catalogue, packages, bank, single-sound export, APC config): exports write directly into the chosen folder (remembered by the browser); imports first read the expected file from the folder, otherwise the picker opens there. Falls back to Downloads/picker when no folder is set.</i></div>
 <div class="ver"><b>v0.9.11</b><span class="date">25/10/2026</span> — Enveloppe : plateau artificiel supprimé entre Sus 1 et Dcy 2 (lien direct — Dcy 2 part exactement du point Sus 1 ; Dcy 2 = 0 → bascule verticale sur Sus 2) ; règle « 50 = pente nulle » généralisée à tous les paramètres de pente (Atk, Dcy 1, Dcy 2, Rls) : horizontale jusqu'au bord + chevron, le stade ne se termine jamais.<br/><i>Envelope: artificial plateau between Sus 1 and Dcy 2 removed (direct link — Dcy 2 starts exactly at the Sus 1 point; Dcy 2 = 0 → vertical switch to Sus 2); "50 = zero slope" rule extended to all slope parameters (Atk, Dcy 1, Dcy 2, Rls): horizontal to the edge + chevron, the stage never completes.</i></div>
 <div class="ver"><b>v0.9.10</b><span class="date">25/10/2026</span> — Correctif enveloppe : échelle de temps FIXE — la pente de chaque segment ne dépend que de son propre paramètre (v0.99 : changer Dcy 1 redimensionnait aussi la pente d'attaque). Sens de Sus 1 confirmé au clavier : 0 = la pente court jusqu'au sol (largeur max), 50 = la pente disparaît. Courbe coupée au bord droit avec chevron quand les réglages dépassent le cadre.<br/><i>Envelope fix: FIXED time scale — each segment's slope now depends only on its own parameter (in v0.9.9 changing Dcy 1 also resized the attack slope). Sus 1 direction field-confirmed: 0 = slope runs all the way to the ground, 50 = slope disappears. Curve clipped at the right edge with a chevron when settings exceed the frame.</i></div>
@@ -239,14 +246,21 @@
 <a class="back" href="../sound-editor.html">← Retour au Sound Editor / Back to the Sound Editor</a> · <a href="../index.html">Accueil / Home</a>
 
 <script>
+function fixAnchors(){ // v0.9.13 : ancres se-<outil>-<NN>-<section> déplacées sur le bloc de langue visible
+  var l='fr'; try{ l=localStorage.getItem('kn2000_help_lang')||'fr'; }catch(e){}
+  document.querySelectorAll('[data-a]').forEach(function(h){ h.removeAttribute('id'); });
+  var blk=document.querySelector(l==='en'?'.en-block':'.fr-block');
+  if(blk) blk.querySelectorAll('[data-a]').forEach(function(h){ h.id=h.getAttribute('data-a'); });
+}
 function setLang(l){
   document.querySelector('.fr-block').style.display = l==='fr'?'':'none';
   document.querySelector('.en-block').style.display = l==='en'?'':'none';
   document.getElementById('frBtn').className = l==='fr'?'on':'';
   document.getElementById('enBtn').className = l==='en'?'on':'';
   try{ localStorage.setItem('kn2000_help_lang', l); }catch(e){}
+  fixAnchors();
 }
-try{ const s=localStorage.getItem('kn2000_help_lang'); if(s) setLang(s); }catch(e){}
+try{ const s=localStorage.getItem('kn2000_help_lang'); if(s) setLang(s); else fixAnchors(); }catch(e){ fixAnchors(); }
 </script>
 </body>
 </html>

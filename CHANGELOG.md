@@ -13,6 +13,13 @@ Outils :
 
 ## 2026-10-25
 
+### Sound Editor v0.9.13 — charte d'ergonomie : badge d'état, commandes groupées, aide contextuelle, squelette i18n
+- **Badge d'état discret** en haut de page : 🎹 KN2000 (● connecté / ⚠ pas de réponse / ○), 🎛 APC, 📁 dossier de travail — cliquer un badge ouvre l'onglet correspondant (GENERAL / APC / BANQUE). Synchronisé automatiquement avec l'état existant (observateurs), sans toucher aux flux MIDI.
+- **Commandes regroupées sous labels** dans les onglets BANQUE et APC (et catalogue) : 🎚 Pilotage → 💾 Sauvegarder → 📂 Charger, même ordre partout — base du référentiel commun avant généralisation aux autres outils.
+- **Aide contextuelle** : icône ❓ dans chaque onglet ouvre `help/sound-editor.html` directement sur sa section ; **nomenclature d'ancres stables et ordonnées** `se-<NN>-<onglet>` / `se-<NN>-<onglet>-<MM>-<section>` (`se-01-general`, `se-02-tone`, `se-02-01-enveloppe`, `se-03-effect`, `se-04-banque`, `se-04-01-catalogue`, `se-05-apc`, `se-06-journal`, `se-tips-volatile`) — réutilisable comme plan de documentation ; les ancres suivent la langue affichée (FR/EN).
+- **Squelette i18n `STR`** (FR/EN) : dictionnaire en tête de script, clés alignées sur la taxonomie de la charte, bascule 🇫🇷/🇬🇧 dans le header (langue mémorisée) — couvre les éléments de la charte (badges, labels, bouton), migration progressive du reste à chaque MAJ.
+- **Bannière allégée** : les avertissements longs migrent dans l'aide (encarts Tips 💡 FR/EN : badge, commandes groupées, aide contextuelle, volatilité ~80 min) ; seuls restent en page les avertissements critiques (dump avant écriture, ~80 min).
+
 ### Sound Editor v0.9.12 — dossier de travail généralisé à tous les exports/imports (chantiers b + d)
 - **« Dossier de travail » unique** (l'ancien dossier catalogue est promu générique) : un seul bouton 📁, mémorisé par le navigateur (IndexedDB + permission), utilisé par **tous** les flux — catalogue, packages 📦, banque 🏦, export d'un son seul, config APC 🎛️.
 - **Export config APC via le dossier** (chantier b) : plus aucun téléchargement Blob par défaut — la config s'écrit directement dans le dossier de travail (`kn2000-apc-config.json`) ; l'import lit d'abord ce fichier dans le dossier, sinon ouvre le sélecteur directement dedans. Repli Téléchargements/sélecteur classique si aucun dossier n'est choisi.
