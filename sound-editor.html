@@ -498,7 +498,6 @@ document.addEventListener("change",e=>{
   const val=encS(Math.round(+s.value)) & 0xff;
   send(msgITR(curSlot,off,val));
   if(typeof raw!=="undefined"&&raw) raw[off]=val;
-
   scheduleApply();
   const info=MAP_DESC[off];
   log(`✍️ ${f} = ${s.value} → 0x${off.toString(16)} (${info?info[1]:"?"})`);
@@ -999,3 +998,835 @@ function bankStart(){
   bankMode=true; bankTokens=[]; bankMsgs=0; bankCkErr=0; bankHrt=false;
   log("🏦 Dump request SOUND MEMORY envoyé — réception en cours (ne change pas d'onglet)…");
   send([0xf0,0x50,0x2b,0x01,0x18,0x10,0x30,0x00,0x00,0x00,0x00,0x42,0x00, xorChecksum([0x50,0x2b,0x01,0x18,0x10,0x30,0x00,0x00,0x00,0x00,0x42,0x00]), 0xf7]);
+  $("bankStatus").textContent="réception…";
+  clearTimeout(bankTimer); bankTimer=setTimeout(bankFinish, 4000);
+}
+function bankFeed(data){
+  const n=data.length, cmd=data[2];
+  if(cmd===0x21){ if(!bankHrt){ bankHrt=true; send([0xf0,0x50,0x22,0x01,0x18,0x10,0xf7]); log("HRQ reçu → HRT renvoyé."); } }
+  else if(cmd===0x2d || cmd===0x7e){
+    let x=0; for(let i=1;i<n-2;i++) x^=data[i];
+    if(x!==data[n-2]) bankCkErr++;
+    const start = cmd===0x7e ? 3 : 13;
+    for(let i=start;i<n-3;i++) bankTokens.push(data[i]);
+    bankMsgs++;
+    const nb=Math.floor(bankTokens.length/2);
+    if(bankMsgs%8===0) log(`📦 Réception : ${bankMsgs} paquets · ${nb} octets…`);
+    $("bankStatus").textContent=`${bankMsgs} paquets · ${nb} octets${bankCkErr?" · ⚠ "+bankCkErr+" ck":""}`;
+  }
+  else if(cmd===0x27||cmd===0x28){ log(cmd===0x27?"EOK (fin de bloc).":"END (fin de transmission)."); }
+  clearTimeout(bankTimer); bankTimer=setTimeout(bankFinish, 1500);
+}
+function bankFinish(){
+  if(!bankMode) return; bankMode=false; clearTimeout(bankTimer);
+  const toks=bankTokens;
+  if(toks.length<2){ $("bankStatus").textContent="⚠ rien reçu"; log("⚠️ Aucun paquet reçu — vérifie la connexion et réessaie.","status-ko"); return; }
+  // dé-nibblisation (flux continu hi|lo) + essai inverse si les noms ne sont pas lisibles
+  const deNib=(swap)=>{ const out=[];
+    for(let i=0;i+1<toks.length;i+=2){ out.push(swap ? (toks[i]|(toks[i+1]<<4)) : ((toks[i]<<4)|toks[i+1])); }
+    return out; };
+  let bytes=deNib(false);
+  const printable=b=>b.slice(0,15).every(c=>c===0||(c>=32&&c<127));
+  const slotsA=bytes.slice(Math.max(0,bytes.length-5184));
+  if(!printable(slotsA)){ const bytes2=deNib(true);
+    if(printable(bytes2.slice(Math.max(0,bytes2.length-5184)))){ bytes=bytes2; log("⚠️ Ordre des nibbles inversé détecté — ajusté automatiquement."); } }
+  const slots=bytes.slice(Math.max(0,bytes.length-5184));
+  if(slots.length<5184){
+    const miss=5184-slots.length;
+    $("bankStatus").textContent=`⚠ incomplet : ${slots.length}/5184`;
+    log(`⚠️ Dump incomplet : ${slots.length}/5184 octets (${miss} perdus) · ${bankMsgs} paquets reçus · ${bankCkErr} erreur(s) checksum.`,"status-ko");
+    if(bankCkErr===0) log("→ Checksums OK : ce sont des paquets entiers perdus sur la chaîne (pas de corruption de contenu).");
+    // Récupération partielle : le début du flux est-il aligné (nom de slot lisible en tête) ?
+    const head=bytes.slice(0,Math.min(bytes.length,5184));
+    const nOk=printable(head)? Math.floor(head.length/144) : 0;
+    if(nOk>0){
+      log(`ℹ️ Le début du flux est exploitable : ${nOk} slot(s) lisible(s) depuis A-1 — stockage PARTIEL.`);
+      const padded=head.concat(new Array(5184-head.length).fill(0xff)).slice(0,5184);
+      const bank={ ts:Date.now(), bytes:padded, partial:nOk };
+      try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){}
+      renderBank(bank);
+      document.querySelector('.tab[data-t="bank"]').click();
+      log(`⚠️ Banque PARTIELLE stockée : slots 1 à ${nOk} valides, les suivants marqués « perdu ». Refais un dump plus tard pour compléter.`,"status-ko");
+      bankRepair(bank);
+    } else {
+      log("→ Impossible d'aligner les octets : la perte est en plein milieu du flux, tout est décalé. Réessaie : ferme les autres applis qui écoutent le même port MIDI, connecte l'interface en direct (sans hub USB).","status-ko");
+    }
+    return;
+  }
+  const bank={ ts:Date.now(), bytes:slots.slice(0,5184) };
+  try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){}
+  renderBank(bank);
+  bankRepair(bank);
+  log(`✅ Banque complète : 36 slots reçus (${bankMsgs} paquets, ${bankCkErr} erreur(s) checksum) et stockés localement.`,"status-ok");
+  $("bankStatus").textContent="✓ 36 slots stockés";
+  toast("Banque reçue : 36 slots");
+  document.querySelector('.tab[data-t="bank"]').click();
+}
+function bankLoad(){ try{ return JSON.parse(localStorage.getItem("kn2000_se_v06_bank")||"null"); }catch(e){ return null; } }
+// Réparation de l'octet 0 (nom du slot A-1) : le flux bulk perd parfois le nibble haut
+// du tout premier octet (constaté terrain : « D » 0x44 reçu 0x04). Vérification + relecture DRQ.
+async function bankRepair(bank){
+  if(!bank || !bank.bytes || bank.bytes.length<16) return;
+  const b0=bank.bytes[0];
+  const suspect=(b0&0xf0)===0 && bank.bytes.slice(1,16).some(c=>c>=32&&c<127);
+  if(!suspect) return;
+  log(`🔎 Octet 0 du dump suspect (0x${b0.toString(16).padStart(2,"0")}, nibble haut perdu) — relise DRQ de l'octet 0 (nom du slot A-1)…`);
+  const v=await readByte(0,0);
+  if(v==null){ log("⚠️ Pas de réponse DRQ pour la réparation — le nom A-1 restera tel quel (une lecture du slot A-1 le corrigera).","status-ko"); return; }
+  log(`🔧 Nom A-1 réparé : 0x${b0.toString(16).padStart(2,"0")} → 0x${v.toString(16).padStart(2,"0")} (« ${String.fromCharCode(v)||"∅"} »).`,"status-ok");
+  bank.bytes[0]=v;
+  try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){}
+  renderBank(bank);
+}
+function renderBank(bank){
+  const tb=$("bankTbl").querySelector("tbody"); tb.innerHTML="";
+  for(let n=0;n<36;n++){
+    const lost = bank.partial!=null && n>=bank.partial;
+    const sraw=Uint8Array.from(bank.bytes.slice(n*144,(n+1)*144));
+    const m=parse(sraw);
+    const tr=document.createElement("tr");
+    tr.style.cursor=lost?"not-allowed":"pointer"; tr.style.borderBottom="1px solid #1e293b";
+    if(lost) tr.style.opacity=".45";
+    const td=(txt,mono)=>{ const c=document.createElement("td"); c.textContent=txt;
+      c.style.padding="3px 8px"; if(mono){c.style.fontFamily="monospace";c.style.textAlign="center";} return c; };
+    tr.appendChild(td(slotName(n),true));
+    tr.appendChild(td(lost?"(perdu)":(m.name||"(vide)")));
+    tr.appendChild(td(m.tones[0].on?toneName(m.tones[0].ttn,m.tones[0].sfx):"—",true));
+    tr.appendChild(td(m.tones[1].on?toneName(m.tones[1].ttn,m.tones[1].sfx):"—",true));
+    tr.appendChild(td(m.tones[2].on?toneName(m.tones[2].ttn,m.tones[2].sfx):"—",true));
+    tr.appendChild(td(m.fx.on?FX_TYPES[m.fx.type]||("0x"+m.fx.type):"OFF",true));
+    if(!lost) tr.onclick=()=>{
+      curSlot=n; $("slotSel").value=String(n);
+      raw=Uint8Array.from(bank.bytes.slice(n*144,(n+1)*144)); model=parse(raw); bind(model); cacheSave();
+      setSource("● banque (dump "+new Date(bank.ts).toLocaleTimeString()+")","Données du dump bulk complet");
+      log("Slot "+slotName(n)+" (« "+(model.name||"vide")+" ») chargé depuis le dump banque.");
+      document.querySelector('.tab[data-t="general"]').click();
+    };
+    const tdC=document.createElement("td"); tdC.style.padding="2px 4px"; tdC.style.textAlign="center";
+    if(!lost){
+      const bt=document.createElement("button"); bt.className="ghost"; bt.textContent="📚";
+      bt.title="Importer ce slot dans le catalogue";
+      bt.onclick=ev=>{ ev.stopPropagation();
+        const sr=bank.bytes.slice(n*144,(n+1)*144); const mm=parse(Uint8Array.from(sr));
+        const c=catLoad(); c.push({id:Date.now(), name:mm.name||slotName(n), slot:n, ts:Date.now(), bytes:sr});
+        catSave(c); catRefresh(); $("catSel").value=String(c.length-1);
+        log(`📚 Slot ${slotName(n)} (« ${mm.name||"vide"} ») importé dans le catalogue.`,"status-ok");
+        toast("Slot "+slotName(n)+" importé dans le catalogue"); };
+      tdC.appendChild(bt);
+    }
+    tr.appendChild(tdC);
+    tb.appendChild(tr);
+  }
+}
+$("btnBankDump").onclick=bankStart;
+
+// ============ Envoi d'un package complet vers le KN2000 (séquentiel ITR) ============
+let bankSending=false;
+$("btnBankSend").onclick=async()=>{
+  if(bankSending){ toast("Envoi déjà en cours"); return; }
+  const bank=bankLoad(); if(!bank||!bank.bytes||bank.bytes.length<144){ toast("Pas de banque chargée — dump, import ou 📂 Charger d'abord"); return; }
+  const nSlots=Math.floor(bank.bytes.length/144);
+  if(nSlots<36) log(`⚠️ Banque partielle : ${nSlots}/36 slots — seuls ces ${nSlots} slots seront envoyés.`,"status-ko");
+  if(!ARMED){ log("ℹ️ Envoyer le package exige l'écriture ARMÉE (bouton 🔒).","status-ko"); toast("Écriture non armée"); return; }
+  if(!midiIn||!midiOut){ toast("Non connecté au KN2000"); return; }
+  if(!confirm("Envoyer la banque chargée vers le KN2000 ?\n"+nSlots+" slots × 144 octets ("+(nSlots*144)+" octets, ~"+Math.ceil(nSlots*144*60/60000)+" min)\nLa Sound Memory sera écrasée — garde un dump/package de sauvegarde !\n⚠️ Après coupure prolongée (>~80 min hors tension), le KN2000 perd les sons : garde ce package pour pouvoir le renvoyer.")) return;
+  bankSending=true; $("btnBankSend").disabled=true;
+  log(`📤 Envoi de la banque chargée vers le KN2000 : ${nSlots} slots, ITR séquencés 60 ms…`,"status-ok");
+  for(let n=0;n<nSlots;n++){
+    for(let off=0;off<144;off++){
+      send(msgITR(n,off,bank.bytes[n*144+off]));
+      await new Promise(r=>setTimeout(r,60));
+    }
+    $("progress").textContent=`📤 envoi ${n+1}/${nSlots} slots`;
+    log(`📤 Slot ${slotName(n)} envoyé (${n+1}/${nSlots}).`);
+  }
+  $("progress").textContent="✓ package envoyé";
+  log("📤 Package entièrement envoyé vers le KN2000 — vérifie en relisant un slot ou en refaisant un dump.","status-ok");
+  log("⚠️ Mémoire volatile : le KN2000 ne conserve les sons que ~80 min hors tension — garde ce package pour pouvoir le renvoyer après une coupure.","status-ko");
+
+  toast("Package envoyé vers le clavier");
+  bankSending=false; $("btnBankSend").disabled=false;
+  scheduleApply();
+};
+
+$("btnBankExport").onclick=async()=>{
+  const bank=bankLoad(); if(!bank){ toast("Pas de banque en mémoire — fais un dump d'abord"); return; }
+  const out={ ts:new Date(bank.ts).toISOString(), slots:[], raw_hex: bank.bytes.map(x=>x.toString(16).padStart(2,"0")).join("") };
+  for(let n=0;n<36;n++){ const m=parse(Uint8Array.from(bank.bytes.slice(n*144,(n+1)*144)));
+    out.slots.push({ slot:slotName(n), name:m.name, model:m }); }
+  await saveJson("kn2000_soundmemory_bank.json", JSON.stringify(out,null,1), "Banque exportée"); // v0.9.12 : dossier de travail d'abord
+};
+
+// ============ Bibliothèque de packages de sonorités ============
+function hexToBytes(h){ const o=[]; for(let i=0;i+1<h.length;i+=2) o.push(parseInt(h.substr(i,2),16)); return o; }
+function libLoad(){ try{ return JSON.parse(localStorage.getItem("kn2000_se_v06_banks")||"[]"); }catch(e){ return []; } }
+function libSave(l){ try{ localStorage.setItem("kn2000_se_v06_banks", JSON.stringify(l)); }
+  catch(e){ log("⚠️ Stockage navigateur plein — exporte en JSON et supprime des packages.","status-ko"); } }
+function pkgFileName(nm){ return "kn2000_package_"+String(nm).replace(/[^\wÀ-ÿ\- ]+/g,"").trim().replace(/\s+/g,"_")+".json"; }
+async function pkgListFiles(){ // packages du dossier utilisateur (fichiers kn2000_package_*.json)
+  const out=[];
+  if(!catDir) return out;
+  try{
+    for await (const [name,h] of catDir.entries()){
+      if(h.kind==="file"&&/^kn2000_package_.*\.json$/i.test(name)){
+        try{ const j=JSON.parse(await (await h.getFile()).text());
+          if(j.raw_hex&&/^[0-9a-f]+$/i.test(j.raw_hex))
+            out.push({ fname:name, name:j.name||name, ts:j.ts||0, partial:j.partial||null, raw_hex:j.raw_hex });
+        }catch(e){}
+      }
+    }
+  }catch(e){}
+  return out;
+}
+async function pkgWriteFile(nm,ts,partial,bytes,fname){
+  if(!catDir||!(await dirPerm(catDir))) return false;
+  try{
+    const obj={ name:nm, ts:ts, partial:partial||null, raw_hex:bytes.map(x=>x.toString(16).padStart(2,"0")).join("") };
+    const fh=await catDir.getFileHandle(fname||pkgFileName(nm),{create:true});
+    const w=await fh.createWritable(); await w.write(JSON.stringify(obj,null,1)); await w.close();
+    return true;
+  }catch(e){ log("⚠️ Écriture du fichier package impossible : "+e.message,"status-ko"); return false; }
+}
+async function libRefresh(){
+  const sel=$("bankLib"); if(!sel) return;
+  const files=await pkgListFiles();
+  const l=libLoad();
+  let html='<option value="">— bibliothèque ('+(files.length+l.length)+') —</option>';
+  if(catDir||files.length){
+    html+='<optgroup label="📁 Dossier utilisateur">'+(files.length
+      ? files.map(f=>`<option value="f:${f.fname}">${f.name} · ${new Date(f.ts).toLocaleString()}</option>`).join("")
+      : '<option value="" disabled>(aucun package)</option>')+'</optgroup>';
+  }
+  html+='<optgroup label="💾 Navigateur">'+(l.length
+    ? l.map((b,i)=>`<option value="l:${i}">${b.name} · ${new Date(b.ts).toLocaleDateString()}</option>`).join("")
+    : '<option value="" disabled>(aucun package)</option>')+'</optgroup>';
+  sel.innerHTML=html;
+}
+$("btnBankImport").onclick=()=>openJson("kn2000_soundmemory_bank.json", bankImportFile); // v0.9.12 : dossier de travail d'abord
+async function bankImportFile(f){
+  try{
+    const j=JSON.parse(await f.text());
+    let bytes=null;
+    if(j.raw_hex && /^[0-9a-f]+$/i.test(j.raw_hex)) bytes=hexToBytes(j.raw_hex);
+    else if(Array.isArray(j.bytes)) bytes=j.bytes;
+    if(!bytes || bytes.length<144) throw new Error("pas de champ raw_hex valide");
+    if(bytes.length<5184) log(`⚠️ Fichier partiel : ${bytes.length} octets (${Math.floor(bytes.length/144)} slots).`);
+    else bytes=bytes.slice(0,5184);
+    const bank={ ts:j.ts?new Date(j.ts).getTime():Date.now(), bytes, partial: bytes.length<5184?Math.floor(bytes.length/144):null };
+    try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(err){}
+    renderBank(bank); bankRepair(bank); libRefresh();
+    log(`📥 Banque importée : « ${f.name} » (${Math.floor(bytes.length/144)} slots).`,"status-ok");
+    toast("Banque importée");
+  }catch(err){ log(`⚠️ Import impossible (« ${f.name} ») : ${err.message}`,"status-ko"); }
+}
+$("btnBankSaveLib").onclick=async()=>{
+  const bank=bankLoad(); if(!bank||!bank.bytes){ toast("Pas de banque en mémoire — dump ou import d'abord"); return; }
+  const nm=prompt("Nom du package de sonorités :","Banque "+new Date().toLocaleDateString());
+  if(!nm) return;
+  if(catDir && await pkgWriteFile(nm,Date.now(),bank.partial,bank.bytes)){
+    bank.srcF=pkgFileName(nm); bank.srcName=nm; bank.srcIdx=null;
+    try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){}
+    await libRefresh(); $("bankLib").value="f:"+bank.srcF;
+    log(`💾 Package « ${nm} » archivé dans le dossier utilisateur (📁 ${bank.srcF}) — les copies 📦 mettront à jour ce fichier.`,"status-ok");
+  } else {
+    const l=libLoad(); l.push({ name:nm, ts:Date.now(), bytes:bank.bytes, partial:bank.partial||null });
+    bank.srcIdx=l.length-1; bank.srcF=null; bank.srcName=nm;
+    try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){}
+    libSave(l); await libRefresh(); $("bankLib").value="l:"+(l.length-1);
+    log(`💾 Package « ${nm} » archivé (stockage navigateur${catDir?" — dossier refusé/indisponible":" — pas de dossier choisi"}).`,"status-ok");
+  }
+};
+$("btnBankLoad").onclick=async()=>{
+  const v=$("bankLib").value; if(!v){ toast("Choisis un package dans la liste"); return; }
+  if(v[0]==="f"){
+    const fname=v.slice(2);
+    try{
+      const fh=await catDir.getFileHandle(fname); const j=JSON.parse(await (await fh.getFile()).text());
+      const bytes=hexToBytes(j.raw_hex||"");
+      if(!bytes||bytes.length<144) throw new Error("données invalides");
+      const bank={ ts:j.ts||Date.now(), bytes, partial:j.partial||null, srcF:fname, srcName:j.name||fname };
+      try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){}
+      renderBank(bank);
+      $("bankStatus").textContent=(bank.partial?"⚠ PARTIEL ("+bank.partial+"/36)":"✓ 36 slots")+" : "+bank.srcName;
+      log(`📂 Package « ${bank.srcName} » chargé depuis le dossier utilisateur (📁 ${fname}).`,"status-ok");
+    }catch(e){ toast("Lecture du package impossible : "+e.message); }
+  } else {
+    const i=+v.slice(2); if(isNaN(i)){ toast("Choisis un package dans la liste"); return; }
+    const l=libLoad(); const b=l[i]; if(!b){ toast("Package introuvable"); return; }
+    try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify({ts:b.ts,bytes:b.bytes,partial:b.partial||null,srcIdx:i})); }catch(e){}
+    renderBank({ts:b.ts,bytes:b.bytes,partial:b.partial||null,srcIdx:i});
+    $("bankStatus").textContent=(b.partial?"⚠ PARTIEL ("+b.partial+"/36)":"✓ chargé")+" : "+b.name;
+    log(`📂 Package « ${b.name} » chargé (stockage navigateur).`,"status-ok");
+  }
+};
+$("btnBankDel").onclick=async()=>{
+  const v=$("bankLib").value; if(!v){ toast("Choisis un package à supprimer"); return; }
+  if(v[0]==="f"){
+    const fname=v.slice(2);
+    if(!confirm("Supprimer le fichier package « "+fname+" » du dossier utilisateur ?")) return;
+    try{ await catDir.removeEntry(fname); log(`🗑 Fichier package « ${fname} » supprimé du dossier.`); }
+    catch(e){ toast("Suppression impossible : "+e.message); return; }
+    const bank=bankLoad();
+    if(bank&&bank.srcF===fname){ bank.srcF=null; try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){} log("ℹ️ Banque chargée déliée de son package (supprimé)."); }
+  } else {
+    const i=+v.slice(2); if(isNaN(i)){ toast("Choisis un package à supprimer"); return; }
+    const l=libLoad(); const b=l.splice(i,1)[0]; libSave(l);
+    if(b) log(`🗑 Package « ${b.name} » supprimé du stockage navigateur.`);
+    const bank=bankLoad();
+    if(bank&&bank.srcIdx!=null){
+      if(bank.srcIdx===i){ bank.srcIdx=null; try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){} log("ℹ️ Banque chargée déliée de son package (supprimé)."); }
+      else if(bank.srcIdx>i){ bank.srcIdx--; try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){} }
+    }
+  }
+  await libRefresh();
+};
+
+// ============ Catalogue de sonorités (sons isolés 144 octets) ============
+function catLoad(){ try{ return JSON.parse(localStorage.getItem("kn2000_se_v06_catalog")||"[]"); }catch(e){ return []; } }
+function catSave(c){ try{ localStorage.setItem("kn2000_se_v06_catalog", JSON.stringify(c)); }
+  catch(e){ log("⚠️ Stockage navigateur plein — exporte le catalogue en JSON et supprime des sons.","status-ko"); } }
+function catRefresh(){
+  const sel=$("catSel"); if(!sel) return; const c=catLoad();
+  sel.innerHTML='<option value="">— catalogue ('+c.length+') —</option>'+
+    c.map((s,i)=>`<option value="${i}">${s.name} · ${slotName(s.slot)} · ${new Date(s.ts).toLocaleDateString()}</option>`).join("");
+}
+$("btnCatAdd").onclick=()=>{
+  if(!raw||!model){ toast("Rien à ajouter — lis d'abord un son"); return; }
+  let nm=prompt("Nom de la sonorité :", model.name || slotName(curSlot)); if(!nm) return;
+  const c=catLoad(); c.push({ id:Date.now(), name:nm, slot:curSlot, ts:Date.now(), bytes:[...raw] });
+  catSave(c); catRefresh(); $("catSel").value=String(c.length-1);
+  log(`💾 Son « ${nm} » (${slotName(curSlot)}) ajouté au catalogue (${c.length} son(s)).`,"status-ok");
+  toast("Son ajouté au catalogue");
+};
+$("btnCatSend").onclick=async()=>{
+  const i=+$("catSel").value; if(isNaN(i)){ toast("Choisis un son dans le catalogue"); return; }
+  const c=catLoad(); const s=c[i]; if(!s||!s.bytes||s.bytes.length!==144){ toast("Son introuvable"); return; }
+  if(!ARMED){ log("ℹ️ Envoyer vers le slot exige l'écriture ARMÉE (bouton 🔒).","status-ko"); toast("Écriture non armée"); return; }
+  if(!confirm("Écraser "+slotName(curSlot)+" avec « "+s.name+" » (du catalogue) ? (144 octets, ~10 s)")) return;
+  if(typeof raw==="undefined"||!raw) raw=new Uint8Array(144);
+  log("📚 Envoi de « "+s.name+" » vers "+slotName(curSlot)+" : écriture des 144 octets…","status-ok");
+  await writeAllBytes(s.bytes,"📚 « "+s.name+" »");
+  toast("Son « "+s.name+" » envoyé sur "+slotName(curSlot));
+};
+$("btnCatSendBank").onclick=async()=>{
+  const i=+$("catSel").value; if(isNaN(i)){ toast("Choisis un son dans le catalogue"); return; }
+  const dst=+$("catDstSlot").value; if(isNaN(dst)){ toast("Choisis le slot de destination"); return; }
+  const c=catLoad(); const s=c[i]; if(!s||!s.bytes||s.bytes.length!==144){ toast("Son introuvable"); return; }
+  const bank=bankLoad(); if(!bank||!bank.bytes){ toast("Pas de banque chargée — dump, import ou 📂 Charger d'abord"); return; }
+  if(bank.bytes.length<(dst+1)*144){ toast("Données trop courtes pour "+slotName(dst)); return; }
+  if(!confirm("Remplacer "+slotName(dst)+" de la banque chargée par « "+s.name+" » (catalogue) ? (navigateur seulement, rien vers le clavier)")) return;
+  for(let o=0;o<144;o++) bank.bytes[dst*144+o]=s.bytes[o];
+  bank.ts=Date.now();
+  let srcF=bank.srcF||null, srcName=bank.srcName||null, pkgIdx=bank.srcIdx;
+  if(srcF==null && pkgIdx==null){
+    const v=$("bankLib").value;
+    if(v && v[0]==="f"){ if(!confirm("La banque chargée n'est pas liée à un package. Mettre à jour le package du dossier sélectionné dans la liste ?")) { log("ℹ️ Copie annulée — aucun package lié."); return; } srcF=v.slice(2); }
+    else if(v && v[0]==="l"){ const ii=+v.slice(2); const l0=libLoad();
+      if(!isNaN(ii)&&l0[ii]){ if(!confirm("La banque chargée n'est pas liée à un package. Mettre à jour le package « "+l0[ii].name+" » (navigateur) sélectionné ?")) { log("ℹ️ Copie annulée — aucun package lié."); return; } pkgIdx=ii; } }
+    else log("⚠️ Aucun package lié ni sélectionné — SEULE la banque chargée sera modifiée (💾 Archiver en package pour la lier).","status-ko");
+  }
+  try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){}
+  if(srcF!=null){
+    if(await pkgWriteFile(srcName||srcF, bank.ts, bank.partial, bank.bytes, srcF)){
+      bank.srcF=srcF; if(srcName) bank.srcName=srcName;
+      try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){}
+      await libRefresh(); $("bankLib").value="f:"+srcF;
+      log(`📦 Package « ${srcName||srcF} » mis à jour dans le dossier utilisateur.`,"status-ok");
+    } else log("⚠️ Écriture du package impossible — seule la banque chargée a été modifiée.","status-ko");
+  } else if(pkgIdx!=null){
+    const l=libLoad();
+    if(l[pkgIdx]){ l[pkgIdx].bytes=bank.bytes; l[pkgIdx].ts=bank.ts; l[pkgIdx].partial=bank.partial||null;
+      libSave(l); await libRefresh(); $("bankLib").value="l:"+pkgIdx;
+      bank.srcIdx=pkgIdx; try{ localStorage.setItem("kn2000_se_v06_bank", JSON.stringify(bank)); }catch(e){}
+      log(`📦 Package « ${l[pkgIdx].name} » mis à jour (stockage navigateur).`,"status-ok");
+    } else log("⚠️ Package source introuvable — seule la banque chargée a été modifiée.","status-ko");
+
+  }
+  renderBank(bank);
+  $("bankStatus").textContent=(bank.partial?"⚠ PARTIEL ("+bank.partial+"/36)":"✓ 36 slots")+" · modifié "+new Date(bank.ts).toLocaleTimeString();
+  log(`📦 « ${s.name} » copié dans ${slotName(dst)} de la banque chargée.`,"status-ok");
+  toast("« "+s.name+" » → "+slotName(dst));
+};
+$("btnCatRename").onclick=()=>{
+  const i=+$("catSel").value; if(isNaN(i)){ toast("Choisis un son à renommer"); return; }
+  const c=catLoad(); if(!c[i]) return;
+  const nm=prompt("Nouveau nom :", c[i].name); if(!nm) return;
+  c[i].name=nm; catSave(c); catRefresh(); $("catSel").value=String(i);
+};
+$("btnCatDel").onclick=()=>{
+  const i=+$("catSel").value; if(isNaN(i)){ toast("Choisis un son à supprimer"); return; }
+  const c=catLoad(); const s=c.splice(i,1)[0]; catSave(c); catRefresh();
+  if(s) log(`🗑 Son « ${s.name} » supprimé du catalogue.`);
+};
+// ---- Préférences catalogue : dossier + nom de fichier (File System Access, Chromium) ----
+let catDir=null; // FileSystemDirectoryHandle du dossier catalogue
+function catNamePref(){ try{ return localStorage.getItem("kn2000_se_v06_catname")||"kn2000_sound_catalog.json"; }catch(e){ return "kn2000_sound_catalog.json"; } }
+function catSetDirUI(){ $("btnCatDir").textContent=catDir?("📁 "+catDir.name):"📁 Dossier de travail : non défini"; $("btnCatDirForget").style.display=catDir?"":"none"; }
+function idbOpen(){ return new Promise(res=>{ const r=indexedDB.open("kn2000_se",1);
+  r.onupgradeneeded=()=>{ r.result.createObjectStore("h"); }; r.onsuccess=()=>res(r.result); r.onerror=()=>res(null); }); }
+async function idbPutDir(h){ const db=await idbOpen(); if(!db) return; try{ const t=db.transaction("h","readwrite"); t.objectStore("h").put(h,"catDir"); }catch(e){} }
+async function idbGetDir(){ const db=await idbOpen(); if(!db) return null; return new Promise(res=>{ try{ const q=db.transaction("h","readonly").objectStore("h").get("catDir"); q.onsuccess=()=>res(q.result||null); q.onerror=()=>res(null); }catch(e){ res(null); } }); }
+async function idbDelDir(){ const db=await idbOpen(); if(!db) return; try{ db.transaction("h","readwrite").objectStore("h").delete("catDir"); }catch(e){} }
+async function dirPerm(h){ // demande (ou vérifie) l'autorisation d'écriture — doit être déclenchée par un clic
+  try{ if(await h.queryPermission({mode:"readwrite"})==="granted") return true;
+        return (await h.requestPermission({mode:"readwrite"}))==="granted"; }catch(e){ return false; } }
+// ---- v0.9.12 : DOSSIER DE TRAVAIL GÉNÉRIQUE (b+d) — utilisé par TOUS les exports/imports ----
+async function dirWrite(name, txt){ // écrit dans le dossier de travail → true
+  if(!catDir||!(await dirPerm(catDir))) return false;
+  try{ const fh=await catDir.getFileHandle(name,{create:true}); const w=await fh.createWritable(); await w.write(txt); await w.close(); return true; }
+  catch(e){ log("⚠️ Écriture « "+name+" » impossible : "+e.message,"status-ko"); return false; }
+}
+async function dirRead(name){ // lit un fichier du dossier de travail → File|null
+  if(!catDir||!(await dirPerm(catDir))) return null;
+  try{ return await (await catDir.getFileHandle(name)).getFile(); }catch(e){ return null; }
+}
+async function saveJson(name, txt, label){ // dossier de travail d'abord, repli Téléchargements
+  if(await dirWrite(name, txt)){ log(`📁 ${label} : « ${name} » écrit dans le dossier de travail (${catDir.name}).`,"status-ok"); toast(label+" → 📁 "+catDir.name); return; }
+  const blob=new Blob([txt],{type:"application/json"}); const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href);
+  log(`⬇️ ${label} : « ${name} » (Téléchargements${catDir?" — dossier refusé/indisponible":" — aucun dossier choisi"}).`,"status-ok");
+}
+async function openJson(defaultName, cb){ // import générique : dossier de travail d'abord, repli sélecteur système puis <input>
+  const f=await dirRead(defaultName);
+  if(f){ log(`📂 ${defaultName} lu depuis le dossier de travail (${catDir.name}).`,"status-ok"); cb(f); return; }
+  if(window.showOpenFilePicker){
+    const opts={ multiple:false, types:CAT_TYPE };
+    if(catDir && await dirPerm(catDir)) opts.startIn=catDir;
+    try{ const [fh]=await window.showOpenFilePicker(opts); cb(await fh.getFile()); return; }
+    catch(e){ if(e.name==="AbortError") return; }
+  }
+  const i=document.createElement("input"); i.type="file"; i.accept=".json,application/json";
+  i.onchange=()=>{ if(i.files[0]) cb(i.files[0]); };
+  i.click();
+}
+const CAT_TYPE=[{description:"JSON catalogue",accept:{"application/json":[".json"]}}];
+if(window.showDirectoryPicker){ // API disponible (Chrome/Edge) : on propose la préférence dossier
+  $("btnCatDir").style.display=""; $("catDirLegend").style.display="";
+  $("btnCatDir").onclick=async()=>{
+    try{ const d=await window.showDirectoryPicker({mode:"readwrite"}); catDir=d; await idbPutDir(d); catSetDirUI();
+      log(`📁 Dossier de travail : « ${d.name} » (utilisé par tous les exports/imports).`,"status-ok");
+    }catch(e){ if(e.name!=="AbortError") log("⚠️ Choix du dossier impossible : "+e.message,"status-ko"); }
+  };
+  $("btnCatDirForget").onclick=async()=>{ catDir=null; await idbDelDir(); catSetDirUI(); log("📁 Dossier de travail oublié."); };
+  idbGetDir().then(h=>{ if(h){ catDir=h; catSetDirUI(); libRefresh(); } });
+}
+$("btnCatExport").onclick=async()=>{
+  const c=catLoad(); if(!c.length){ toast("Catalogue vide"); return; }
+  const txt=JSON.stringify({ ts:new Date().toISOString(), sounds: c.map(s=>({ name:s.name, slot:slotName(s.slot), ts:new Date(s.ts).toISOString(), raw_hex:s.bytes.map(x=>x.toString(16).padStart(2,"0")).join("") })) },null,1);
+  if(window.showSaveFilePicker){
+    const opts={ suggestedName:catNamePref(), types:CAT_TYPE };
+    if(catDir && await dirPerm(catDir)) opts.startIn=catDir; // s'ouvre directement dans le dossier choisi
+    try{
+      const fh=await window.showSaveFilePicker(opts);
+      const w=await fh.createWritable(); await w.write(txt); await w.close();
+      try{ localStorage.setItem("kn2000_se_v06_catname", fh.name); }catch(e){}
+      log(`⬇️ Catalogue exporté : « ${fh.name} » (${c.length} son(s)).`,"status-ok");
+      toast("Catalogue exporté");
+      return;
+    }catch(e){ if(e.name==="AbortError") return; log("⚠️ Export navigateur : "+e.message+" — export classique vers Téléchargements.","status-ko"); }
+  }
+  const blob=new Blob([txt],{type:"application/json"}); // repli : Téléchargements
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download=catNamePref(); a.click(); URL.revokeObjectURL(a.href);
+  log(`⬇️ Catalogue exporté (Téléchargements) : « ${catNamePref()} ».`,"status-ok");
+};
+async function importCatJson(fname,text){
+  const j=JSON.parse(text);
+  let list=[];
+  if(Array.isArray(j.sounds)) list=j.sounds;
+  else if(j.raw_hex&&/^[0-9a-f]+$/i.test(j.raw_hex)) list=[j]; // export single d'un son (btnExport)
+  else if(Array.isArray(j)) list=j;
+  const c=catLoad(); let n=0;
+  for(const s of list){
+    let bytes=null;
+    if(s.raw_hex&&/^[0-9a-f]+$/i.test(s.raw_hex)) bytes=hexToBytes(s.raw_hex);
+    else if(Array.isArray(s.bytes)) bytes=s.bytes;
+    if(!bytes||bytes.length<144){ log(`⚠️ « ${s.name||"?"} » ignoré (pas de 144 octets valides).`,"status-ko"); continue; }
+    c.push({ id:Date.now()+n, name:s.name||"import", slot:0, ts:s.ts?new Date(s.ts).getTime():Date.now(), bytes:bytes.slice(0,144) });
+    n++;
+  }
+  catSave(c); catRefresh();
+  log(`📥 Catalogue importé : « ${fname} » — ${n} son(s) ajouté(s) (total ${c.length}).`,"status-ok");
+  toast(n+" son(s) importé(s)");
+}
+$("btnCatImport").onclick=async()=>{
+  if(window.showOpenFilePicker){
+    const opts={ types:CAT_TYPE, multiple:false };
+    if(catDir && await dirPerm(catDir)) opts.startIn=catDir; // s'ouvre dans le dossier choisi
+    try{ const [fh]=await window.showOpenFilePicker(opts); const f=await fh.getFile();
+      await importCatJson(f.name, await f.text()); return;
+    }catch(e){ if(e.name==="AbortError") return; log("⚠️ Sélecteur fichiers impossible : "+e.message+" — sélection classique.","status-ko"); }
+  }
+  $("catFile").click(); // repli : sélecteur classique
+};
+$("catFile").onchange=async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{ await importCatJson(f.name, await f.text()); }
+  catch(err){ log(`⚠️ Import impossible (« ${f.name} ») : ${err.message}`,"status-ko"); }
+  e.target.value="";
+};
+
+// ============ Exemple usine A-1 (DiPiano Piano) ============
+const DEMO=(()=>{ const b=new Uint8Array(144);
+  const nm="DiPiano Piano"; for(let i=0;i<nm.length;i++) b[i]=nm.charCodeAt(i);
+  b[0x10]=0x4C; b[0x11]=0x58; b[0x16]=0x40; b[0x19]=0x00; b[0x1C]=0x00; b[0x1E]=0x08;
+  b[0x1F]=0x40; b[0x20]=0x1E; b[0x21]=0x13; b[0x22]=0x0A; b[0x23]=0x00; b[0x24]=0x64; b[0x25]=0x40; b[0x26]=0x02;
+  b[0x28]=0xC0; b[0x29]=0x00; b[0x2A]=0x00; b[0x2D]=0x54; b[0x2E]=0x1E;
+  b[0x33]=0x00; b[0x34]=0x18; b[0x35]=0x2C; b[0x36]=0x16; b[0x39]=0x14; b[0x43]=0x7F; b[0x46]=0xFF;
+  b[0x4A]=0xC0; b[0x4B]=0x05; b[0x4C]=0x01; b[0x4D]=0x08; b[0x4E]=0x02; b[0x4D+1]=0x00; b[0x4E-2+1]=0;
+  b[0x4B+0x18]=0x00;
+  b[0x53]=0x00; b[0x55]=0x1E; b[0x56]=0x20; b[0x59]=0x18; b[0x63]=0x7F; b[0x66]=0xFF;
+  return b; })();
+
+// ============ Auto-application (⚡) : recharge le SLOT en cours sur les parts qui le jouent ============
+let applyTimer=null;
+function scheduleApply(){
+  if(!$("autoApply") || !$("autoApply").checked) return;
+  if(applyTimer) clearTimeout(applyTimer);
+  applyTimer=setTimeout(async()=>{
+    const sts=await freshParts();                    // états fraîchement relus à chaque fois (jamais de valeur périmée)
+    const targets=partsOnSlot(sts,curSlot);
+    if(!targets.length){ log("⚡ Modifs écrites dans "+slotName(curSlot)+", mais aucune part ne le joue — sélectionne-le sur une part du clavier pour l'entendre.","status-ko"); return; }
+    targets.forEach(st=>send(msgITRaddr([0x20,0x10+st.n,0x00],[curSlot,0x80])));
+    log("⚡ "+slotName(curSlot)+" rechargé sur "+targets.map(t=>PARTS[t.n][0]).join(", ")+" — modifs audibles.");
+  },400);
+}
+
+// ============ Écriture armée (bouton-état dans la barre d'outils) ============
+let ARMED=false;
+function setArmed(v){ ARMED=v;
+  const ba=$("btnArm");
+  ba.textContent=v?"🔓 ÉCRITURE ARMÉE":"🔒 Écriture : OFF";
+  ba.classList.toggle("warn",v); ba.classList.toggle("ghost",!v);
+  log(v?"⚠️ Écriture ARMÉE — prudence.":"Écriture désarmée.", v?"status-ko":null); }
+$("btnArm").onclick=()=>setArmed(!ARMED);
+// Journal sysex : masqué par défaut, bascule via le bouton 📜 de la barre d'outils
+$("btnLogToggle").onclick=()=>{
+  const c=$("logCard"); const show=c.style.display==="none";
+  c.style.display=show?"":"none";
+  $("btnLogToggle").classList.toggle("warn",show);
+  if(show) log("📜 Journal affiché."); };
+
+// ============ État clavier & application (parts R1/R2/L : 20 1n 00) ============
+const PARTS=[["RIGHT1",0],["RIGHT2",1],["LEFT",2]];
+let partStates=null;
+async function readAllParts(){
+  const out=[];
+  for(let n=0;n<3;n++){
+    const dt=await readAddr([0x20,0x10+n,0x00],2);
+    out.push(dt&&dt.length>=2?{n:n,pc:dt[0],bank:dt[1]}:null);
+  }
+  return out;
+}
+function renderPartStates(sts){
+  sts.forEach((st,n)=>{
+    const el=$("pS"+n); if(!el) return;
+    el.textContent=PARTS[n][0]+" : "+(st?interpPart(st.pc,st.bank):"pas de réponse");
+  });
+}
+async function freshParts(){ const sts=await readAllParts(); partStates=sts; renderPartStates(sts); return sts; }
+// Interprétation de l'état part : PC+bank de la sound map officielle (Reference Guide p.3-5, SMIDX).
+// Relevés terrain 25/10 : Memory A-1 = PC 0 bank 0x80 ; Piano = 0|0 ; E.Piano 2 = 5|32 ; Agogo = 122|0 — tout colle avec SMIDX.
+function interpPart(pc,bank){
+  const k=pc+"|"+bank;
+  if(SMIDX[k]) return SMIDX[k].replace("|"," — ");
+  if((bank&0x80)&&pc<36) return "SOUND MEMORY slot "+slotName(pc);
+  return "son inconnu (PC "+pc+" · bank "+bank+")";
+}
+// Parts qui jouent le slot courant (Sound Memory : PC = n° slot, bank 0x80)
+function partsOnSlot(sts,slot){ return (sts||[]).filter(st=>st&&(st.bank&0x80)&&st.pc===slot); }
+const NB=[0,0]; // voisin d'aller-retour éventuel : PC 0 · bank 0 (Piano) — codé en dur
+$("btnPartRead").onclick=async()=>{
+  const sts=await freshParts();
+  log("📍 États des 3 parts : "+sts.map((st,n)=>PARTS[n][0]+" = "+(st?interpPart(st.pc,st.bank)+" (PC "+st.pc+" bank "+st.bank+")":"?")).join(" · "),"status-ok");
+};
+
+// ============ Export / boutons ============
+$("btnExport").onclick=async()=>{
+  if(!raw){ toast("Rien à exporter — lis d'abord un son"); return; }
+  const out={ slot:slotName(curSlot), ts:new Date().toISOString(), model:model, raw_hex:Array.from(raw,x=>x.toString(16).padStart(2,"0")).join("") };
+  await saveJson("kn2000_sound_"+slotName(curSlot)+".json", JSON.stringify(out,null,1), "Son exporté"); // v0.9.12 : dossier de travail d'abord
+};
+$("btnDemo").onclick=()=>{ raw=DEMO.slice(); model=parse(raw); bind(model);
+  setSource("DÉMO (exemple usine)","Exemple A-1 usine, valeurs d'illustration — PAS les données machine");
+  log("Exemple usine A-1 « DiPiano Piano » chargé (démo — valeurs partiellement plausibles).");
+  toast("Exemple chargé (démo)"); };
+
+// ============ APC Key 25 mk2 — surface de contrôle live ============
+const APC_PART_PADS=[0,8,16]; // 1re colonne, bas → haut : RIGHT1, RIGHT2, LEFT
+const APC_PARAMS=[
+ {f:"",l:"— aucun —"},
+ {f:"t0_key",l:"1st · Key ±24"},{f:"t0_tune",l:"1st · Tune ±50"},{f:"t0_vol",l:"1st · Volume"},{f:"t0_tch",l:"1st · Touch depth"},{f:"t0_tcur",l:"1st · Touch curve"},{f:"t0_lkf",l:"1st · Lvl KF slope"},{f:"t0_atk",l:"1st · Attack"},{f:"t0_dc1",l:"1st · Decay 1"},{f:"t0_s1",l:"1st · Sustain 1"},{f:"t0_dc2",l:"1st · Decay 2"},{f:"t0_s2",l:"1st · Sustain 2"},{f:"t0_rls",l:"1st · Release"},{f:"t0_tat",l:"1st · Touch attack"},{f:"t0_ekfA",l:"1st · EKF atk"},{f:"t0_ekfD",l:"1st · EKF dcy"},{f:"t0_ekfR",l:"1st · EKF rls"},{f:"t0_cut",l:"1st · Cutoff"},{f:"t0_ftch",l:"1st · Flt touch"},{f:"t0_fcur",l:"1st · Flt curve"},{f:"t0_fsl",l:"1st · Flt slope"},
+ {f:"t1_key",l:"2nd · Key ±24"},{f:"t1_tune",l:"2nd · Tune ±50"},{f:"t1_vol",l:"2nd · Volume"},{f:"t1_tch",l:"2nd · Touch depth"},{f:"t1_tcur",l:"2nd · Touch curve"},{f:"t1_lkf",l:"2nd · Lvl KF slope"},{f:"t1_atk",l:"2nd · Attack"},{f:"t1_dc1",l:"2nd · Decay 1"},{f:"t1_s1",l:"2nd · Sustain 1"},{f:"t1_dc2",l:"2nd · Decay 2"},{f:"t1_s2",l:"2nd · Sustain 2"},{f:"t1_rls",l:"2nd · Release"},{f:"t1_tat",l:"2nd · Touch attack"},{f:"t1_ekfA",l:"2nd · EKF atk"},{f:"t1_ekfD",l:"2nd · EKF dcy"},{f:"t1_ekfR",l:"2nd · EKF rls"},{f:"t1_cut",l:"2nd · Cutoff"},{f:"t1_ftch",l:"2nd · Flt touch"},{f:"t1_fcur",l:"2nd · Flt curve"},{f:"t1_fsl",l:"2nd · Flt slope"},
+ {f:"t2_key",l:"sub · Key ±24"},{f:"t2_tune",l:"sub · Tune ±50"},{f:"t2_vol",l:"sub · Volume"},{f:"t2_tch",l:"sub · Touch depth"},{f:"t2_tcur",l:"sub · Touch curve"},{f:"t2_lkf",l:"sub · Lvl KF slope"},{f:"t2_atk",l:"sub · Attack"},{f:"t2_dc1",l:"sub · Decay 1"},{f:"t2_s1",l:"sub · Sustain 1"},{f:"t2_dc2",l:"sub · Decay 2"},{f:"t2_s2",l:"sub · Sustain 2"},{f:"t2_rls",l:"sub · Release"},{f:"t2_tat",l:"sub · Touch attack"},{f:"t2_ekfA",l:"sub · EKF atk"},{f:"t2_ekfD",l:"sub · EKF dcy"},{f:"t2_ekfR",l:"sub · EKF rls"},{f:"t2_cut",l:"sub · Cutoff"},{f:"t2_ftch",l:"sub · Flt touch"},{f:"t2_fcur",l:"sub · Flt curve"},{f:"t2_fsl",l:"sub · Flt slope"},
+ {f:"v12",l:"Vibrato vol depth"},{f:"v13",l:"Vibrato pitch depth"},{f:"v14",l:"Vibrato speed"},{f:"v15",l:"Vibrato delay"},
+ {f:"v17",l:"Auto bend depth"},{f:"v18",l:"Auto bend speed"},
+ {f:"v1A",l:"Modulation depth"},{f:"v1B",l:"Modulation speed"},
+ {f:"v1C",l:"Distortion depth"},{f:"v1D",l:"Distortion touch"},{f:"v1E",l:"Reverb depth"},
+ {f:"v20",l:"FX param 1 (selon type)"},{f:"v21",l:"FX param 2"},{f:"v22",l:"FX param 3"},{f:"v23",l:"FX param 4"}
+];
+const APC_TOGGLES=[
+ {f:"",l:"— libre —",c:0x00},
+ {f:"glide",l:"Glide ON/OFF",c:0x29},
+ {f:"wheel",l:"Mod wheel ON/OFF",c:0x29},
+
+ {f:"t0_on",l:"Tone 1st ON/OFF",c:0x03},{f:"t1_on",l:"Tone 2nd ON/OFF",c:0x03},{f:"t2_on",l:"Tone sub ON/OFF",c:0x03},
+ {f:"vibT0",l:"Vibrato 1st ON/OFF",c:0x0D},{f:"vibT1",l:"Vibrato 2nd ON/OFF",c:0x0D},{f:"vibT2",l:"Vibrato sub ON/OFF",c:0x0D},
+ {f:"modOn",l:"Modulation ON/OFF",c:0x3D},
+ {f:"disOn",l:"Distortion ON/OFF",c:0x09},
+ {f:"fxOn",l:"Effect ON/OFF",c:0x45}
+];
+let APC=(()=>{ const nb=()=>({cc:[],par:Array(8).fill(""),btn:null});
+  let a=null; try{ a=JSON.parse(localStorage.getItem("kn2000_se_v06_apc")||"null"); }catch(e){}
+  if(a&&Array.isArray(a.banks)){ // migration v0.8 : 4 → 8 banques
+    while(a.banks.length<8) a.banks.push(nb());
+    a.banks=a.banks.slice(0,8); a.colors=a.colors||{}; return a; }
+  return { inId:null,outId:null,enc:"2c",bank:0,part:null,
+    banks:Array.from({length:8},nb), pads:{}, colors:{} }; })();
+function apcSave(){ try{ localStorage.setItem("kn2000_se_v06_apc", JSON.stringify(APC)); }catch(e){} }
+let apcLearn=null;
+function apcOut(){ if(!access||!APC.outId) return null; let o=null; access.outputs.forEach(x=>{ if(x.id===APC.outId) o=x; }); return o; }
+function apcLed(note,vel){ const o=apcOut(); if(o) o.send([0x90,note,vel]); } // boutons UI : LED mono, on/off seulement
+function apcLedP(note,vel){ const o=apcOut(); if(o) o.send([0x96,note,vel]); } // v0.9.2 : PADS RGB sur canal 0x96 = solid 100 % luminosité (0x90 = 10 %, invisible en jour)
+function apcBtnLeds(){ // sélecteurs de banque : pad → vert = banque active, gris = pad de banque inactif ; bouton (Track/Scene…) → LED simple on/off
+  APC.banks.forEach((b,i)=>{ if(b.btn==null) return;
+    if(b.btn<40) apcLedP(b.btn, i===APC.bank?0x21:0x02);   // pad RVB : palette
+    else apcLed(b.btn, i===APC.bank?0x01:0x00);           // bouton UI : LED simple (00=off, 01=on, 02=blink)
+  });
+}
+const APC_PALETTE=[["éteint",0x00],["gris",0x02],["blanc",0x03],["rouge",0x05],["orange",0x09],["jaune",0x0D],["vert",0x21],["vert clair",0x1C],["turquoise",0x29],["bleu",0x45],["magenta",0x3D],["rose",0x33]];
+function apcColorOf(f){ if(APC.colors&&APC.colors[f]!=null) return APC.colors[f]; const t=APC_TOGGLES.find(x=>x.f===f); return t?t.c:0x00; }
+function apcPadsLeds(){ // couleur fonction en continu sur chaque pad assigné (état OFF) — les pads utilisés comme sélecteurs de banque sont gérés par apcBtnLeds
+  Object.keys(APC.pads).forEach(n=>{ if(APC.banks.some(b=>b.btn===+n)) return; apcLedP(+n, apcColorOf(APC.pads[n])); });
+}
+function apcSt(){ const el=$("apcSt"); if(!el) return;
+  let ok=false; if(access&&APC.inId){ access.inputs.forEach(x=>{ if(x.id===APC.inId) ok=true; }); }
+  el.className="pill "+(ok?"on":"off"); el.textContent=ok?"APC connecté":"non connecté";
+}
+function apcAttach(){
+  if(!access) return;
+  if(APC.inId&&midiIn&&APC.inId===midiIn.id){ APC.inId=null; apcSave(); }
+  access.inputs.forEach(inp=>{ inp.onmidimessage = (inp.id===APC.inId) ? apcMsg : (midiIn&&inp.id===midiIn.id) ? onMidi : null; });
+  apcSt(); apcPadsLeds(); apcBtnLeds();
+}
+function apcSelectPart(pi){
+  $("apcPart").textContent=PARTS[pi][0]+" : lecture…";
+  [0,1,2].forEach((p,i)=>apcLedP(APC_PART_PADS[i], i===pi?0x03:0x02)); // blanc = active, gris = autres
+  APC.part=pi; apcSave();
+  if(!midiIn||!midiOut){ log("ℹ️ "+PARTS[pi][0]+" — connecte-toi au KN2000 pour lire la part.","status-ko"); return; }
+  freshParts().then(sts=>{ const st=sts[pi];
+    if(st&&(st.bank&0x80)&&st.pc<36){
+      $("apcPart").textContent=PARTS[pi][0]+" : "+slotName(st.pc);
+      log("🎛️ "+PARTS[pi][0]+" joue "+slotName(st.pc)+" — slot chargé, knobs actifs dessus.","status-ok");
+      apcLedP(APC_PART_PADS[pi],0x21); // vert = Memory sous contrôle
+      if(st.pc!==curSlot){ $("slotSel").value=String(st.pc); $("slotSel").onchange(); }
+    } else {
+      $("apcPart").textContent=PARTS[pi][0]+" : pas une Sound Memory";
+      log("ℹ️ "+PARTS[pi][0]+" = "+(st?interpPart(st.pc,st.bank):"?")+" — pas une Sound Memory, les knobs n'ont pas de cible machine.","status-ko");
+      apcLedP(APC_PART_PADS[pi],0x05); // rouge = pas de Memory
+    }});
+}
+function apcMsg(ev){
+  const d=ev.data, cmd=d[0]&0xf0;
+  if(cmd===0x90 && d[2]>0){ // Note On (pads & boutons)
+    const note=d[1];
+    if(apcLearn&&apcLearn.mode==="btn"){ APC.banks[apcLearn.bank].btn=note; apcSave(); apcLearn=null; apcUI();
+      log("🎓 Bouton Knob Control lié (note "+note+") — banque "+(APC.bank+1)+" active.","status-ok"); return; }
+    const bi=APC.banks.findIndex(b=>b.btn===note);
+    if(bi>=0){ APC.bank=bi; apcSave(); apcUI(); log("🎛️ Banque knobs "+(bi+1)+" active.","status-ok"); return; }
+    const pi=APC_PART_PADS.indexOf(note);
+    if(pi>=0){ apcSelectPart(pi); return; }
+    const tg=APC.pads[note];
+    if(tg){ const el=document.querySelector(`.switch[data-f="${tg}"]`);
+      if(el){ el.click(); const t=APC_TOGGLES.find(x=>x.f===tg);
+        setTimeout(()=>apcLedP(note, el.classList.contains("on")?0x21:apcColorOf(tg)),60);
+      } else log("🎛️ Pad "+note+" : champ absent.","status-ko");
+      return; }
+    log("🎛️ APC note "+note+" — non mappée.");
+  } else if(cmd===0xB0){ // CC (knobs)
+    if(apcLearn&&apcLearn.mode==="cc"){
+      if(!APC.banks[apcLearn.bank].cc.includes(d[1])){ APC.banks[apcLearn.bank].cc.push(d[1]); apcSave(); apcUI();
+        log("🎓 Knob "+APC.banks[apcLearn.bank].cc.length+"/8 → CC "+d[1]);
+        if(APC.banks[apcLearn.bank].cc.length===8){ apcLearn=null; log("🎓 Banque complète.","status-ok"); } }
+      return; }
+    const b=APC.banks[APC.bank], k=b.cc.indexOf(d[1]);
+    if(k<0) return;
+    const f=b.par[k];
+    if(!f){ log("🎛️ Knob "+(k+1)+" (CC "+d[1]+") non assigné — choisis un paramètre dans l'onglet APC.","status-ko"); return; }
+    const el=document.querySelector(`input[type=range][data-f="${f}"]`);
+    if(!el){ log("⚠️ Champ « "+f+" » absent (param FX non affiché pour ce type ?).","status-ko"); return; }
+    let v;
+    if(APC.enc==="abs") v=d[2];
+    else { let delta = APC.enc==="inv" ? (d[2]<64? d[2] : d[2]-128) : (d[2]>=65? d[2]-128 : (d[2]>=64?0:d[2]));
+      v=Math.max(+el.min,Math.min(+el.max, Math.round(+el.value)+delta)); }
+    el.value=v;
+    el.dispatchEvent(new Event("input",{bubbles:true}));
+    el.dispatchEvent(new Event("change",{bubbles:true}));
+    const p=APC_PARAMS.find(x=>x.f===f);
+    log("🎛️ "+(p?p.l:f)+" = "+v+(ARMED?"":" (écran — non armé)"));
+  }
+}
+function apcLearnCC(n){ apcLearn={mode:"cc",bank:n}; APC.banks[n].cc=[]; apcSave(); apcUI();
+  log("🎓 Tourne les 8 knobs de la banque "+(n+1)+" un par un…","status-ok"); }
+function apcLearnBtn(n){ apcLearn={mode:"btn",bank:n};
+  log("🎓 Presse le bouton Knob Control "+(n+1)+" de l'APC… (s'il n'émet rien, ce bouton ne marchera pas — change de banque en cliquant la ligne)","status-ok"); }
+function apcSetBank(n){ APC.bank=n; apcSave(); apcUI(); }
+function apcSetPar(b,k,v){ APC.banks[b].par[k]=v; apcSave(); }
+function apcSetPad(p,v){ if(v) APC.pads[p]=v; else delete APC.pads[p]; apcSave(); apcUI(); }
+function apcUI(){
+  const kh=$("apcKnobs"); if(kh){
+    kh.innerHTML="";
+    for(let b=0;b<8;b++){
+      const B=APC.banks[b], row=document.createElement("div"); row.className="prow";
+      const bk=document.createElement("button"); bk.className="ghost"+(APC.bank===b?" on":"");
+      bk.textContent="Banque "+(b+1)+(B.btn!=null?" 🎹":""); bk.onclick=()=>apcSetBank(b);
+      row.appendChild(bk);
+      const lcc=document.createElement("button"); lcc.className="ghost"; lcc.textContent="🎓 CC"; lcc.onclick=()=>apcLearnCC(b);
+      row.appendChild(lcc);
+      const lbt=document.createElement("button"); lbt.className="ghost"; lbt.textContent="🎓 bouton"; lbt.onclick=()=>apcLearnBtn(b);
+      row.appendChild(lbt);
+      const cc=document.createElement("span"); cc.className="val"; cc.textContent="CC "+(B.cc.length?B.cc.join(","):"—");
+      row.appendChild(cc);
+      for(let k=0;k<8;k++){
+        const s=document.createElement("select"); s.style.maxWidth="150px";
+        s.innerHTML=APC_PARAMS.map(p=>`<option value="${p.f}"${B.par[k]===p.f?" selected":""}>K${k+1} ${p.l}</option>`).join("");
+        s.onchange=()=>apcSetPar(b,k,s.value);
+        row.appendChild(s);
+      }
+      kh.appendChild(row);
+    }
+  }
+  const ph=$("apcPads"); if(ph){
+    ph.innerHTML="";
+    for(let r=4;r>=0;r--){ // rangée du haut d'abord (pads 32-39 … jusqu'à 0-7 en bas)
+      const row=document.createElement("div"); row.className="prow";
+      for(let c=0;c<8;c++){
+        const p=r*8+c, cell=document.createElement("span"); cell.style.display="inline-flex"; cell.style.alignItems="center"; cell.style.gap="4px";
+        const lab=document.createElement("span"); lab.className="val"; lab.textContent="P"+p;
+        cell.appendChild(lab);
+        const pi=APC_PART_PADS.indexOf(p);
+        if(pi>=0){ const pl=document.createElement("span"); pl.className="pill on"; pl.textContent=PARTS[pi][0]; cell.appendChild(pl); }
+        else {
+          const s=document.createElement("select"); s.style.maxWidth="170px";
+          s.innerHTML=APC_TOGGLES.map(t=>`<option value="${t.f}"${APC.pads[p]===t.f?" selected":""}>${t.l}</option>`).join("");
+          s.onchange=()=>apcSetPad(p,s.value);
+          cell.appendChild(s);
+        }
+        row.appendChild(cell);
+      }
+      ph.appendChild(row);
+    }
+  }
+  const ch=$("apcColors"); if(ch){ // éditeur de couleurs par fonction
+    ch.innerHTML="";
+    APC_TOGGLES.filter(t=>t.f).forEach(t=>{
+      const row=document.createElement("div"); row.className="prow";
+      const lab=document.createElement("label"); lab.textContent=t.l; lab.style.flex="0 0 190px"; row.appendChild(lab);
+      const s=document.createElement("select");
+      const cur=(APC.colors&&APC.colors[t.f]!=null)?APC.colors[t.f]:t.c;
+      s.innerHTML=APC_PALETTE.map(p=>`<option value="${p[1]}"${cur===p[1]?" selected":""}>${p[0]}</option>`).join("");
+      s.onchange=()=>{ APC.colors[t.f]=+s.value; apcSave(); apcPadsLeds(); };
+      row.appendChild(s); ch.appendChild(row);
+    });
+  }
+  const enc=$("apcEnc"); if(enc) enc.value=APC.enc||"2c";
+  apcSt(); apcPadsLeds(); apcBtnLeds();
+}
+$("apcEnc").onchange=()=>{ APC.enc=$("apcEnc").value; apcSave(); log("🎛️ Encodage knobs : "+$("apcEnc").selectedOptions[0].textContent); };
+$("apcIn").onchange=()=>{
+  const v=$("apcIn").value; APC.inId=v||null; apcSave();
+  if(v&&v===$("inSel").value){ log("⚠️ Ce port est déjà celui du KN2000 — choisis le 2e port de l'APC (surface de contrôle).","status-ko"); }
+  apcAttach(); apcUI();
+};
+$("apcOut").onchange=()=>{ APC.outId=$("apcOut").value||null; apcSave(); apcSt();
+  [0,1,2].forEach((p,i)=>apcLedP(APC_PART_PADS[i],0x02)); apcPadsLeds(); apcBtnLeds(); };
+// ===== Export / import de la config APC (JSON) =====
+function apcExport(){ // v0.9.12 : dossier de travail d'abord (b), repli Téléchargements
+  const data=JSON.stringify({app:"kn2000-sound-editor",type:"apc-config",ver:1,ts:new Date().toISOString(),apc:APC},null,1);
+  saveJson("kn2000-apc-config.json", data, "Config APC exportée");
+}
+function apcImport(file){
+  const r=new FileReader();
+  r.onload=()=>{ try{
+      const d=JSON.parse(r.result); const c=(d&&d.apc)?d.apc:d;
+      if(!c||!Array.isArray(c.banks)) throw new Error("ce n'est pas une config APC");
+      APC={...{enc:"2c",bank:0,part:null,pads:{},colors:{}},...c};
+      const nb=()=>({cc:[],par:Array(8).fill(""),btn:null});
+      while(APC.banks.length<8) APC.banks.push(nb());
+      APC.banks=APC.banks.slice(0,8);
+      apcSave(); apcUI(); apcAttach();
+      log("📂 Config APC importée : "+APC.banks.length+" banques, "+Object.keys(APC.pads).length+" pads, "+Object.keys(APC.colors||{}).length+" couleurs.","status-ok");
+    }catch(e){ log("📂 Import config APC échoué : "+e.message,"status-ko"); } };
+  r.readAsText(file);
+}
+$("btnApcExport").onclick=apcExport;
+$("btnApcImport").onclick=()=>openJson("kn2000-apc-config.json", apcImport); // v0.9.12 : dossier de travail d'abord
+$("apcImportFile").onchange=(e)=>{ const f=e.target.files[0]; if(f) apcImport(f); e.target.value=""; };
+
+
+(function init(){
+  const sel=$("slotSel");
+  const cd=$("catDstSlot"); for(let n=0;n<36;n++) cd.add(new Option(slotName(n),String(n)));
+  for(let n=0;n<36;n++) sel.add(new Option(slotName(n)+" · 0x"+(0x50+n*0x90).toString(16), String(n)));
+  sel.onchange=()=>{ curSlot=+sel.value; log("Slot "+slotName(curSlot)+" sélectionné.");
+    refreshSessionUI();
+    if(connOk){ log("📖 Lecture automatique du slot "+slotName(curSlot)+"…"); readSlot(); }
+    else if(!cacheLoad()){ raw=null; } };
+  $("btnRefresh").onclick=refreshPorts;
+  $("btnConnect").onclick=connect;
+$("btnClearLog").onclick=()=>{ $("log").innerHTML=""; log("Log vidé."); };
+  refreshPorts();
+  cacheLoad();
+  const bank=bankLoad(); if(bank){ renderBank(bank); $("bankStatus").textContent=(bank.partial!=null?"⚠ PARTIEL ("+bank.partial+"/36) — refais un dump":"✓ 36 slots")+" (cache "+new Date(bank.ts).toLocaleTimeString()+")"; }
+  libRefresh();
+  catRefresh();
+  refreshSessionUI();
+  apcUI();
+})();
+
+// ---- v0.9.13 : CHARTE ERGONOMIE — dictionnaire STR (FR/EN), badge d'état discret, commandes groupées, aide par onglet ----
+// STR = squelette i18n : couvre les éléments de la charte (badges, groupes de commandes, bascule langue).
+// Les clés suivent la taxonomie <outil>.<zone>.<élément> — à étendre outil par outil à chaque MAJ (pas de big-bang).
+const STR={
+ fr:{pilot:"🎚 Pilotage",save:"💾 Sauvegarder",load:"📂 Charger",kn_on:"🎹 KN2000 ● connecté",kn_off:"🎹 KN2000 ○",kn_ko:"🎹 KN2000 ⚠ pas de réponse",apc_on:"🎛 APC ● connecté",apc_off:"🎛 APC ○",dir_none:"dossier non défini",lang:"🇫🇷 FR"},
+ en:{pilot:"🎚 Live control",save:"💾 Save",load:"📂 Load",kn_on:"🎹 KN2000 ● connected",kn_off:"🎹 KN2000 ○",kn_ko:"🎹 KN2000 ⚠ no reply",apc_on:"🎛 APC ● connected",apc_off:"🎛 APC ○",dir_none:"no working folder",lang:"🇬🇧 EN"}};
+let LANG="fr"; try{ LANG=localStorage.getItem("kn2000_se_lang")||"fr"; }catch(e){}
+function T(k){ return (STR[LANG]&&STR[LANG][k])||STR.fr[k]||k; }
+function badgeSync(){ // badge d'état discret — reflète stMidi / apcSt / dossier de travail sans toucher aux flux existants
+  const kn=$("stMidi"), kb=$("bdgKn");
+  if(kb&&kn){ const t=kn.textContent||"";
+    if(t.includes("●")){ kb.textContent=T("kn_on"); kb.className="bdg on"; }
+    else if(t.includes("⚠")){ kb.textContent=T("kn_ko"); kb.className="bdg warn"; }
+    else { kb.textContent=T("kn_off"); kb.className="bdg"; } }
+  const ap=$("apcSt"), ab=$("bdgApc");
+  if(ab&&ap){ const ok=(ap.className||"").includes("on"); ab.textContent=ok?T("apc_on"):T("apc_off"); ab.className="bdg"+(ok?" on":""); }
+  const db=$("bdgDir");
+  if(db){ let name=null; try{ if(typeof catDir!=="undefined"&&catDir&&catDir.name) name=catDir.name; }catch(e){}
+    db.textContent=name?("📁 "+name):("📁 "+T("dir_none")); db.className="bdg"+(name?" on":""); }
+}
+function applyLang(){ // applique STR à tous les éléments marqués data-k + bouton langue + badges
+  document.querySelectorAll("[data-k]").forEach(el=>{ el.textContent=T(el.dataset.k); });
+  const b=$("btnLang"); if(b){ b.textContent=T("lang"); b.title=(LANG==="fr"?"Switch charte labels to English":"Repasse les libellés de la charte en français"); }
+  badgeSync();
+}
+function tabTo(t){ const el=document.querySelector('.tab[data-t="'+t+'"]'); if(el) el.click(); }
+(function charteInit(){
+  try{
+    new MutationObserver(badgeSync).observe($("stMidi"),{childList:true,subtree:true,characterData:true});
+    new MutationObserver(badgeSync).observe($("apcSt"),{childList:true,subtree:true,characterData:true});
+    new MutationObserver(badgeSync).observe($("btnCatDir"),{childList:true,subtree:true,characterData:true});
+  }catch(e){}
+  $("btnLang").onclick=()=>{ LANG=(LANG==="fr"?"en":"fr"); try{ localStorage.setItem("kn2000_se_lang",LANG); }catch(e){} applyLang(); };
+  document.querySelectorAll(".tab a.th").forEach(a=>a.onclick=e=>e.stopPropagation()); // ❓ aide : ouvre l'ancre sans changer d'onglet
+  $("bdgKn").onclick=()=>tabTo("general");
+  $("bdgApc").onclick=()=>tabTo("apc");
+  $("bdgDir").onclick=()=>tabTo("bank");
+  applyLang();
+})();
+</script>
+</body>
+</html>
+
+
+
+
