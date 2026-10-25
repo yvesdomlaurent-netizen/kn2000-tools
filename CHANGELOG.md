@@ -13,6 +13,12 @@ Outils :
 
 ## 2026-10-25
 
+### Sound Editor v0.9.3 — connexion fiable au rechargement
+- **Ports KN2000 mémorisés** : les ports In/Out retenus sont restaurés au rechargement de la page (avant : retour systématique au premier port de la liste).
+- **Aucune action MIDI avant vérification de la connexion** : le test de liaison est un ping léger (lecture d'UN octet du slot courant). La lecture automatique du slot ne se déclenche qu'après une réponse confirmée du KN2000 — plus de « ⚠ pas de réponse » pendant qu'une lecture tourne en parallèle.
+- **Connexion automatique au chargement uniquement si des ports mémorisés existent** — sinon l'utilisateur choisit ses ports et clique « 🔌 Connecter » (les ports validés sont ensuite mémorisés).
+- Nouvel indicateur interne `connOk` : seules les connexions vérifiées autorisent les lectures automatiques (changement de slot).
+
 ### Sound Editor v0.9.2 — commandes branchées, luminosité LEDs, avertissements volatilité
 - **Les 12 contrôles muets branchés** : tous les segments (Octave shift / Right of split / Left of split, Wheel mode, Sustain pedal, A&T On/Mode/Type/Pattern, Modulation Mode et Wave, Filter type par tone) écrivent maintenant dans le KN2000 par read-modify-write (écriture armée requise, même logique que Distortion type / Effect Pan). Auparavant, ces contrôles ne modifiaient que l'écran — rien n'était envoyé (constaté terrain par Yves sur Octave shift).
 - **Correctif lecture** : Modulation Mode était lu dans l'octet 0x16 au lieu de 0x19 — corrigé.

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>KN2000 Sound Editor v0.9.2</title>
+<title>KN2000 Sound Editor v0.9.3</title>
 <style>
   :root { font-family: system-ui, sans-serif; background:#0b1220; color:#e2e8f0; }
   * { box-sizing:border-box; }
@@ -68,7 +68,7 @@
 </style>
 </head>
 <body>
-<div class="banner">🎹 Sound Editor <b>v0.9.2</b> — structure du son 144 octets (cartographie officielle p.24/30/31 + Digital Effects). Lecture AUTO à la connexion et au changement de slot (capture 📸 de l'original). Onglets GENERAL/TONE/EFFECT = écrans du manual. Onglet APC = surface de contrôle live (pads parts, knobs, LEDs). Écriture : bouton-état 🔒/🔓 dans la barre d'outils. ⚠️ Toujours faire un dump de sauvegarde avant d'écrire. ⚠️ Le KN2000 ne conserve les sons que ~80 min hors tension — garde tes packages/catalogue pour recharger après une coupure.</div>
+<div class="banner">🎹 Sound Editor <b>v0.9.3</b> — structure du son 144 octets (cartographie officielle p.24/30/31 + Digital Effects). Lecture AUTO à la connexion et au changement de slot (capture 📸 de l'original). Onglets GENERAL/TONE/EFFECT = écrans du manual. Onglet APC = surface de contrôle live (pads parts, knobs, LEDs). Écriture : bouton-état 🔒/🔓 dans la barre d'outils. ⚠️ Toujours faire un dump de sauvegarde avant d'écrire. ⚠️ Le KN2000 ne conserve les sons que ~80 min hors tension — garde tes packages/catalogue pour recharger après une coupure.</div>
 
 <header>
   <h1>🎹 Sound Editor</h1>
@@ -331,7 +331,7 @@ FX_PARAMS[1]=FX_PARAMS[0]; FX_PARAMS[3]=FX_PARAMS[2]; FX_PARAMS[5]=FX_PARAMS[4];
 const AT_PATTERNS = { bend:["UP","UP-DOWN","UP-DROP","DELAY-UP"], trill:["DOWN-UP","UP-DOWN","MELODY","5-UP"] };
 
 // ============ État ============
-let midiIn=null, midiOut=null, curSlot=0;
+let midiIn=null, midiOut=null, curSlot=0; let connOk=false; // v0.9.3 : connexion vérifiée (ping OK) — seule condition pour déclencher les actions MIDI
 let raw = null;            // Uint8Array(144) du slot courant
 let model = null;          // objet structuré
 const $ = id => document.getElementById(id);
@@ -726,8 +726,16 @@ function refreshPorts(){
     acc.inputs.forEach(p=>ins.add(new Option(p.name,p.id)));
     acc.outputs.forEach(p=>outs.add(new Option(p.name,p.id)));
     log(`Ports : ${acc.inputs.size} in / ${acc.outputs.size} out.`);
-    if(acc.inputs.size) ins.selectedIndex=0;
-    if(acc.outputs.size){ outs.selectedIndex=0; connect(); }
+    // v0.9.3 : restauration des ports KN2000 mémorisés (avant : premier de la liste à chaque rechargement)
+    const io=ioLoad();
+    if(io.inId&&[...ins.options].some(o=>o.value===io.inId)) ins.value=io.inId;
+    else if(acc.inputs.size) ins.selectedIndex=0;
+    if(io.outId&&[...outs.options].some(o=>o.value===io.outId)) outs.value=io.outId;
+    else if(acc.outputs.size) outs.selectedIndex=0;
+    // Connexion automatique SEULEMENT si des ports mémorisés existent — et connect() vérifie la réponse
+    // du KN2000 (ping 1 octet) AVANT de déclencher la moindre autre action MIDI (lecture de slot incluse).
+    if(acc.inputs.size&&acc.outputs.size&&io.inId&&io.outId){ log("🔌 Ports mémorisés : tentative de connexion (vérification de la réponse du KN2000)…"); connect(); }
+    else if(acc.inputs.size&&acc.outputs.size){ log("Choisis les ports In/Out du KN2000 puis clique « 🔌 Connecter » (les ports retenus seront mémorisés pour la prochaine fois).","status-ko"); }
     // Ports APC (surface de contrôle)
     if($("apcIn")&&$("apcOut")){
       const ai=$("apcIn"),ao=$("apcOut"); ai.innerHTML=""; ao.innerHTML="";
@@ -741,6 +749,9 @@ function refreshPorts(){
   }).catch(e=>log("Accès MIDI refusé : "+e.message,"status-ko"));
 }
 let lastReadOk=false;
+// v0.9.3 : mémorisation des ports KN2000 (in/out) — comme pour l'APC
+function ioLoad(){ try{ return JSON.parse(localStorage.getItem("kn2000_se_v06_io")||"{}")||{}; }catch(e){ return {}; } }
+function ioSave(){ try{ localStorage.setItem("kn2000_se_v06_io",JSON.stringify({inId:$("inSel").value||null,outId:$("outSel").value||null})); }catch(e){} }
 async function connect(){
   if(!access){ log("Clique d'abord sur « 🔄 Ports ».","status-ko"); return; }
   midiIn=access.inputs.get($("inSel").value)||null;
@@ -752,15 +763,21 @@ async function connect(){
   if(midiIn) midiIn.onmidimessage=onMidi;
   apcAttach();
   const ok=!!(midiIn&&midiOut);
-  if(!ok){ $("stMidi").textContent="non connecté"; $("stMidi").className="pill off";
+  if(!ok){ connOk=false; $("stMidi").textContent="non connecté"; $("stMidi").className="pill off";
     log("Choisis les ports.","status-ko"); return; }
   $("stMidi").textContent="⏳ test KN2000…"; $("stMidi").className="pill off";
-  log("Test de liaison : lecture du slot "+slotName(curSlot)+"…");
-  await readSlot();
-  if(lastReadOk){ $("stMidi").textContent="● connecté"; $("stMidi").className="pill on";
-    log("Connecté. Mode lecture seule (écriture à armer en bas).","status-ok"); }
-  else { $("stMidi").textContent="⚠ pas de réponse"; $("stMidi").className="pill off";
-    log("⚠️ Ports choisis mais le KN2000 ne répond pas — vérifie In/Out (🔄 Ports), le câble MIDI et le branchement USB.","status-ko"); }
+  // v0.9.3 : test de liaison = ping léger (lecture d'UN octet du slot courant) — AUCUNE autre
+  // action MIDI (lecture de slot, dump…) n'est déclenchée avant que ce test ait réussi.
+  log("Test de liaison : ping KN2000 (1 octet)…");
+  connOk=false;
+  const ping=await readAddr(addrOf(curSlot,0),1);
+  if(ping&&ping.length){ connOk=true; $("stMidi").textContent="● connecté"; $("stMidi").className="pill on";
+    ioSave(); // ports validés → mémorisés pour le prochain rechargement
+    log("Connexion vérifiée (le KN2000 répond) — ports mémorisés. Lecture du slot "+slotName(curSlot)+"…","status-ok");
+    await readSlot(); // lecture auto APRÈS validation de la connexion
+  }
+  else { $("stMidi").textContent="⚠ pas de réponse"; $("stMidi").className="pill off"; connOk=false;
+    log("⚠️ Ports choisis mais le KN2000 ne répond pas — vérifie In/Out (🔄 Ports), le câble MIDI et le branchement USB. Aucune autre action MIDI entreprise.","status-ko"); }
 }
 function onMidi(ev){
   const data=Array.from(ev.data);
@@ -1648,7 +1665,7 @@ $("apcImportFile").onchange=(e)=>{ const f=e.target.files[0]; if(f) apcImport(f)
   for(let n=0;n<36;n++) sel.add(new Option(slotName(n)+" · 0x"+(0x50+n*0x90).toString(16), String(n)));
   sel.onchange=()=>{ curSlot=+sel.value; log("Slot "+slotName(curSlot)+" sélectionné.");
     refreshSessionUI();
-    if(midiIn&&midiOut){ log("📖 Lecture automatique du slot "+slotName(curSlot)+"…"); readSlot(); }
+    if(connOk){ log("📖 Lecture automatique du slot "+slotName(curSlot)+"…"); readSlot(); }
     else if(!cacheLoad()){ raw=null; } };
   $("btnRefresh").onclick=refreshPorts;
   $("btnConnect").onclick=connect;
