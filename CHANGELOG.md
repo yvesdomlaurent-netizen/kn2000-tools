@@ -13,6 +13,10 @@ Outils :
 
 ## 2026-10-25
 
+### Sound Editor v0.9.6 — correctifs Sustain pedal et affichage key limits
+- **Sustain pedal corrigé** : le segment LONG/HOLD (onglet GENERAL, carte Controllers) était absent de la page — l'entrée `sustain` était accidentellement avalée par un commentaire de code. Le segment s'affiche et écrit à nouveau (bit 2 de 0x10, armé 🔓 requis).
+- **Affichage des key limits aligné sur le clavier** : la page affichait un octave trop haut (C5 sur la page = C4 sur le clavier) ; les libellés sont maintenant alignés sur l'affichage du KN2000 (octave −1). Plage des sélecteurs étendue 24..127 (C0..G8) : une limite réglée sur C0 au clavier n'affichait plus de valeur (24 était hors de l'ancienne plage 29..127).
+
 ### Sound Editor v0.9.5 — restauration des ports par nom + key limits modifiables
 - **Restauration des ports par nom** : au rechargement, si l'ID Web MIDI mémorisé n'est plus trouvé (les IDs peuvent changer entre sessions), l'éditeur retombe sur le port de même **nom** avant de prendre le premier de la liste. Les noms In/Out sont mémorisés aux côtés des IDs ; logs explicites (« Ports mémorisés : In = … restaurés »).
 - **Key limits modifiables** : les limites de clavier par tone (Atk KF lim, Dcy KF lim, Flt key lim — bas 29..127, affichage F1→G9) sont maintenant éditables via des sélecteurs et écrites dans le son (read-modify-write, armé 🔓 requis), au lieu d'être seulement affichées.

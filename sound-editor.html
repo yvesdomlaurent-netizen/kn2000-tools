@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>KN2000 Sound Editor v0.9.5</title>
+<title>KN2000 Sound Editor v0.9.6</title>
 <style>
   :root { font-family: system-ui, sans-serif; background:#0b1220; color:#e2e8f0; }
   * { box-sizing:border-box; }
@@ -68,7 +68,7 @@
 </style>
 </head>
 <body>
-<div class="banner">🎹 Sound Editor <b>v0.9.5</b> — structure du son 144 octets (cartographie officielle p.24/30/31 + Digital Effects). Lecture AUTO à la connexion et au changement de slot (capture 📸 de l'original). Onglets GENERAL/TONE/EFFECT = écrans du manual. Onglet APC = surface de contrôle live (pads parts, knobs, LEDs). Écriture : bouton-état 🔒/🔓 dans la barre d'outils. ⚠️ Toujours faire un dump de sauvegarde avant d'écrire. ⚠️ Le KN2000 ne conserve les sons que ~80 min hors tension — garde tes packages/catalogue pour recharger après une coupure.</div>
+<div class="banner">🎹 Sound Editor <b>v0.9.6</b> — structure du son 144 octets (cartographie officielle p.24/30/31 + Digital Effects). Lecture AUTO à la connexion et au changement de slot (capture 📸 de l'original). Onglets GENERAL/TONE/EFFECT = écrans du manual. Onglet APC = surface de contrôle live (pads parts, knobs, LEDs). Écriture : bouton-état 🔒/🔓 dans la barre d'outils. ⚠️ Toujours faire un dump de sauvegarde avant d'écrire. ⚠️ Le KN2000 ne conserve les sons que ~80 min hors tension — garde tes packages/catalogue pour recharger après une coupure.</div>
 
 <header>
   <h1>🎹 Sound Editor</h1>
@@ -356,7 +356,8 @@ function buildSeg(sel, items, onIdx){
 document.querySelectorAll(".seg[data-f]").forEach(seg=>{
   const f=seg.dataset.f;
   const M={octSh:[[-1,0],[0,1],[1,2],[2,3]], octR:[[-1,0],[0,1],[1,2],[2,3]], octL:[[-1,0],[0,1],[1,2],[2,3]],
-    wheelMode:[["MOD",0],["VIB",1]], // 22/10 : ordre inversé après test terrain — bit3=1 → VIB sur le KN2000 (A-1), à recouper sur un son en MOD sustain:[["LONG",0],["HOLD",1]],
+    wheelMode:[["MOD",0],["VIB",1]], // 22/10 : ordre inversé après test terrain — bit3=1 → VIB sur le KN2000 (A-1), à recouper sur un son en MOD
+    sustain:[["LONG",0],["HOLD",1]],
     atOn:[["OFF",0],["ON",1],["TOUCH",2]], atMode:[["1ST",0],["2ND",1],["ALL",2],["INVERSE",3]],
     atType:[["BEND",0],["TRILL",1]], atPat:[["P0",0],["P1",1],["P2",2],["P3",3]],
     modMode:[["1ST",0],["2ND",1],["ALL",2],["INVERSE",3]], modWave:[["SIN",0],["TRI",1],["SQR",2],["SAW",3]],
@@ -489,7 +490,7 @@ document.addEventListener("change",e=>{
   if(!s||s.tagName!=="SELECT"||!s.classList.contains("klim")||!s.dataset.f) return;
   const m=s.dataset.f.match(/^t(\d)_(aLo|aHi|dLo|dHi|fLo|fHi)$/); if(!m) return;
   const i=+m[1], fld=m[2], off=[0x28,0x4A,0x6C][i]+KLIM_OFF[fld];
-  const val=Math.max(29,Math.min(127,Math.round(+s.value||29)));
+  const val=Math.max(24,Math.min(127,Math.round(+s.value||24)));
   const nm="Tone "+["1st","2nd","sub"][i]+" "+({aLo:"Atk KF lim bas",aHi:"Atk KF lim haut",dLo:"Dcy KF lim bas",dHi:"Dcy KF lim haut",fLo:"Flt key lim bas",fHi:"Flt key lim haut"})[fld]+" = "+keyLabel(val);
   if(typeof raw==="undefined"||!raw){ log(`ℹ️ ${nm} — lis d'abord le son.`,"status-ko"); return; }
   if(!ARMED){ log(`ℹ️ ${nm} (écran) — écriture non armée, rien envoyé.`,"status-ko"); return; }
@@ -500,7 +501,7 @@ document.addEventListener("change",e=>{
 
 // ============ TONE : construction des 3 cartes ============
 const TBASE=[0x28,0x4A,0x6C], TAGS=["1st","2nd","sub"];
-function keyLabel(v){ if(v==null) return "—"; const n=Math.round(v); const o=Math.floor(n/12)-1; return ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"][n%12]+o; }
+function keyLabel(v){ if(v==null) return "—"; const n=Math.round(v); const o=Math.floor(n/12)-2; return ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"][n%12]+o; } // v0.9.6 : le clavier affiche un octave en dessous de la numérotation MIDI (page C5 = clavier C4)
 function envPath(atk,dcy1,sus1,dcy2,sus2,rls,W,H,pad){
   // Forme conforme au graphique KN2000 : ATK montée au max (100%), DCY1 chute → SUS1,
   // plateau (touche tenue), DCY2 chute → SUS2, plateau, key-off → RLS descente à 0.
@@ -583,9 +584,9 @@ Object.keys(TTABLE).forEach(k=>{ const [g,nm]=TTABLE[k]; (byGroup[g]=byGroup[g]|
 TBASE.forEach((b,i)=>{
   buildSeg(document.querySelector(`.seg[data-f="t${i}_ftype"]`),[["THRU",255],["0",0],["1",1],["2",2],["3",3],["4",4],["5",5],["6",6]],-1);
 });
-// v0.9.5 : remplissage des sélecteurs de key limits (F1 → G9, notes 29-127)
+// v0.9.6 : remplissage des sélecteurs de key limits (C0 → G8, notes 24-127)
 document.querySelectorAll("select.klim").forEach(s=>{ s.style.maxWidth="92px";
-  for(let n=29;n<=127;n++) s.add(new Option(keyLabel(n),String(n))); });
+  for(let n=24;n<=127;n++) s.add(new Option(keyLabel(n),String(n))); }); // v0.9.6 : 24 = C0 — plage étendue sinon select vide (C0 lu du clavier ne matchait aucune option)
 
 // ============ FX type select ============
 const fxSel=$("fxType");
