@@ -13,6 +13,12 @@ Outils :
 
 ## 2026-10-25
 
+### Sound Editor v0.9.12 — dossier de travail généralisé à tous les exports/imports (chantiers b + d)
+- **« Dossier de travail » unique** (l'ancien dossier catalogue est promu générique) : un seul bouton 📁, mémorisé par le navigateur (IndexedDB + permission), utilisé par **tous** les flux — catalogue, packages 📦, banque 🏦, export d'un son seul, config APC 🎛️.
+- **Export config APC via le dossier** (chantier b) : plus aucun téléchargement Blob par défaut — la config s'écrit directement dans le dossier de travail (`kn2000-apc-config.json`) ; l'import lit d'abord ce fichier dans le dossier, sinon ouvre le sélecteur directement dedans. Repli Téléchargements/sélecteur classique si aucun dossier n'est choisi.
+- **Tous les exports/import passent par le dossier** (chantier d, volet Sound Editor) : export banque, import banque, export d'un son seul suivent la même logique (écriture directe dans le dossier ; import : lecture du fichier attendu dans le dossier, sinon sélecteur ouvert dedans, sinon sélecteur classique).
+- Le même mécanisme sera appliqué aux autres outils du projet (panel console, sysex tool, tone-table reader) lors de leur prochaine mise à jour.
+
 ### Sound Editor v0.9.11 — enveloppe : plateau Sus1→Dcy2 supprimé, règle « 50 = pente nulle » généralisée
 - **Plateau artificiel supprimé** entre le point Sus 1 et la pente Dcy 2 (retour terrain : « ce bout d'horizontale, d'où vient-il ? Dcy 2 fait le lien direct ») : Dcy 2 part maintenant **exactement du point Sus 1**. Dcy 2 = 0 → bascule abrupte (verticale) sur la valeur Sus 2.
 - **Règle « 50 = pente nulle » généralisée à tous les paramètres de pente** (Atk, Dcy 1, Dcy 2, Rls — validée terrain pour Release et confirmée pour Dcy 2) : à 50, la courbe part à l'horizontale jusqu'au bord droit avec un chevron — le stade ne se termine jamais (limite théorique, le clavier plafonne à 50). Atk 50 = ligne plate au départ, conforme à l'affichage du KN2000.

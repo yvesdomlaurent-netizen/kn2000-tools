@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>KN2000 Sound Editor v0.9.11</title>
+<title>KN2000 Sound Editor v0.9.12</title>
 <style>
   :root { font-family: system-ui, sans-serif; background:#0b1220; color:#e2e8f0; }
   * { box-sizing:border-box; }
@@ -68,7 +68,7 @@
 </style>
 </head>
 <body>
-<div class="banner">🎹 Sound Editor <b>v0.9.11</b> — structure du son 144 octets (cartographie officielle p.24/30/31 + Digital Effects). Lecture AUTO à la connexion et au changement de slot (capture 📸 de l'original). Onglets GENERAL/TONE/EFFECT = écrans du manual. Onglet APC = surface de contrôle live (pads parts, knobs, LEDs). Écriture : bouton-état 🔒/🔓 dans la barre d'outils. ⚠️ Toujours faire un dump de sauvegarde avant d'écrire. ⚠️ Le KN2000 ne conserve les sons que ~80 min hors tension — garde tes packages/catalogue pour recharger après une coupure.</div>
+<div class="banner">🎹 Sound Editor <b>v0.9.12</b> — structure du son 144 octets (cartographie officielle p.24/30/31 + Digital Effects). Lecture AUTO à la connexion et au changement de slot (capture 📸 de l'original). Onglets GENERAL/TONE/EFFECT = écrans du manual. Onglet APC = surface de contrôle live (pads parts, knobs, LEDs). Écriture : bouton-état 🔒/🔓 dans la barre d'outils. ⚠️ Toujours faire un dump de sauvegarde avant d'écrire. ⚠️ Le KN2000 ne conserve les sons que ~80 min hors tension — garde tes packages/catalogue pour recharger après une coupure.</div>
 
 <header>
   <h1>🎹 Sound Editor</h1>
@@ -190,7 +190,7 @@
     </div>
     <div class="prow">
       <input type="file" id="bankFile" accept=".json,application/json" style="display:none">
-      <button class="ghost" id="btnBankImport" title="Charge un fichier JSON banque (remplace la banque chargée)">📥 Importer une banque (fichier JSON)</button>
+      <button class="ghost" id="btnBankImport" title="Charge un fichier JSON banque (remplace la banque chargée) — lit d'abord kn2000_soundmemory_bank.json dans le dossier de travail, sinon sélecteur">📥 Importer une banque (fichier JSON)</button>
       <button class="ghost" id="btnBankSaveLib" title="Sauve la banque chargée comme fichier kn2000_package_*.json dans le dossier utilisateur (repli navigateur)">💾 Archiver en package (fichier du dossier)</button>
       <select id="bankLib" style="max-width:230px" title="Bibliothèque de packages — 📁 dossier utilisateur / 💾 navigateur"><option value="">— bibliothèque —</option></select>
       <button class="ghost" id="btnBankLoad" title="Charge le package sélectionné (le rend banque courante et l'affiche dans la table)">📂 Charger le package sélectionné</button>
@@ -219,10 +219,10 @@
       <button class="ghost" id="btnCatExport" title="Enregistre le catalogue en JSON (s'ouvre directement dans le dossier choisi)">⬇️ Export JSON</button>
       <input type="file" id="catFile" accept=".json,application/json" style="display:none">
       <button class="ghost" id="btnCatImport" title="Ouvre le sélecteur dans le dossier choisi">📥 Import JSON</button>
-      <button class="ghost" id="btnCatDir" style="display:none" title="Choisir le dossier catalogue (utilisé par export ET import ; mémorisé par le navigateur)">📁 Dossier : non défini</button>
+      <button class="ghost" id="btnCatDir" style="display:none" title="Choisir le dossier de travail (utilisé par TOUS les exports/imports : catalogue, packages, banque, son seul, config APC ; mémorisé par le navigateur)">📁 Dossier de travail : non défini</button>
       <button class="ghost" id="btnCatDirForget" style="display:none" title="Oublier le dossier catalogue">✖</button>
     </div>
-    <div class="legend" id="catDirLegend" style="display:none">📁 Dossier catalogue : l'export ET l'import s'ouvrent directement dedans. Le nom du dernier fichier exporté est réutilisé. Le dossier et son autorisation sont mémorisés par le navigateur.</div>
+    <div class="legend" id="catDirLegend" style="display:none">📁 Dossier de travail : utilisé par TOUS les exports/imports (catalogue, packages 📦, banque 🏦, export d'un son seul, config APC 🎛️). L'export s'y écrit directement ; l'import y lit d'abord le fichier attendu, sinon le sélecteur s'y ouvre. Le dossier et son autorisation sont mémorisés par le navigateur.</div>
     <div class="legend">Bibliothèque de sons isolés créés en session : nom + date + 144 octets, stockés dans le navigateur. « Envoyer » écrase le slot courant sélectionné en haut (confirmation + écriture armée requises).</div>
   </div>
 </div>
@@ -1129,14 +1129,12 @@ $("btnBankSend").onclick=async()=>{
   scheduleApply();
 };
 
-$("btnBankExport").onclick=()=>{
+$("btnBankExport").onclick=async()=>{
   const bank=bankLoad(); if(!bank){ toast("Pas de banque en mémoire — fais un dump d'abord"); return; }
   const out={ ts:new Date(bank.ts).toISOString(), slots:[], raw_hex: bank.bytes.map(x=>x.toString(16).padStart(2,"0")).join("") };
   for(let n=0;n<36;n++){ const m=parse(Uint8Array.from(bank.bytes.slice(n*144,(n+1)*144)));
     out.slots.push({ slot:slotName(n), name:m.name, model:m }); }
-  const blob=new Blob([JSON.stringify(out,null,1)],{type:"application/json"});
-  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
-  a.download="kn2000_soundmemory_bank.json"; a.click(); URL.revokeObjectURL(a.href);
+  await saveJson("kn2000_soundmemory_bank.json", JSON.stringify(out,null,1), "Banque exportée"); // v0.9.12 : dossier de travail d'abord
 };
 
 // ============ Bibliothèque de packages de sonorités ============
@@ -1184,9 +1182,8 @@ async function libRefresh(){
     : '<option value="" disabled>(aucun package)</option>')+'</optgroup>';
   sel.innerHTML=html;
 }
-$("btnBankImport").onclick=()=>$("bankFile").click();
-$("bankFile").onchange=async e=>{
-  const f=e.target.files[0]; if(!f) return;
+$("btnBankImport").onclick=()=>openJson("kn2000_soundmemory_bank.json", bankImportFile); // v0.9.12 : dossier de travail d'abord
+async function bankImportFile(f){
   try{
     const j=JSON.parse(await f.text());
     let bytes=null;
@@ -1201,8 +1198,7 @@ $("bankFile").onchange=async e=>{
     log(`📥 Banque importée : « ${f.name} » (${Math.floor(bytes.length/144)} slots).`,"status-ok");
     toast("Banque importée");
   }catch(err){ log(`⚠️ Import impossible (« ${f.name} ») : ${err.message}`,"status-ko"); }
-  e.target.value="";
-};
+}
 $("btnBankSaveLib").onclick=async()=>{
   const bank=bankLoad(); if(!bank||!bank.bytes){ toast("Pas de banque en mémoire — dump ou import d'abord"); return; }
   const nm=prompt("Nom du package de sonorités :","Banque "+new Date().toLocaleDateString());
@@ -1345,7 +1341,7 @@ $("btnCatDel").onclick=()=>{
 // ---- Préférences catalogue : dossier + nom de fichier (File System Access, Chromium) ----
 let catDir=null; // FileSystemDirectoryHandle du dossier catalogue
 function catNamePref(){ try{ return localStorage.getItem("kn2000_se_v06_catname")||"kn2000_sound_catalog.json"; }catch(e){ return "kn2000_sound_catalog.json"; } }
-function catSetDirUI(){ $("btnCatDir").textContent=catDir?("📁 "+catDir.name):"📁 Dossier : non défini"; $("btnCatDirForget").style.display=catDir?"":"none"; }
+function catSetDirUI(){ $("btnCatDir").textContent=catDir?("📁 "+catDir.name):"📁 Dossier de travail : non défini"; $("btnCatDirForget").style.display=catDir?"":"none"; }
 function idbOpen(){ return new Promise(res=>{ const r=indexedDB.open("kn2000_se",1);
   r.onupgradeneeded=()=>{ r.result.createObjectStore("h"); }; r.onsuccess=()=>res(r.result); r.onerror=()=>res(null); }); }
 async function idbPutDir(h){ const db=await idbOpen(); if(!db) return; try{ const t=db.transaction("h","readwrite"); t.objectStore("h").put(h,"catDir"); }catch(e){} }
@@ -1354,15 +1350,44 @@ async function idbDelDir(){ const db=await idbOpen(); if(!db) return; try{ db.tr
 async function dirPerm(h){ // demande (ou vérifie) l'autorisation d'écriture — doit être déclenchée par un clic
   try{ if(await h.queryPermission({mode:"readwrite"})==="granted") return true;
         return (await h.requestPermission({mode:"readwrite"}))==="granted"; }catch(e){ return false; } }
+// ---- v0.9.12 : DOSSIER DE TRAVAIL GÉNÉRIQUE (b+d) — utilisé par TOUS les exports/imports ----
+async function dirWrite(name, txt){ // écrit dans le dossier de travail → true
+  if(!catDir||!(await dirPerm(catDir))) return false;
+  try{ const fh=await catDir.getFileHandle(name,{create:true}); const w=await fh.createWritable(); await w.write(txt); await w.close(); return true; }
+  catch(e){ log("⚠️ Écriture « "+name+" » impossible : "+e.message,"status-ko"); return false; }
+}
+async function dirRead(name){ // lit un fichier du dossier de travail → File|null
+  if(!catDir||!(await dirPerm(catDir))) return null;
+  try{ return await (await catDir.getFileHandle(name)).getFile(); }catch(e){ return null; }
+}
+async function saveJson(name, txt, label){ // dossier de travail d'abord, repli Téléchargements
+  if(await dirWrite(name, txt)){ log(`📁 ${label} : « ${name} » écrit dans le dossier de travail (${catDir.name}).`,"status-ok"); toast(label+" → 📁 "+catDir.name); return; }
+  const blob=new Blob([txt],{type:"application/json"}); const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href);
+  log(`⬇️ ${label} : « ${name} » (Téléchargements${catDir?" — dossier refusé/indisponible":" — aucun dossier choisi"}).`,"status-ok");
+}
+async function openJson(defaultName, cb){ // import générique : dossier de travail d'abord, repli sélecteur système puis <input>
+  const f=await dirRead(defaultName);
+  if(f){ log(`📂 ${defaultName} lu depuis le dossier de travail (${catDir.name}).`,"status-ok"); cb(f); return; }
+  if(window.showOpenFilePicker){
+    const opts={ multiple:false, types:CAT_TYPE };
+    if(catDir && await dirPerm(catDir)) opts.startIn=catDir;
+    try{ const [fh]=await window.showOpenFilePicker(opts); cb(await fh.getFile()); return; }
+    catch(e){ if(e.name==="AbortError") return; }
+  }
+  const i=document.createElement("input"); i.type="file"; i.accept=".json,application/json";
+  i.onchange=()=>{ if(i.files[0]) cb(i.files[0]); };
+  i.click();
+}
 const CAT_TYPE=[{description:"JSON catalogue",accept:{"application/json":[".json"]}}];
 if(window.showDirectoryPicker){ // API disponible (Chrome/Edge) : on propose la préférence dossier
   $("btnCatDir").style.display=""; $("catDirLegend").style.display="";
   $("btnCatDir").onclick=async()=>{
     try{ const d=await window.showDirectoryPicker({mode:"readwrite"}); catDir=d; await idbPutDir(d); catSetDirUI();
-      log(`📁 Dossier catalogue : « ${d.name} » (utilisé par export et import).`,"status-ok");
+      log(`📁 Dossier de travail : « ${d.name} » (utilisé par tous les exports/imports).`,"status-ok");
     }catch(e){ if(e.name!=="AbortError") log("⚠️ Choix du dossier impossible : "+e.message,"status-ko"); }
   };
-  $("btnCatDirForget").onclick=async()=>{ catDir=null; await idbDelDir(); catSetDirUI(); log("📁 Dossier catalogue oublié."); };
+  $("btnCatDirForget").onclick=async()=>{ catDir=null; await idbDelDir(); catSetDirUI(); log("📁 Dossier de travail oublié."); };
   idbGetDir().then(h=>{ if(h){ catDir=h; catSetDirUI(); libRefresh(); } });
 }
 $("btnCatExport").onclick=async()=>{
@@ -1497,12 +1522,10 @@ $("btnPartRead").onclick=async()=>{
 };
 
 // ============ Export / boutons ============
-$("btnExport").onclick=()=>{
+$("btnExport").onclick=async()=>{
   if(!raw){ toast("Rien à exporter — lis d'abord un son"); return; }
   const out={ slot:slotName(curSlot), ts:new Date().toISOString(), model:model, raw_hex:Array.from(raw,x=>x.toString(16).padStart(2,"0")).join("") };
-  const blob=new Blob([JSON.stringify(out,null,1)],{type:"application/json"});
-  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
-  a.download="kn2000_sound_"+slotName(curSlot)+".json"; a.click(); URL.revokeObjectURL(a.href);
+  await saveJson("kn2000_sound_"+slotName(curSlot)+".json", JSON.stringify(out,null,1), "Son exporté"); // v0.9.12 : dossier de travail d'abord
 };
 $("btnDemo").onclick=()=>{ raw=DEMO.slice(); model=parse(raw); bind(model);
   setSource("DÉMO (exemple usine)","Exemple A-1 usine, valeurs d'illustration — PAS les données machine");
@@ -1698,12 +1721,9 @@ $("apcIn").onchange=()=>{
 $("apcOut").onchange=()=>{ APC.outId=$("apcOut").value||null; apcSave(); apcSt();
   [0,1,2].forEach((p,i)=>apcLedP(APC_PART_PADS[i],0x02)); apcPadsLeds(); apcBtnLeds(); };
 // ===== Export / import de la config APC (JSON) =====
-function apcExport(){
+function apcExport(){ // v0.9.12 : dossier de travail d'abord (b), repli Téléchargements
   const data=JSON.stringify({app:"kn2000-sound-editor",type:"apc-config",ver:1,ts:new Date().toISOString(),apc:APC},null,1);
-  const b=new Blob([data],{type:"application/json"}); const a=document.createElement("a");
-  a.href=URL.createObjectURL(b); a.download="kn2000-apc-config.json"; a.click();
-  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
-  log("⬇️ Config APC exportée (kn2000-apc-config.json).","status-ok");
+  saveJson("kn2000-apc-config.json", data, "Config APC exportée");
 }
 function apcImport(file){
   const r=new FileReader();
@@ -1720,7 +1740,7 @@ function apcImport(file){
   r.readAsText(file);
 }
 $("btnApcExport").onclick=apcExport;
-$("btnApcImport").onclick=()=>$("apcImportFile").click();
+$("btnApcImport").onclick=()=>openJson("kn2000-apc-config.json", apcImport); // v0.9.12 : dossier de travail d'abord
 $("apcImportFile").onchange=(e)=>{ const f=e.target.files[0]; if(f) apcImport(f); e.target.value=""; };
 
 
