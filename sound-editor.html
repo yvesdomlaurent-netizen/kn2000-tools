@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>KN2000 Sound Editor v0.9.15</title>
+<title>KN2000 Sound Editor v0.9.16</title>
 <style>
   :root { font-family: system-ui, sans-serif; background:#0b1220; color:#e2e8f0; }
   * { box-sizing:border-box; }
@@ -18,7 +18,9 @@
   button:disabled { opacity:.4; cursor:not-allowed; }
   .pill { padding:3px 10px; border-radius:99px; font-size:.75rem; font-weight:600; }
   .pill.on { background:#14532d; color:#4ade80; } .pill.off { background:#450a0a; color:#f87171; }
-  #badgeBar { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 0 0; }
+  #badgeBar { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 0 0; align-items:center; }
+  #badgeBar h1 { font-size:1.05rem; margin:0; }
+  header .hrow { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
   .bdg { padding:4px 12px; border-radius:99px; font-size:.8rem; font-weight:600; background:#1e293b; cursor:pointer; border:1px solid #334155; }
   .bdg.on { background:#14532d; color:#4ade80; border-color:#166534; }
   .bdg.warn { background:#451a03; color:#fbbf24; border-color:#b45309; }
@@ -76,29 +78,38 @@
 </style>
 </head>
 <body>
-<div class="banner">🎹 Sound Editor <b>v0.9.15</b> — 36 slots Sound Memory (144 octets/son), onglets = écrans du KN2000, onglet APC = surface de contrôle live. Écriture : bouton-état 🔒/🔓. ⚠️ Dump de sauvegarde avant d'écrire · ⚠️ Sons conservés ~80 min hors tension — garde tes packages. Détails et tips : ❓ Aide.</div>
+<div class="banner">🎹 Sound Editor <b>v0.9.16</b> — 36 slots Sound Memory (144 octets/son), onglets = écrans du KN2000, onglet APC = surface de contrôle live. Écriture : bouton-état 🔒/🔓. ⚠️ Dump de sauvegarde avant d'écrire · ⚠️ Sons conservés ~80 min hors tension — garde tes packages. Détails et tips : ❓ Aide.</div>
 
 <div id="badgeBar">
   <span class="bdg" id="bdgKn" title="Connexion KN2000 — clique pour ouvrir les réglages (section connexion)">🎹 KN2000 ○</span>
   <span class="bdg" id="bdgApc" title="Connexion APC — clique pour ouvrir les réglages (section APC)">🎛 APC ○</span>
   <span class="bdg" id="bdgDir" title="Dossier de travail (tous les exports/imports) — clique pour ouvrir les réglages (section dossier)">📁 —</span>
   <span style="flex:1"></span>
+  <h1>🎹 Sound Editor</h1>
+  <span style="flex:1"></span>
   <label class="ghost" title="Afficher/masquer le journal MIDI (sysex)"><input type="checkbox" id="btnLogToggle" style="width:16px;height:16px;vertical-align:middle;transform:translateY(-1px)"> 📜 Log MIDI</label>
   <button class="ghost" id="btnCfg" title="Réglages & Aide : connexion KN2000 et APC, dossier de travail, langue, aide, démo">⚙️ Réglages</button>
 </div>
 
-<header>
-  <h1>🎹 Sound Editor</h1>
-  <label title="Slot Sound Memory édité (A-1 → B-18)">Slot <select id="slotSel"></select></label>
-  <label title="Nom du son courant (16 caractères, octets 0x00-0x0F)">Nom <input type="text" id="nameIn" maxlength="16" size="16" placeholder="(lire pour afficher)"></label>
-  <button class="ghost" id="btnNameWrite" title="Écrire le nom (16 octets 0x00-0x0F) dans le son courant — écriture armée requise">✍️ nom</button>
-  <button class="ghost" id="btnExport" title="Exporte le son courant (144 octets) en fichier JSON dans le dossier de travail">⬇️ Export JSON</button>
-  <button id="btnArm" class="ghost" title="Bascule l'écriture des modifications vers le KN2000 (curseurs, switches, changement de tone)">🔒 Écriture : OFF</button>
-  <label style="white-space:nowrap;font-size:1.15rem;font-weight:600" title="Après chaque écriture : recharge le slot en cours sur les parts du clavier qui le jouent (voisin d'aller-retour PC 0 · bank 0). Requiert Realtime sysex ON."><input type="checkbox" id="autoApply" style="width:22px;height:22px;vertical-align:middle;transform:translateY(-3px)"> ⚡ Auto-appliquer</label>
-  <button id="btnPartRead" class="ghost" title="Lit l'état des 3 parts du clavier (20 1n 00, SIZ 2) — indépendant du son en cours d'édition">📍 Lire l'état</button>
-  <span class="val" id="pS0">RIGHT1 : ?</span> <span class="val" id="pS1">RIGHT2 : ?</span> <span class="val" id="pS2">LEFT : ?</span>
-  <span class="pill off" id="srcPill" title="Origine des données affichées">aucune donnée</span>
-  <span id="progress"></span>
+<header style="display:flex;flex-direction:column;align-items:stretch">
+  <div class="hrow"><label title="Slot Sound Memory édité (A-1 → B-18)">Slot <select id="slotSel"></select></label>
+    <label title="Nom du son courant (16 caractères, octets 0x00-0x0F)">Nom <input type="text" id="nameIn" maxlength="16" size="16" placeholder="(lire pour afficher)"></label>
+    <button class="ghost" id="btnNameWrite" title="Écrire le nom (16 octets 0x00-0x0F) dans le son courant — écriture armée requise">✍️ nom</button>
+    <button class="ghost" id="btnExport" title="Exporte le son courant (144 octets) en fichier JSON dans le dossier de travail">⬇️ Export JSON</button>
+    <span style="flex:1"></span>
+    <span class="val" id="origInfo" title="📸 Session — original du slot en cours">aucun original capturé</span>
+    <button id="btnRestore" class="warn" disabled title="Renvoie les 144 octets originaux du slot dans la machine (armé requis, ~10 s)">↩️ Rétablir l'original</button>
+    <button id="btnKeepNew" class="ok" disabled title="Valide le nouveau son et oublie l'original">✅ Garder le nouveau son</button>
+  </div>
+  <div class="hrow">
+    <button id="btnArm" class="ghost" title="Bascule l'écriture des modifications vers le KN2000 (curseurs, switches, changement de tone)">🔒 Écriture : OFF</button>
+    <label style="white-space:nowrap;font-size:1.15rem;font-weight:600" title="Après chaque écriture : recharge le slot en cours sur les parts du clavier qui le jouent (voisin d'aller-retour PC 0 · bank 0). Requiert Realtime sysex ON."><input type="checkbox" id="autoApply" style="width:22px;height:22px;vertical-align:middle;transform:translateY(-3px)"> ⚡ Auto-appliquer</label>
+    <span class="pill off" id="srcPill" title="Origine des données affichées (état machine / paquets reçus)">aucune donnée</span>
+    <span id="progress" title="Progression / nombre de paquets reçus"></span>
+    <span style="flex:1"></span>
+    <button id="btnPartRead" class="ghost" title="Rafraîchit l'état des parts du clavier (R1/R2/LEFT, 20 1n 00, SIZ 2)">🔄</button>
+    <span class="val" id="pS0" title="Son joué par RIGHT1">R1 : ?</span> <span class="val" id="pS1" title="Son joué par RIGHT2">R2 : ?</span> <span class="val" id="pS2" title="Son joué par LEFT">LEFT : ?</span>
+  </div>
 </header>
 
 <div class="card" id="cfgPanel" style="display:none">
@@ -129,21 +140,17 @@
 </div>
 
 <div class="tabs">
-  <div class="tab active" data-t="general">GENERAL <a class="th" href="help/sound-editor.html#se-01-general" target="_blank" rel="noopener" title="Aide : onglet GENERAL">❓</a></div>
-  <div class="tab" data-t="tone">TONE (1st · 2nd · sub) <a class="th" href="help/sound-editor.html#se-02-tone" target="_blank" rel="noopener" title="Aide : onglet TONE (enveloppe, filtres, EKF)">❓</a></div>
-  <div class="tab" data-t="effect">EFFECT <a class="th" href="help/sound-editor.html#se-03-effect" target="_blank" rel="noopener" title="Aide : onglet EFFECT">❓</a></div>
-  <div class="tab" data-t="bank">BANQUE (36 slots) <a class="th" href="help/sound-editor.html#se-04-banque" target="_blank" rel="noopener" title="Aide : onglet BANQUE (dump, packages, catalogue, dossier de travail)">❓</a></div>
-  <div class="tab" data-t="apc">APC <a class="th" href="help/sound-editor.html#se-05-apc" target="_blank" rel="noopener" title="Aide : onglet APC (knobs, pads, LEDs, config)">❓</a></div>
+  <div class="tab active" data-t="general">GENERAL <a class="th" href="help/sound-editor.html#se-01-general" target="_blank" rel="noopener" title="Documentation : onglet GENERAL">📖</a></div>
+  <div class="tab" data-t="tone">TONE (1st · 2nd · sub) <a class="th" href="help/sound-editor.html#se-02-tone" target="_blank" rel="noopener" title="Documentation : onglet TONE (enveloppe, filtres, EKF)">📖</a></div>
+  <div class="tab" data-t="effect">EFFECT <a class="th" href="help/sound-editor.html#se-03-effect" target="_blank" rel="noopener" title="Documentation : onglet EFFECT">📖</a></div>
+  <div class="tab" data-t="bank">BANQUE (36 slots) <a class="th" href="help/sound-editor.html#se-04-banque" target="_blank" rel="noopener" title="Documentation : onglet BANQUE (dump, packages, catalogue, dossier de travail)">📖</a></div>
+  <div class="tab" data-t="apc">APC <a class="th" href="help/sound-editor.html#se-05-apc" target="_blank" rel="noopener" title="Documentation : onglet APC (knobs, pads, LEDs, config)">📖</a></div>
 </div>
 
 <!-- ================= GENERAL ================= -->
 <div class="panel active" id="p-general"><div class="grid">
   <div class="card" id="sessionCard" style="grid-column:1/-1"><h2>📸 Session — Original du slot en cours</h2>
-    <div class="prow"><span class="val" id="origInfo">aucun original capturé</span>
-      <button id="btnRestore" class="warn" disabled>↩️ Rétablir l'original</button>
-      <button id="btnKeepNew" class="ok" disabled>✅ Garder le nouveau son</button>
-      <span class="note">L'original est capturé AUTOMATIQUEMENT à la première lecture d'un slot (avant toute modif) — un original par slot, conservé entre rechargements de page. « Rétablir » renvoie les 144 octets originaux dans la machine (armé requis, ~10 s) ; « Garder » valide le nouveau son et oublie l'original.</span></div>
-  </div>
+    <span class="note">L'original est capturé AUTOMATIQUEMENT à la première lecture d'un slot (avant toute modif) — un original par slot, conservé entre rechargements de page. Les boutons « ↩️ Rétablir l'original » et « ✅ Garder le nouveau son » sont désormais dans la barre du haut (pavé Slot), à droite — l'état de l'original y est affiché. « Rétablir » renvoie les 144 octets originaux dans la machine (armé requis, ~10 s) ; « Garder » valide le nouveau son et oublie l'original.</span></div>
   <div class="card"><h2>Octave Shift <span class="off">0x11</span></h2>
     <div class="prow"><label>Octave shift</label><div class="seg" data-f="octSh"></div></div>
     <div class="prow"><label>Right of split</label><div class="seg" data-f="octR"></div></div>
@@ -1519,7 +1526,7 @@ $("btnLogToggle").onclick=()=>{ // v0.9.15 : case à cocher « 📜 Log MIDI » 
   if(show) log("📜 Journal affiché."); };
 
 // ============ État clavier & application (parts R1/R2/L : 20 1n 00) ============
-const PARTS=[["RIGHT1",0],["RIGHT2",1],["LEFT",2]];
+const PARTS=[["R1",0],["R2",1],["LEFT",2]];
 let partStates=null;
 async function readAllParts(){
   const out=[];

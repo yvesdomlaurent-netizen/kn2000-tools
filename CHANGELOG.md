@@ -13,6 +13,13 @@ Outils :
 
 ## 2026-10-25
 
+### Sound Editor v0.9.16 — pavé supérieur en 2 lignes, session dans la barre, R1/R2, 📖
+- **Titre « 🎹 Sound Editor » remonté et centré** sur la ligne des badges (connexion · Log MIDI · ⚙️ Réglages).
+- **Barre de travail en 2 lignes** — ligne 1 : Slot, Nom, ✍️, ⬇️ Export, et à droite le pavé session (état de l'original + ↩️ Rétablir l'original / ✅ Garder le nouveau son, sortis de l'onglet GENERAL) ; ligne 2 : 🔒 Écriture, ⚡ Auto-appliquer, état machine / paquets reçus, et à droite l'état des parts.
+- **« 📍 Lire l'état » remplacé par un bouton 🔄** (rafraîchissement, à côté des indicateurs).
+- **Indicateurs raccourcis** : RIGHT1 → R1, RIGHT2 → R2 (LEFT inchangé).
+- **❓ des onglets remplacé par l'icône 📖** (documentation).
+
 ### Sound Editor v0.9.15 — finitions bandeau : ⚙️ à droite des badges, Log MIDI en case à cocher, 🧹 dans le journal
 - **⚙️ Réglages** déplacé au niveau des badges de connexion, complètement à droite ; **📜 Journal devient une case à cocher « 📜 Log MIDI »**, juste avant le bouton Réglages.
 - **🧹 Vider le log** quitte le bandeau haut et s'installe dans l'en-tête du journal sysex, à droite du titre (le journal ne se vide donc que là où il se lit).
