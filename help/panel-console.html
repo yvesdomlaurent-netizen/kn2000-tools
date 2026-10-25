@@ -35,33 +35,53 @@
 
 <!-- ============ FR ============ -->
 <div class="fr-block" lang="fr">
+<div class="tip">💡 <b>Aide contextuelle (v1.0)</b> : l'icône 📖 de chaque onglet ouvre cette page directement sur sa section (ancres stables <code>pc-01-etat</code>, <code>pc-02-bibliotheque</code>, <code>pc-03-sons</code>, <code>pc-04-panel-memory</code>, utilisables aussi comme références de documentation).</div>
 <h2>🚀 Démarrage rapide</h2>
 <ol>
   <li>Ouvrir la page dans <b>Chrome, Edge ou Firefox desktop</b> (Web MIDI requis).</li>
-  <li>Brancher l'interface MIDI USB du KN2000, sélectionner les ports d'entrée/sortie.</li>
-  <li>Cliquer <b>🔄 Lire l'état</b> : la console relit la configuration courante du clavier (sonorités par part, rythme, tempo…).</li>
+  <li>Brancher l'interface MIDI USB du KN2000. Les ports mémorisés sont restaurés automatiquement (par nom) et la connexion testée par un « ping » ; sinon ouvrir <b>⚙️ Réglages → 🔌 Connexion</b>, choisir In/Out puis <b>🔌 Connecter</b>.</li>
+  <li>Une fois connecté, l'état du clavier est lu automatiquement ; <b>🔄 Lire l'état</b> le relit à tout moment (sonorités par part, rythme, tempo…).</li>
   <li>Ajuster les réglages à l'écran, puis <b>➤ Envoyer Tout</b> pour les transmettre au clavier. Chaque section peut aussi être envoyée individuellement (<b>▶</b>).</li>
 </ol>
-<div class="tip">💡 Le bouton <b>🔍 Moniteur</b> affiche tout ce que le KN2000 envoie (CC, PC, sysex) — très utile pour découvrir des commandes non documentées.</div>
+<div class="tip">💡 Le bouton <b>🔎 Moniteur</b> (dans ⚙️ Réglages) affiche tout ce que le KN2000 envoie (CC, PC, sysex) — très utile pour découvrir des commandes non documentées.</div>
+<div class="tip">💡 La case <b>📜 Log MIDI</b> (en haut à droite) affiche le journal sysex de la session ; elle passe en surbrillance rouge si une erreur survient alors qu'il est masqué.</div>
 
 <h2>📚 Fonctions détaillées</h2>
 
-<h3>🎛️ Réglages pilotables</h3>
+<h3 data-a="pc-01-etat">Onglet ÉTAT</h3>
 <ul>
-  <li><b>Sonorités par part</b> : sélection par nom (listes déroulantes groupées) pour les parts du clavier.</li>
-  <li><b>Rythme / tempo</b> : démarrage/arrêt, contrôle du tempo et reset.</li>
-  <li><b>Techni-Chord</b> : modes (Off / OneFing / Fingered / Pianist) via les boutons dédiés.</li>
-  <li><b>Panel Memory</b> : rappel (<b>▶ Rappel</b>) des Panel Memory, lecture (<b>📖 Lire cette PM</b>) et écriture (<b>➤ Écrire vers le clavier</b>) d'une PM.</li>
-  <li><b>Volumes / équilibres</b> : réglages par section avec retour d'état.</li>
+  <li><b>Sonorités par part</b> : sélection par nom (listes déroulantes groupées) pour RIGHT 1 / RIGHT 2 / LEFT, avec volume, Digital Effect et DSP par part.</li>
+  <li><b>Rythme / tempo</b> : sélection du rythme (envoyée au clavier), tempo affiché après lecture.</li>
+  <li><b>Reverb / DSP / Transpose / Techni-Chord / APC</b> : pilotage direct, état rafraîchi par « Lire l'état ».</li>
+  <li><b>Panel Memory (ligne du haut)</b> : <b>▶ Rappel</b> rappelle la PM choisie sur le clavier, puis relit l'état.</li>
 </ul>
 
-<h3>🛠️ Fonctions avancées</h3>
+<h3 data-a="pc-02-bibliotheque">Onglet BIBLIOTHÈQUE</h3>
 <ul>
-  <li><b>État actuel</b> : vue complète de l'état du clavier, rafraîchie par « Lire l'état ».</li>
-  <li><b>↔ Diff 2 PM</b> : compare les deux dernières Panel Memory lues octet par octet — révèle où un réglage (ex. son d'une part) est stocké dans la PM.</li>
-  <li><b>⚖ Scanner adresses part APC</b> : interroge les adresses sysex documentées pour l'APC (utile à l'exploration).</li>
-  <li><b>💾 Bibliothèque d'ensembles</b> : « Sauver l'état actuel » mémorise la configuration complète ; « ⬇ Export JSON » / « ⬆ Import JSON » pour partager ou sauvegarder des ensembles complets.</li>
-  <li><b>📜 Log</b> : journal MIDI/sysex de la session.</li>
+  <li><b>💾 Sauver l'état actuel</b> : mémorise la configuration complète (nom libre) dans le navigateur (localStorage).</li>
+  <li><b>▶ Charger</b> : renvoie un ensemble sauvegardé vers le clavier (sons, rythme, volumes, effets…).</li>
+  <li><b>⬇ Export JSON / ⬆ Import JSON</b> : via le <b>dossier de travail</b> (voir ⚙️ Réglages → 📁) — l'export s'y écrit directement, l'import lit d'abord « kn2000-bibliotheque.json » ; repli fichier téléchargé / sélecteur si aucun dossier. Le dossier est partagé avec le Sound Editor.</li>
+</ul>
+
+<h3 data-a="pc-03-sons">Onglet SONS PART 4–16</h3>
+<ul>
+  <li>Sound Setting des Part MIDI 4–16 (adresse sysex <code>20 1n 00</code>) — utiles quand le KN2000 reçoit une séquence MIDI (canaux du menu Basic Channel).</li>
+  <li>Ce ne sont <b>pas</b> les sons des parts APC (ceux-ci viennent du rythme / Music Style).</li>
+</ul>
+
+<h3 data-a="pc-04-panel-memory">Onglet PANEL MEMORY (avancé)</h3>
+<ul>
+  <li><b>📖 Lire cette PM</b> : dump direct d'une Panel Memory (336 octets, méthode 2C) avec décodage lisible.</li>
+  <li><b>➤ Écrire vers le clavier</b> : réécrit la PM lue (confirmation demandée, écrasement possible vers une autre PM).</li>
+  <li><b>↔ Diff 2 PM</b> : compare les deux dernières PM lues octet par octet — révèle où un réglage (ex. son d'une part) est stocké dans la PM.</li>
+  <li><b>⚙ Scanner adresses part APC</b> : interroge les adresses sysex documentées (20 2m 02/07/40-43) puis les sons 20 1n 00 des Part 4–16.</li>
+</ul>
+
+<h2>🛠️ Réglages (menu ⚙️)</h2>
+<ul>
+  <li><b>🔌 Connexion</b> : ports In/Out (mémorisés après « Connecter », restaurés par nom au prochain chargement), bouton 🔄 Ports, état de la liaison. Le test de connexion (DRQ léger) doit réussir avant toute lecture d'état.</li>
+  <li><b>📁 Dossier de travail</b> : dossier choisi une fois, mémorisé par le navigateur, partagé avec le Sound Editor — utilisé par l'export/import de la bibliothèque.</li>
+  <li><b>🔎 Moniteur · 🌐 Langue · Aide</b> : moniteur MIDI, bascule FR/EN des libellés de la charte, lien vers cette page.</li>
 </ul>
 
 <h2>❓ Dépannage</h2>
@@ -74,33 +94,53 @@
 
 <!-- ============ EN ============ -->
 <div class="en-block" lang="en">
+<div class="tip">💡 <b>Contextual help (v1.0)</b>: the 📖 icon in each tab opens this page straight on its section (stable anchors <code>pc-01-etat</code>, <code>pc-02-bibliotheque</code>, <code>pc-03-sons</code>, <code>pc-04-panel-memory</code>, also usable as documentation references).</div>
 <h2>🚀 Quick start</h2>
 <ol>
   <li>Open the page in <b>Chrome or Edge desktop</b> (Web MIDI required).</li>
-  <li>Connect the KN2000's USB MIDI interface and select the input/output ports.</li>
-  <li>Click <b>🔄 Read state</b>: the console re-reads the keyboard's current configuration (part sounds, rhythm, tempo…).</li>
+  <li>Connect the KN2000's USB MIDI interface. Memorised ports are restored automatically (by name) and the link is tested with a "ping"; otherwise open <b>⚙️ Settings → 🔌 Connection</b>, pick In/Out then <b>🔌 Connect</b>.</li>
+  <li>Once connected, the keyboard state is read automatically; <b>🔄 Read state</b> re-reads it at any time (part sounds, rhythm, tempo…).</li>
   <li>Adjust the settings on screen, then <b>➤ Send All</b> to transmit them to the keyboard. Each section can also be sent individually (<b>▶</b>).</li>
 </ol>
-<div class="tip">💡 The <b>🔍 Monitor</b> button shows everything the KN2000 sends (CC, PC, SysEx) — very useful to discover undocumented commands.</div>
+<div class="tip">💡 The <b>🔍 Monitor</b> button (in ⚙️ Settings) shows everything the KN2000 sends (CC, PC, SysEx) — very useful to discover undocumented commands.</div>
+<div class="tip">💡 The <b>📜 Log MIDI</b> checkbox (top right) shows the session's SysEx log; it highlights in red when an error occurs while hidden.</div>
 
 <h2>📚 Detailed features</h2>
 
-<h3>🎛️ Controllable settings</h3>
+<h3 data-a="pc-01-etat">STATE tab</h3>
 <ul>
-  <li><b>Part sounds</b>: selection by name (grouped dropdowns) for the keyboard parts.</li>
-  <li><b>Rhythm / tempo</b>: start/stop, tempo control and reset.</li>
-  <li><b>Techni-Chord</b>: modes (Off / OneFing / Fingered / Pianist) via dedicated buttons.</li>
-  <li><b>Panel Memory</b>: recall (<b>▶ Recall</b>), read (<b>📖 Read this PM</b>) and write (<b>➤ Write to keyboard</b>) of a Panel Memory.</li>
-  <li><b>Volumes / balances</b>: per-section settings with state feedback.</li>
+  <li><b>Part sounds</b>: selection by name (grouped dropdowns) for RIGHT 1 / RIGHT 2 / LEFT, with per-part volume, Digital Effect and DSP.</li>
+  <li><b>Rhythm / tempo</b>: rhythm selection (sent to the keyboard), tempo shown after the state read.</li>
+  <li><b>Reverb / DSP / Transpose / Techni-Chord / APC</b>: direct control, state refreshed by “Read state”.</li>
+  <li><b>Panel Memory (top row)</b>: <b>▶ Recall</b> recalls the chosen PM on the keyboard, then re-reads the state.</li>
 </ul>
 
-<h3>🛠️ Advanced features</h3>
+<h3 data-a="pc-02-bibliotheque">LIBRARY tab</h3>
 <ul>
-  <li><b>Current state</b>: full view of the keyboard state, refreshed by “Read state”.</li>
+  <li><b>💾 Save current state</b>: stores the full configuration (free name) in the browser (localStorage).</li>
+  <li><b>▶ Load</b>: sends a saved ensemble back to the keyboard (sounds, rhythm, volumes, effects…).</li>
+  <li><b>⬇ Export JSON / ⬆ Import JSON</b>: via the <b>working folder</b> (see ⚙️ Settings → 📁) — the export is written there directly, the import first reads “kn2000-bibliotheque.json”; fallback to a downloaded file / picker if no folder. The folder is shared with the Sound Editor.</li>
+</ul>
+
+<h3 data-a="pc-03-sons">SOUNDS PART 4–16 tab</h3>
+<ul>
+  <li>Sound Setting of MIDI parts 4–16 (SysEx address <code>20 1n 00</code>) — useful when the KN2000 receives a MIDI sequence (Basic Channel menu channels).</li>
+  <li>These are <b>not</b> the APC part sounds (those come from the rhythm / Music Style).</li>
+</ul>
+
+<h3 data-a="pc-04-panel-memory">PANEL MEMORY tab (advanced)</h3>
+<ul>
+  <li><b>📖 Read this PM</b>: direct dump of a Panel Memory (336 bytes, method 2C) with readable decoding.</li>
+  <li><b>➤ Write to keyboard</b>: rewrites the read PM (confirmation required, can overwrite another PM).</li>
   <li><b>↔ Diff 2 PM</b>: byte-by-byte comparison of the last two Panel Memories read — reveals where a setting (e.g. a part's sound) is stored in the PM.</li>
-  <li><b>⚖ Scan APC part addresses</b>: queries documented SysEx addresses for the APC (useful for exploration).</li>
-  <li><b>💾 Ensemble library</b>: “Save current state” stores the full configuration; “⬇ Export JSON” / “⬆ Import JSON” to share or back up complete ensembles.</li>
-  <li><b>📜 Log</b>: MIDI/SysEx log of the session.</li>
+  <li><b>⚖ Scan APC part addresses</b>: queries the documented SysEx addresses (20 2m 02/07/40-43) then the 20 1n 00 sounds of parts 4–16.</li>
+</ul>
+
+<h2>🛠️ Settings (⚙️ menu)</h2>
+<ul>
+  <li><b>🔌 Connection</b>: In/Out ports (memorised after “Connect”, restored by name on next load), 🔄 Ports button, link status. The connection test (light DRQ) must succeed before any state read.</li>
+  <li><b>📁 Working folder</b>: folder chosen once, memorised by the browser, shared with the Sound Editor — used by the library export/import.</li>
+  <li><b>🔎 Monitor · 🌐 Language · Help</b>: MIDI monitor, FR/EN charte label toggle, link to this page.</li>
 </ul>
 
 <h2>❓ Troubleshooting</h2>
@@ -112,19 +152,27 @@
 </div>
 
 <h2>🕐 Historique des versions / Version history</h2>
-<div class="ver"><b>v1.0</b><span class="date">24/10/2026</span> — Première publication sur GitHub Pages. Console de pilotage : sonorités par part, rythme/tempo, Techni-Chord, Panel Memory (rappel/lecture/écriture), lecture d'état, moniteur MIDI, diff de Panel Memories, bibliothèque d'ensembles avec export/import JSON.<br/><i>First release on GitHub Pages. Control console: part sounds, rhythm/tempo, Techni-Chord, Panel Memory (recall/read/write), state readout, MIDI monitor, Panel Memory diff, ensemble library with JSON export/import.</i></div>
+<div class="ver"><b>v1.0</b><span class="date">25/10/2026</span> — Charte d'ergonomie (alignée sur le Sound Editor v0.9.13+) : barre de badges (🎹 KN2000, 📁 dossier) + titre centré + case 📜 Log MIDI + menu ⚙️ Réglages ; onglets ÉTAT / BIBLIOTHÈQUE / SONS PART 4–16 / PANEL MEMORY avec aide contextuelle par ancre (pc-01…pc-04) ; connexion fiabilisée (ports mémorisés et restaurés par nom, bouton Connecter, test de réponse avant toute lecture) ; dossier de travail partagé avec le Sound Editor pour l'export/import de la bibliothèque ; squelette i18n FR/EN.<br/><i>Ergonomic charter (aligned with Sound Editor v0.9.13+): badge bar (🎹 KN2000, 📁 folder) + centred title + 📜 Log MIDI checkbox + ⚙️ Settings menu; STATE / LIBRARY / SOUNDS PART 4–16 / PANEL MEMORY tabs with per-anchor contextual help; hardened connection (memorised ports restored by name, Connect button, reply test before any read); working folder shared with the Sound Editor for library export/import; FR/EN i18n skeleton.</i></div>
+<div class="ver"><b>v1.0 (publication initiale)</b><span class="date">24/10/2026</span> — Première publication sur GitHub Pages. Console de pilotage : sonorités par part, rythme/tempo, Techni-Chord, Panel Memory (rappel/lecture/écriture), lecture d'état, moniteur MIDI, diff de Panel Memories, bibliothèque d'ensembles avec export/import JSON.<br/><i>First release on GitHub Pages. Control console: part sounds, rhythm/tempo, Techni-Chord, Panel Memory (recall/read/write), state readout, MIDI monitor, Panel Memory diff, ensemble library with JSON export/import.</i></div>
 
 <a class="back" href="../panel-console.html">← Retour à la Panel Console / Back to the Panel Console</a> · <a href="../index.html">Accueil / Home</a>
 
 <script>
+function fixAnchors(){ // v1.0 : ancres pc-<NN>-<section> déplacées sur le bloc de langue visible
+  var l='fr'; try{ l=localStorage.getItem('kn2000_help_lang')||'fr'; }catch(e){}
+  document.querySelectorAll('[data-a]').forEach(function(h){ h.removeAttribute('id'); });
+  var blk=document.querySelector(l==='en'?'.en-block':'.fr-block');
+  if(blk) blk.querySelectorAll('[data-a]').forEach(function(h){ h.id=h.getAttribute('data-a'); });
+}
 function setLang(l){
   document.querySelector('.fr-block').style.display = l==='fr'?'':'none';
   document.querySelector('.en-block').style.display = l==='en'?'':'none';
   document.getElementById('frBtn').className = l==='fr'?'on':'';
   document.getElementById('enBtn').className = l==='en'?'on':'';
   try{ localStorage.setItem('kn2000_help_lang', l); }catch(e){}
+  fixAnchors();
 }
-try{ const s=localStorage.getItem('kn2000_help_lang'); if(s) setLang(s); }catch(e){}
+try{ const s=localStorage.getItem('kn2000_help_lang'); if(s) setLang(s); else fixAnchors(); }catch(e){ fixAnchors(); }
 </script>
 </body>
 </html>

@@ -13,6 +13,15 @@ Outils :
 
 ## 2026-10-25
 
+### Panel Console v1.0 — charte d'ergonomie (alignée Sound Editor v0.9.13+)
+- **Barre de badges** : 🎹 KN2000 (état liaison) et 📁 dossier à gauche, **titre centré**, à droite **case 📜 Log MIDI** (remplace le bouton Log ; marque les erreurs en rouge quand le journal est masqué) + bouton **⚙️ Réglages** — le bouton Moniteur quitte le bandeau haut.
+- **Menu ⚙️ Réglages** (ouvert automatiquement si le KN2000 n'est pas connecté) : 🔌 Connexion (In/Out, 🔄 Ports, 🔌 Connecter, état), 📁 Dossier de travail, 🔎 Moniteur, 🌐 langue, Aide (SVG livre au trait).
+- **Onglets** : ÉTAT · 📚 BIBLIOTHÈQUE · 🎵 SONS PART 4–16 · ⚙️ PANEL MEMORY — les sections dépliables `<details>` deviennent des onglets, chacun avec l'icône d'aide SVG pointant vers son ancre stable (`pc-01-etat` … `pc-04-panel-memory`).
+- **Connexion fiabilisée** : ports mémorisés après « Connecter » (localStorage `kn2000_pc_io`) et **restaurés par nom** au chargement (repli ID, repli premier port) ; connexion automatique uniquement si les deux ports mémorisés sont retrouvés ; **test de réponse (DRQ léger) avant toute lecture d'état** ; pill d'état dédiée (⏳ / ● connecté / ⚠ pas de réponse).
+- **Dossier de travail partagé** avec le Sound Editor (même base IndexedDB `kn2000_se`) : export de la bibliothèque écrit `kn2000-bibliotheque.json` dans le dossier ; l'import y lit d'abord, sinon sélecteur système / fichier (replis : téléchargement).
+- **Squelette i18n FR/EN** (`STR`, localStorage `kn2000_pc_lang`) sur les éléments de la charte (badges, libellés des groupes, bouton langue).
+- **Aide restructurée** (`help/panel-console.html`) : sections par onglet avec ancres stables, bloc Réglages, historique v1.0.
+
 ### Sound Editor v0.9.17 — icône d'aide en SVG (livre au trait)
 - **Les icônes d'aide des 5 onglets et le bouton « Aide » des Réglages passent en SVG inline** (livre dessiné au trait, bleu #38bdf8) — remplace l'emoji 📖/❓ qui s'affichait en carré blanc sur les systèmes sans glyphe correspondant ; rendu garanti, taille et couleur contrôlées, indépendant des polices.
 

@@ -39,25 +39,81 @@
   .vols.snd { display: grid; }
   select.apcsnd { max-width: 160px; font-size: 11px; padding: 3px 4px; background: #1b222a; color: #e8e8e8; border: 1px solid #345; border-radius: 4px; }
   #dspParams, #volsGrid { grid-template-columns: auto 110px 34px; }
-  details { margin-top: 14px; }
-  details summary { cursor: pointer; color: #8fd0ff; font-weight: 600; }
-  details > div { margin-top: 8px; }
-  #logBtn.warn { background: #a33; }
+  /* ---- v1.0 charte ergonomie (identique Sound Editor v0.9.13+) ---- */
+  #badgeBar { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 0 0; align-items:center; }
+  #badgeBar h1 { font-size:1.05rem; margin:0; }
+  .bdg { padding:2px 10px; border:1px solid #345; border-radius:999px; font-size:12px; cursor:pointer; color:#9ab; white-space:nowrap; }
+  .bdg.on { color:#7fdba0; border-color:#2a6; }
+  .bdg.warn { color:#ffd080; border-color:#c80; }
+  button.ghost, a.ghost, label.ghost { background:#1b222a; color:#e8e8e8; border:1px solid #345; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:13px; text-decoration:none; display:inline-block; }
+  button.ghost:hover, a.ghost:hover { border-color:#38bdf8; }
+  .pill { padding:2px 10px; border-radius:999px; font-size:12px; font-family:ui-monospace,monospace; border:1px solid #345; color:#9ab; white-space:nowrap; }
+  .pill.on { color:#7fdba0; border-color:#2a6; }
+  .pill.warn { color:#ffd080; border-color:#c80; }
+  .pill.off { color:#9ab; }
+  .cardc { background:#161c23; border:1px solid #2a3540; border-radius:10px; padding:10px 14px; margin:10px 0; }
+  .prow { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:6px 0; }
+  .glbl { color:#8fd0ff; font-weight:600; min-width:150px; display:inline-block; }
+  .legend { color:#9ab; font-size:12px; }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; margin:14px 0 0 0; border-bottom:1px solid #2a3540; }
+  .tab { padding:8px 14px; cursor:pointer; border:1px solid #2a3540; border-bottom:0; border-radius:8px 8px 0 0; background:#141a21; color:#9ab; font-size:13px; user-select:none; }
+  .tab.active { background:#1c2630; color:#e8e8e8; }
+  .tab .th { margin-left:8px; }
+  .tab:hover { color:#e8e8e8; }
+  .panel { display:none; }
+  .panel.active { display:block; }
+  #logBtn.warn { outline:2px solid #a33; outline-offset:2px; }
 </style>
 </head>
 <body>
-<h1>&#127911; KN2000 Console <span style="font-size:0.7em;color:#8fd0ff">v3.12</span> <button class="sec" id="logBtn" style="font-size:0.7em;padding:4px 10px">&#128196; Log</button> <button class="sec" id="monBtn" style="font-size:0.7em;padding:4px 10px" title="Affiche tout ce que le KN2000 envoie (CC, PC, sysex) — utile pour découvrir les commandes">&#128269; Moniteur: ON</button></h1>
+<div id="badgeBar">
+  <span class="bdg" id="bdgKn" title="Connexion KN2000 — clique pour ouvrir les réglages (section connexion)">🎹 KN2000 ○</span>
+  <span class="bdg" id="bdgDir" title="Dossier de travail (exports/imports de la bibliothèque) — clique pour ouvrir les réglages (section dossier)">📁 —</span>
+  <span style="flex:1"></span>
+  <h1>🎹 KN2000 Console <span style="font-size:.6em;color:#8fd0ff">v1.0 — charte</span></h1>
+  <span style="flex:1"></span>
+  <label class="ghost" title="Afficher/masquer le journal MIDI (sysex)"><input type="checkbox" id="logBtn" style="width:15px;height:15px;vertical-align:middle;transform:translateY(-1px)"> 📜 Log MIDI</label>
+  <button class="ghost" id="btnCfg" title="Réglages & Aide : connexion, dossier de travail, moniteur, langue">⚙️ Réglages</button>
+</div>
 <div class="row">
-  <select id="outSel"><option value="">Sortie MIDI\u2026</option></select>
-  <select id="inSel"></select>
   <button class="sec" id="readAll">&#128260; Lire l'&#233;tat</button>
   <button id="sendAll">&#10148; Envoyer Tout</button>
   <span style="border-left:1px solid #345;padding-left:10px"></span>
   <b style="color:#ffd080">Panel Memory</b> <select id="pmSel"></select> <button class="sec" data-send="pm">&#9654; Rappel</button>
-  <span id="st" class="info">Web MIDI non initialis&#233;</span>
+  <span style="flex:1"></span>
+  <span id="st" class="pill off">Web MIDI non initialis&#233;</span>
+</div>
+
+<div class="cardc" id="cfgPanel" style="display:none">
+  <div class="prow" id="cfgKn"><span class="glbl" data-k="conn"></span>
+    <button class="ghost" id="btnRefreshPorts" title="Recherche les ports MIDI disponibles">🔄 Ports</button>
+    <label title="Entrée MIDI venant du KN2000">In <select id="inSel"></select></label>
+    <label title="Sortie MIDI vers le KN2000">Out <select id="outSel"></select></label>
+    <button id="btnConnect" title="Connecte la console au KN2000 (test de réponse, puis lecture de l'état si OK)">🔌 Connecter</button>
+    <span class="pill off" id="stMidi">non connecté</span>
+  </div>
+  <div class="prow" id="cfgDir"><span class="glbl" data-k="dirlbl"></span>
+    <button class="ghost" id="btnCatDir" style="display:none" title="Choisir le dossier de travail (export/import de la bibliothèque ; mémorisé par le navigateur, partagé avec le Sound Editor)">📁 Dossier de travail : non défini</button>
+    <button class="ghost" id="btnCatDirForget" style="display:none" title="Oublier le dossier de travail">✖</button>
+    <span class="legend" id="catDirLegend" style="display:none">📁 Dossier de travail : l'export de la bibliothèque s'y écrit directement ; l'import y lit d'abord « kn2000-bibliotheque.json », sinon le sélecteur s'y ouvre. Dossier et autorisation mémorisés par le navigateur — partagé avec le Sound Editor.</span>
+  </div>
+  <div class="prow" id="cfgMisc"><span class="glbl" data-k="misc"></span>
+    <button class="ghost" id="monBtn" title="Affiche tout ce que le KN2000 envoie (CC, PC, sysex) — utile pour découvrir les commandes">🔎 Moniteur : ON</button>
+    <button class="ghost" id="btnLang" title="Bascule les libellés de l'interface FR/EN (éléments de la charte)">🇫🇷 FR</button>
+    <a class="ghost" id="btnHelp" href="help/panel-console.html" target="_blank" rel="noopener" title="Aide générale (démarrage, fonctions détaillées, tips, dépannage, historique)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7dd3fc" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Aide</a>
+  </div>
 </div>
 <div id="banner"></div>
 
+<div class="tabs">
+  <div class="tab active" data-t="etat">ÉTAT <a class="th" href="help/panel-console.html#pc-01-etat" target="_blank" rel="noopener" title="Documentation : onglet ÉTAT"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></a></div>
+  <div class="tab" data-t="lib">📚 BIBLIOTHÈQUE <a class="th" href="help/panel-console.html#pc-02-bibliotheque" target="_blank" rel="noopener" title="Documentation : onglet BIBLIOTHÈQUE"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></a></div>
+  <div class="tab" data-t="snd">🎵 SONS PART 4–16 <a class="th" href="help/panel-console.html#pc-03-sons" target="_blank" rel="noopener" title="Documentation : onglet SONS PART 4–16"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></a></div>
+  <div class="tab" data-t="pm">⚙️ PANEL MEMORY <a class="th" href="help/panel-console.html#pc-04-panel-memory" target="_blank" rel="noopener" title="Documentation : onglet PANEL MEMORY"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></a></div>
+</div>
+
+<!-- ================= ÉTAT ================= -->
+<div class="panel active" id="p-etat">
 <h2>&#201;tat actuel</h2>
 <div class="cols3">
   <div>
@@ -77,23 +133,24 @@
     <div class="part"><b>Techni-Chord</b> <button class="sec" id="tcBtn">?</button></div>
   </div>
 </div>
+</div>
 
-<details id="libSection">
-<summary>&#128218; Biblioth&#232;que d'ensembles (ouvrir pour g&#233;rer / charger)</summary>
-<div>
+<!-- ================= BIBLIOTHÈQUE ================= -->
+<div class="panel" id="p-lib">
+<h2>📚 Bibliothèque d'ensembles (localStorage + dossier de travail)</h2>
   <div class="row">
     <input type="text" id="libName" placeholder="Nom de l'ensemble" size="16">
     <button class="sec" id="libSave">&#128190; Sauver l'&#233;tat actuel</button>
     <button class="sec" id="libExport">&#11015; Export JSON</button>
     <button class="sec" id="libImportBtn">&#11014; Import JSON</button>
-    <input type="file" id="libImport" accept=".json" style="display:none">
   </div>
+  <span class="info" style="font-size:12px">Sauvegarde navigateur (localStorage) — Export/Import JSON via le dossier de travail (voir ⚙️ Réglages → 📁) ou fichier téléchargé/choisi.</span>
   <div id="libList"></div>
 </div>
-</details>
 
-<details id="sndSection">
-<summary>&#127925; Sons Part MIDI 4&#8211;16 (Sound Setting, adresse 20 1n 00) &#8212; re&#231;u s&#233;quence / Basic Channel</summary>
+<!-- ================= SONS PART 4-16 ================= -->
+<div class="panel" id="p-snd">
+<h2>🎵 Sons Part MIDI 4&#8211;16 (Sound Setting, adresse 20 1n 00) &#8212; re&#231;u s&#233;quence / Basic Channel</h2>
 <div class="part">
   <div class="row">
     <label>Part <select id="sndPartSel"></select></label>
@@ -104,10 +161,11 @@
   </div>
   <span class="info" style="font-size:12px">Sound Setting des Part 4&#8211;16 (ex. quand le KN2000 re&#231;oit une s&#233;quence MIDI ; canaux d&#233;finis dans le menu Basic Channel du clavier). Ce ne sont PAS les sons des parts APC (ceux-ci viennent du rythme / Music Style). Question ouverte : ces r&#233;glages sont-ils stock&#233;s dans la Panel Memory ? &#8594; protocole : Lire cette PM, changer un son de Part au clavier, relire, puis &#8220;Diff 2 PM&#8221;.</span>
 </div>
-</details>
+</div>
 
-<details id="pmSection">
-<summary>&#9881;&#65039; Panel Memory — acc&#232;s direct par PM (dump 336 octets, m&#233;thode 2C) — section avanc&#233;e</summary>
+<!-- ================= PANEL MEMORY ================= -->
+<div class="panel" id="p-pm">
+<h2>⚙️ Panel Memory — accès direct par PM (dump 336 octets, méthode 2C) — section avancée</h2>
 <div class="part">
   <select id="pmDumpSel"></select>
   <button class="sec" id="pmRead">&#128220; Lire cette PM</button>
@@ -117,7 +175,7 @@
   <button class="sec" id="apcScan" title="Interroge les adresses document\u00e9es (20 2m 02/07/40-43) puis les sons 20 1n 00 des Part 4\u201316">&#9903; Scanner adresses part APC</button>
   <div id="pmRecInfo" class="info" style="margin-top:8px;white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:12px"></div>
 </div>
-</details>
+</div>
 
 <div id="log" hidden></div>
 <script>
@@ -126,7 +184,7 @@ const KN={"sounds":[[9,0,"Piano","PIANO & E.PIANO",0,0],[9,1,"Bright Piano","PIA
 const $ = id => document.getElementById(id);
 const logEl = $("log");
 function log(t, cls) { const p = document.createElement("div"); p.textContent = t; if (cls) p.className = cls; logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight; if (cls === "ko" && logEl.hidden) { const b = document.getElementById("logBtn"); if (b) b.classList.add("warn"); } }
-$("logBtn").onclick = () => { logEl.hidden = !logEl.hidden; $("logBtn").classList.remove("warn"); logEl.scrollTop = logEl.scrollHeight; };
+$("logBtn").onchange = () => { logEl.hidden = !$("logBtn").checked; $("logBtn").classList.remove("warn"); logEl.scrollTop = logEl.scrollHeight; };
 const hex = a => [...a].map(x => x.toString(16).padStart(2, "0")).join(" ");
 const wait = ms => new Promise(r => setTimeout(r, ms));
 function cksum(b) { return b.slice(1).reduce((a, x) => a ^ x, 0); }
@@ -142,39 +200,136 @@ function sysex2B(adr, siz) {  // DRQ : ADR SIZ CN SM (doc p.23 ; les param\u00e8
 function denibble(arr) { const o = []; for (let i = 0; i + 1 < arr.length; i += 2) o.push(arr[i] << 4 | arr[i + 1]); return o; }
 
 // ===== Web MIDI =====
-let output = null, input = null;
+let output = null, input = null, access = null, connOk = false;
 const A2 = (x) => x.toString(16).padStart(2, "0");
-navigator.requestMIDIAccess({ sysex: true }).then(acc => {
-  if (!acc.outputs.size && !acc.inputs.size) {
-    $("st").innerHTML = "Web MIDI OK mais AUCUN port d\u00e9tect\u00e9 \u2014 v\u00e9rifier la MiniFuse (aliment\u00e9e ? câble USB ?).";
-    $("st").className = "ko"; return;
-  }
-  $("st").textContent = "Web MIDI pr\u00eat"; $("st").className = "ok";
-  const upd = () => {
-    for (const sel of [$("outSel"), $("inSel")]) { sel.innerHTML = ""; sel.add(new Option("\u2014 choisir \u2014", "")); }
-    acc.outputs.forEach(p => $("outSel").add(new Option(p.name, p.id)));
-    acc.inputs.forEach(p => $("inSel").add(new Option(p.name, p.id)));
-    if (acc.outputs.size) $("outSel").selectedIndex = 1;   // premier port par d\u00e9faut
-    if (acc.inputs.size) $("inSel").selectedIndex = 1;
-    pick();
-  };
-  const pick = () => {
-    output = ($("outSel").value && acc.outputs.get($("outSel").value)) || null;
-    input = ($("inSel").value && acc.inputs.get($("inSel").value)) || null;
-    if (input) input.onmidimessage = onMsg;
-  };
-  $("outSel").onchange = $("inSel").onchange = pick;
-  acc.addEventListener("statechange", upd);
-  upd();
-  setTimeout(() => { if (output && input) readAll(true); }, 700);   // lecture auto au chargement (DRQ temps réel uniquement, pas de bulk)
-
-}).catch(err => {
-  const cause = err && err.name === "NotAllowedError" ? "ACC\u00c8S REFUS\u00c9 \u2014 une popup Chrome demande l'autorisation syst\u00e8me MIDI : la valider (et v\u00e9rifier chrome://settings/content/midiDevices)" : err && err.name === "SecurityError" ? "SYSEX BLOQU\u00c9 \u2014 page non servie en http(s):// (file:// interdit pour le sysex)" : (err && err.name ? err.name : "erreur inconnue");
-  $("st").innerHTML = "Web MIDI \u00c9CHEC : " + cause + " \u2014 proc\u00e9dure : dossier + python -m http.server 8000 + http://localhost:8000/kn2000-panel-console.html (Chrome/Edge)";
-  $("st").className = "ko";
-  log("Web MIDI refus\u00e9 : " + (err && err.message ? err.message : err), "ko");
-});
+// v1.0 charte : ports mémorisés (id + nom), restauration par nom, connexion explicite + test de réponse.
+function ioLoad() { try { return JSON.parse(localStorage.getItem("kn2000_pc_io") || "{}") || {}; } catch (e) { return {}; } }
+function ioSave() { try { const si = $("inSel").selectedOptions[0], so = $("outSel").selectedOptions[0];
+    localStorage.setItem("kn2000_pc_io", JSON.stringify({ inId: $("inSel").value || null, inName: si ? si.textContent : null, outId: $("outSel").value || null, outName: so ? so.textContent : null })); } catch (e) { } }
+function stMidiSet(txt, cls) { const s = $("stMidi"); s.textContent = txt; s.className = "pill " + (cls || "off"); }
+function pick() {
+  output = ($("outSel").value && access.outputs.get($("outSel").value)) || null;
+  input = ($("inSel").value && access.inputs.get($("inSel").value)) || null;
+  if (input) input.onmidimessage = onMsg;
+}
+function fillPorts() {
+  for (const sel of [$("outSel"), $("inSel")]) { sel.innerHTML = ""; sel.add(new Option("— choisir —", "")); }
+  access.outputs.forEach(p => $("outSel").add(new Option(p.name, p.id)));
+  access.inputs.forEach(p => $("inSel").add(new Option(p.name, p.id)));
+  // restauration des ports mémorisés : par ID d'abord, puis par NOM (les IDs Web MIDI peuvent changer)
+  const io = ioLoad();
+  const restore = (sel, id, nm) => { if (id && [...sel.options].some(o => o.value === id)) { sel.value = id; return true; }
+    if (nm) { const o = [...sel.options].find(x => x.textContent === nm); if (o) { sel.value = o.value; return true; } } return false; };
+  const rIn = restore($("inSel"), io.inId, io.inName), rOut = restore($("outSel"), io.outId, io.outName);
+  if (!rIn && access.inputs.size) $("inSel").selectedIndex = 1;
+  if (!rOut && access.outputs.size) $("outSel").selectedIndex = 1;
+  pick();
+  return { rIn, rOut };
+}
+function refreshPorts() {
+  if (!navigator.requestMIDIAccess) { $("st").innerHTML = "Web MIDI indisponible — sers la page via http://localhost (file:// refuse le sysex)."; $("st").className = "ko"; return; }
+  navigator.requestMIDIAccess({ sysex: true }).then(acc => {
+    access = acc;
+    acc.addEventListener("statechange", () => { const r = fillPorts(); if (r.rIn && r.rOut) log("Ports MIDI modifiés (rebranchement ?) — ports mémorisés restaurés.", "info"); });
+    if (!acc.outputs.size && !acc.inputs.size) {
+      $("st").innerHTML = "Web MIDI OK mais AUCUN port détecté — vérifier la MiniFuse (alimentée ? câble USB ?)."; $("st").className = "ko";
+      stMidiSet("non connecté"); return;
+    }
+    $("st").textContent = "Web MIDI prêt"; $("st").className = "ok";
+    const { rIn, rOut } = fillPorts();
+    if (rIn && rOut) {
+      log("🔌 Ports mémorisés : In = " + $("inSel").selectedOptions[0].textContent + " · Out = " + $("outSel").selectedOptions[0].textContent + " — tentative de connexion automatique (test de la réponse du KN2000)…", "info");
+      connect();
+    } else {
+      stMidiSet("non connecté");
+      log("ℹ️ Aucun port KN2000 mémorisé (ou introuvable) — choisis In/Out dans ⚙️ Réglages puis « 🔌 Connecter » pour les mémoriser.", "ko");
+    }
+  }).catch(err => {
+    const cause = err && err.name === "NotAllowedError" ? "ACCÈS REFUSÉ — une popup Chrome demande l'autorisation système MIDI : la valider (et vérifier chrome://settings/content/midiDevices)" : err && err.name === "SecurityError" ? "SYSEX BLOQUÉ — page non servie en http(s):// (file:// interdit pour le sysex)" : (err && err.name ? err.name : "erreur inconnue");
+    $("st").innerHTML = "Web MIDI ÉCHEC : " + cause + " — procédure : dossier + python -m http.server 8000 + http://localhost:8000/panel-console.html (Chrome/Edge)";
+    $("st").className = "ko";
+    stMidiSet("non connecté", "warn");
+    log("Web MIDI refusé : " + (err && err.message ? err.message : err), "ko");
+  });
+}
+// v1.0 charte : connexion explicite — test de liaison (DRQ léger, 1 octet) AVANT toute lecture d'état.
+function connect() {
+  if (!access) { log("Clique d'abord sur « 🔄 Ports ».", "ko"); return; }
+  pick();
+  if (!output || !input) { stMidiSet("choisir ports", "warn"); log("Choisis les ports In/Out puis « Connecter ».", "ko"); return; }
+  ioSave(); // ports choisis → mémorisés pour le prochain chargement
+  connOk = false;
+  stMidiSet("⏳ test KN2000…");
+  log("Test de liaison : ping KN2000 (DRQ 20 00 02, SIZ 1)…", "info");
+  send(sysex2B([0x20, 0x00, 0x02], 1)); // Transpose : réponse attendue → connOk dans onMsg
+  setTimeout(() => {
+    if (connOk) { stMidiSet("● connecté", "on"); log("Connexion vérifiée (le KN2000 répond) — lecture de l'état…", "ok"); readAll(true); }
+    else { stMidiSet("⚠ pas de réponse", "warn"); log("⚠️ Ports choisis mais le KN2000 ne répond pas — vérifie In/Out (⚙️ Réglages), le câble MIDI et le branchement USB. Aucune lecture d'état lancée.", "ko"); }
+  }, 900);
+}
+$("btnConnect").onclick = connect;
+$("btnRefreshPorts").onclick = refreshPorts;
+$("outSel").onchange = $("inSel").onchange = () => { pick(); connOk = false; stMidiSet("non connecté"); };
+refreshPorts();
 function send(b) { if (!output) { log("Pas de sortie MIDI", "ko"); return false; } output.send(b); return true; }
+
+// ===== v1.0 charte : onglets =====
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+  document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(x => x.classList.remove("active"));
+  t.classList.add("active"); $("p-" + t.dataset.t).classList.add("active");
+});
+document.querySelectorAll(".tab a.th").forEach(a => a.onclick = e => e.stopPropagation()); // aide : ouvre l'ancre sans changer d'onglet
+
+// ===== v1.0 charte : dossier de travail (partagé avec le Sound Editor — même base IndexedDB kn2000_se) =====
+let catDir = null;
+function catSetDirUI() { $("btnCatDir").textContent = catDir ? ("📁 " + catDir.name) : "📁 Dossier de travail : non défini"; $("btnCatDirForget").style.display = catDir ? "" : "none"; }
+function idbOpen() { return new Promise(res => { const r = indexedDB.open("kn2000_se", 1);
+  r.onupgradeneeded = () => { r.result.createObjectStore("h"); }; r.onsuccess = () => res(r.result); r.onerror = () => res(null); }); }
+async function idbPutDir(h) { const db = await idbOpen(); if (!db) return; try { const t = db.transaction("h", "readwrite"); t.objectStore("h").put(h, "catDir"); } catch (e) { } }
+async function idbGetDir() { const db = await idbOpen(); if (!db) return null; return new Promise(res => { try { const q = db.transaction("h", "readonly").objectStore("h").get("catDir"); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); } catch (e) { res(null); } }); }
+async function idbDelDir() { const db = await idbOpen(); if (!db) return; try { db.transaction("h", "readwrite").objectStore("h").delete("catDir"); } catch (e) { } }
+async function dirPerm(h) { // demande (ou vérifie) l'autorisation — doit être déclenchée par un clic
+  try { if (await h.queryPermission({ mode: "readwrite" }) === "granted") return true;
+        return (await h.requestPermission({ mode: "readwrite" })) === "granted"; } catch (e) { return false; } }
+async function dirWrite(name, txt) { // écrit dans le dossier de travail → true
+  if (!catDir || !(await dirPerm(catDir))) return false;
+  try { const fh = await catDir.getFileHandle(name, { create: true }); const w = await fh.createWritable(); await w.write(txt); await w.close(); return true; }
+  catch (e) { log("⚠️ Écriture « " + name + " » impossible : " + e.message, "ko"); return false; }
+}
+async function dirRead(name) { // lit un fichier du dossier de travail → File|null
+  if (!catDir || !(await dirPerm(catDir))) return null;
+  try { return await (await catDir.getFileHandle(name)).getFile(); } catch (e) { return null; }
+}
+async function saveJson(name, txt, label) { // dossier de travail d'abord, repli Téléchargements
+  if (await dirWrite(name, txt)) { log("📁 " + label + " : « " + name + " » écrit dans le dossier de travail (" + catDir.name + ").", "ok"); return; }
+  const blob = new Blob([txt], { type: "application/json" }); const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name; a.click(); URL.revokeObjectURL(a.href);
+  log("⬇️ " + label + " : « " + name + " » (Téléchargements" + (catDir ? " — dossier refusé/indisponible" : " — aucun dossier choisi") + ").", "ok");
+}
+async function openJson(defaultName, cb) { // import générique : dossier de travail d'abord, repli sélecteur système puis <input>
+  const f = await dirRead(defaultName);
+  if (f) { log("📂 " + defaultName + " lu depuis le dossier de travail (" + catDir.name + ").", "ok"); cb(f); return; }
+  if (window.showOpenFilePicker) {
+    const opts = { multiple: false, types: [{ description: "JSON", accept: { "application/json": [".json"] } }] };
+    if (catDir && await dirPerm(catDir)) opts.startIn = catDir;
+    try { const [fh] = await window.showOpenFilePicker(opts); cb(await fh.getFile()); return; }
+    catch (e) { if (e.name === "AbortError") return; }
+  }
+  const i = document.createElement("input"); i.type = "file"; i.accept = ".json,application/json";
+  i.onchange = () => { if (i.files[0]) cb(i.files[0]); };
+  i.click();
+}
+if (window.showDirectoryPicker) { // API disponible (Chrome/Edge) : on propose la préférence dossier
+  $("btnCatDir").style.display = ""; $("catDirLegend").style.display = "";
+  $("btnCatDir").onclick = async () => {
+    try { const d = await window.showDirectoryPicker({ mode: "readwrite" }); catDir = d; await idbPutDir(d); catSetDirUI();
+      log("📁 Dossier de travail : « " + d.name + " » (export/import de la bibliothèque).", "ok");
+    } catch (e) { if (e.name !== "AbortError") log("⚠️ Choix du dossier impossible : " + e.message, "ko"); }
+  };
+  $("btnCatDirForget").onclick = async () => { catDir = null; await idbDelDir(); catSetDirUI(); log("📁 Dossier de travail oublié."); };
+  idbGetDir().then(h => { if (h) { catDir = h; catSetDirUI(); } });
+}
 
 // ===== construction des listes =====
 function groupsOf(list, key) { const g = {}; list.forEach(e => (g[e[key]] = g[e[key]] || []).push(e)); return g; }
@@ -368,382 +523,3 @@ function applyState(adr, dt) {
     setTgl((adr[2] === 6 ? "de" : "dsp") + n, on);
     log("  \u2713 " + PARTS[n].name + " " + (adr[2] === 6 ? "Digital Effect" : "DSP Effect") + " = " + (on ? "ON" : "OFF"), "ok");
   }
-  else if (k === "20 60 00") { const r = matchRhythm(dt[0], dt[1]); if (r) { $("rhySel").value = r[0] + "/" + r[1]; log("  \u2713 Rythme = " + r[2], "ok"); } else log("  rythme PC " + dt[0] + " bank " + dt[1] + " non mapp\u00e9", "info"); }
-  else if (adr[0] === 0x20 && adr[1] >= 0x10 && adr[1] <= 0x12 && adr[2] === 0) { setPartUI(adr[1] - 0x10, dt[0], dt[1]); }
-  else if (adr[0] === 0x20 && adr[1] >= 0x13 && adr[1] <= 0x1f && adr[2] === 0) {
-    const sd = KN.sounds.find(x => x[4] === dt[0] && x[5] === (dt[1] || 0));
-    const ps = $("sndPartSel"); if (ps) ps.value = String(adr[1] - 0x10);
-    const ss = $("sndPartSound"); if (ss && sd) ss.value = sd[0] + "/" + sd[1];
-    $("sndPartSt").textContent = "\u2713 " + (sd ? sd[2] : "PC " + dt[0] + " ?"); $("sndPartSt").className = "ok";
-    log("  \u2713 SON Part " + (adr[1] - 0x10 + 1) + " \u2014 ADR " + A2(adr[0]) + " " + A2(adr[1]) + " " + A2(adr[2]) + " DT " + hex(dt) + " \u2192 " + (sd ? sd[2] + " (PC TECH " + dt[0] + " bank " + (dt[1] || 0) + ")" : "PC " + dt[0] + " bank " + (dt[1] || 0) + " non mapp\u00e9"), "ok");
-  }
-  else if (k === "20 00 25") { const t1 = dt[0] | (dt[1] << 7); const t2 = dt[1] | (dt[0] << 7);
-    $("tempoInfo").textContent = (t1 >= 40 && t1 <= 300) ? String(t1) : ((t2 >= 40 && t2 <= 300) ? t2 + "?" : "?");
-    log("  \u2713 Tempo raw = " + hex(dt) + " \u2192 cand. " + t1 + " / " + t2 + " (plage 40-300)", "ok"); }
-  else if (k === "20 0a 0c") { apcCtl = dt[0]; setTgl("apcCtlBtn", apcCtl !== 0); log("  \u2713 APC Mode Enable = " + (apcCtl !== 0 ? "ON (" + hex(dt) + ")" : "OFF"), "ok"); }
-  else if (k !== "20 60 04" && k !== "20 60 08" && k !== "20 60 20" && k !== "20 60 0b") log("  \u00b7 " + k + " = " + hex(dt) + " (sonde)", "info");
-}
-let monitor = true, monLast = "", monT = 0;
-function logRaw(d) {
-  const t = Date.now(), key = hex([...d].slice(0, 12));
-  if (key === monLast && t - monT < 700) { monT = t; return; }   // anti-spam
-  monLast = key; monT = t;
-  const st = d[0] & 0xf0, ch = (d[0] & 0x0f) + 1;
-  let txt;
-  if (st === 0xb0) txt = "CC" + d[1] + " ch" + ch + " = " + d[2];
-  else if (st === 0xc0) txt = "PC ch" + ch + " = " + d[1];
-  else if (d[0] === 0xf0) txt = "SYSEX " + hex([...d].slice(0, 16)) + (d.length > 18 ? "…" : "");
-  else txt = hex([...d].slice(0, 8));
-  log("\u{1F4E5} RX " + txt, "info");
-}
-$("monBtn").onclick = () => { monitor = !monitor; $("monBtn").textContent = "\u{1F50D} Moniteur: " + (monitor ? "ON" : "OFF"); log("Moniteur MIDI " + (monitor ? "activ\u00e9" : "d\u00e9sactiv\u00e9") + ".", "info"); };
-function onMsg(ev) {
-  const d = ev.data; if (!d) return;
-  if (monitor && d[0] !== 0xfe && !(d[0] === 0xf0 && d[1] === 0x50 && d[2] === 0x2c)) logRaw(d);   // tout sauf les réponses 2C à nos DRQ
-   // seulement les 2C re\u00e7us
-  const ck = d[d.length - 2], cn = d[d.length - 3];
-  const calc = d.slice(1, d.length - 3).reduce((a, x) => a ^ x, 0);   // CN exclu du checksum
-  if (calc !== ck && (calc ^ cn) !== ck) { log("[RX] 2C checksum KO : attendu " + A2(ck) + ", calcul\u00e9 " + A2(calc) + " \u2014 message ignor\u00e9", "ko"); return; }
-  const siz = d[9] << 14 | d[10] << 7 | d[11];
-  const dt = denibble(d.slice(12, 12 + siz * 2));
-  const adr = [d[6], d[7], d[8]];
-  if (adr[0] === 0x41) { handlePMRecord(dt); return; }
-  applyState(adr, dt);
-}
-
-// ===== lecture de l'\u00e9tat =====
-const READS = [
-  [0x20, 0x0a, 0x22, "Program change mode", 2],
-  [0x20, 0x0a, 0x24, "Conductor", 1],
-  [0x20, 0x08, 0x10, "Reverb total", 1],
-  [0x20, 0x10, 0x00, "RIGHT 1", 2], [0x20, 0x11, 0x00, "RIGHT 2", 2], [0x20, 0x12, 0x00, "LEFT", 2],
-  [0x20, 0x60, 0x00, "Rythme", 2],
-  [0x20, 0x00, 0x10, "Panel Memory", 1],
-  [0x20, 0x08, 0x08, "Techni-Chord", 1],
-];
-for (const n of [0, 1, 2]) READS.push([0x20, 0x10 + n, 0x06, "DigEff part " + (n + 1), 1], [0x20, 0x10 + n, 0x05, "DSP part " + (n + 1), 1]);
-for (const n of [0, 1, 2]) READS.push([0x20, 0x10 + n, 0x02, "Volume part " + (n + 1), 1]);
-READS.push([0x20, 0x08, 0x11, "Reverb type", 1], [0x20, 0x08, 0x12, "Reverb depth", 1], [0x20, 0x08, 0x21, "DSP type+valeur", 9]);
-READS.push([0x20, 0x60, 0x02, "APC type", 1], [0x20, 0x60, 0x03, "APC memory", 1], [0x20, 0x00, 0x02, "Transpose", 1]);
-READS.push([0x20, 0x1f, 0x02, "Volume DRUMS", 1]);
-READS.push([0x20, 0x20, 0x40, "Canal ACCOMP1", 1]);
-READS.push([0x20, 0x60, 0x04, "BGS (exp.)", 1], [0x20, 0x60, 0x08, "PartSpecial 08 (exp.)", 1], [0x20, 0x60, 0x0b, "PartSpecial 0B (sonde tempo)", 2], [0x20, 0x60, 0x20, "PartSpecial 20 (exp.)", 1]);
-READS.push([0x20, 0x00, 0x25, "Tempo (TMP 25)", 2], [0x20, 0x0a, 0x0c, "APC Mode Enable", 1]);
-for (let m = 0; m <= 6; m++) READS.push([0x20, 0x20 + m, 0x02, "Volume APC " + m, 1], [0x20, 0x13 + m, 0x00, "Son Part MIDI " + (m + 4), 2]);
-async function readAll(auto) {
-  if (!output) { if (!auto) log("Pas de sortie MIDI selectionnee.", "ko"); return; }
-  log(auto ? "Lecture automatique de l'\u00e9tat\u2026" : "Lecture de l'\u00e9tat du clavier\u2026", "info");
-  send(sysex2C([0x20, 0x04, 0x00], [0x01])); await wait(120);
-  for (const [a, b, c, label, siz] of READS) {
-    const msg = sysex2B([a, b, c], siz || 2);
-    if (!send(msg)) return;
-    await wait(150);
-  }
-}
-$("readAll").onclick = () => readAll(false);
-
-// ===== envois (m\u00e9thodes valid\u00e9es uniquement) =====
-async function sendPartSound(pt) {
-  const [p, v] = $(pt.id).value.split("/").map(Number);
-  send([0xb0 + pt.ch, 0x00, (v >> 7) & 0x7f]); await wait(60);
-  send([0xb0 + pt.ch, 0x20, v & 0x7f]); await wait(60);
-  send([0xc0 + pt.ch, p & 0x7f]);
-  $(pt.id + "v").textContent = $(pt.id).selectedOptions[0].textContent;
-  log("[TX] " + pt.name + " \u2192 " + $(pt.id + "v").textContent, "ok");
-}
-async function sendRhythm() {
-  const [p, v] = $("rhySel").value.split("/").map(Number);
-  const r = KN.rhythms.find(x => x[0] === p && x[1] === v);
-  const tp = progMode === 1 ? p : r[4], tv = progMode === 1 ? v : r[5];
-  send(sysex2C([0x20, 0x04, 0x01], [0x01])); await wait(100);
-  send(sysex2C([0x20, 0x60, 0x00], [tp & 0x7f, tv & 0xff]));
-  log("[TX] Rythme \u2192 " + rhyLabel(), "ok");
-}
-function rhyLabel() { return $("rhySel").selectedOptions[0].textContent; }
-$("tcBtn").onclick = () => {
-  const on = $("tcBtn").textContent !== "ON";
-  $("tcBtn").textContent = on ? "ON" : "OFF"; $("tcBtn").className = on ? "on" : "sec";
-  send(sysex2C([0x20, 0x08, 0x08], [on ? 1 : 0]));
-  log("[TX] Techni-Chord " + (on ? "On" : "Off"), "ok");
-};
-document.body.addEventListener("click", e => {
-  const id = e.target.dataset && e.target.dataset.send;
-  if (id === "rhy") sendRhythm();
-  else if (id === "pm") { const v = Number($("pmSel").value); send(sysex2C([0x20, 0x00, 0x10], [v])); log("[TX] Panel Memory \u2192 " + (PM[v] ? PM[v][1] : v), "ok"); setTimeout(() => readAll(true), 400); }
-  else { const pt = PARTS.find(x => x.id === id); if (pt) sendPartSound(pt); }
-});
-// toggles Digital/DSP Effect par part (00=off, 7F=on — adresses 20 1n 05/06 valid\u00e9es doc)
-document.body.addEventListener("click", e => {
-  const tg = e.target.dataset && e.target.dataset.tgl;
-  if (!tg) return;
-  const n = Number(tg.slice(-1)), isDsp = tg.startsWith("dsp"), btn = document.querySelector('[data-tgl="' + tg + '"]');
-  const on = btn.textContent !== "ON";
-  send(sysex2C([0x20, 0x10 + n, isDsp ? 0x05 : 0x06], [on ? 0x7f : 0x00]));
-  setTgl(tg, on);
-  log("[TX] " + PARTS[n].name + " " + (isDsp ? "DSP" : "Digital") + " Effect " + (on ? "ON" : "OFF"), "ok");
-});
-// ===== Envoyer Tout : sons + rythme + Techni-Chord + effets, puis relecture =====
-async function sendAll() {
-  if (!output) { log("Pas de sortie MIDI sélectionnée.", "ko"); return; }
-  log("Envoi global de l'état complet\u2026", "info");
-  send(sysex2C([0x20, 0x04, 0x00], [0x01])); await wait(120);
-  send(sysex2C([0x20, 0x04, 0x01], [0x01])); await wait(120);
-  for (const pt of PARTS) { await sendPartSound(pt); await wait(120); }
-  await sendRhythm(); await wait(150);
-  send(sysex2C([0x20, 0x08, 0x08], [$("tcBtn").textContent === "ON" ? 1 : 0])); await wait(120);
-  for (const n of [0, 1, 2]) for (const [suf, ad] of [["de", 0x06], ["dsp", 0x05]]) {
-    const btn = document.querySelector('[data-tgl="' + suf + n + '"]'); if (!btn || btn.textContent === "?") continue;
-    send(sysex2C([0x20, 0x10 + n, ad], [btn.textContent === "ON" ? 0x7f : 0x00])); await wait(80);
-  }
-  const V = n => num($(PARTS[n].id + "vol").value);
-  for (const n of [0, 1, 2]) if (V(n) !== null) { send(sysex2C([0x20, 0x10 + n, 0x02], [V(n) & 0x7f])); await wait(80); }
-  if (num($("drumsVol").value) !== null) { send(sysex2C([0x20, 0x1f, 0x02], [num($("drumsVol").value) & 0x7f])); await wait(80); }
-  for (let m = 0; m < 7; m++) { const v = num($("apcvol" + m).value); if (v !== null) { send(sysex2C([0x20, 0x20 + m, 0x02], [v & 0x7f])); await wait(60); } }
-  if (reverbOn !== null) { send(sysex2C([0x20, 0x08, 0x10], [reverbOn ? 0x7f : 0x00])); await wait(80); }
-  if (reverbType >= 0) { send(sysex2C([0x20, 0x08, 0x11], [reverbType & 0x7f])); await wait(80); }
-  if (reverbDepth >= 0) { send(sysex2C([0x20, 0x08, 0x12], [reverbDepth & 0x7f])); await wait(80); }
-  if (dspRaw) { send(sysex2C([0x20, 0x08, 0x21], dspRaw.slice(0, 9))); await wait(80); }
-  if (apcType >= 0) { send(sysex2C([0x20, 0x60, 0x02], [apcType & 0x7f])); await wait(80); }
-  if (apcMem >= 0) { send(sysex2C([0x20, 0x60, 0x03], [apcMem ? 1 : 0])); await wait(80); }
-  if (transpose >= 0) { send(sysex2C([0x20, 0x00, 0x02], [transpose & 0x7f])); await wait(80); }
-  log("\u2714 Tout envoyé (DSP/APC/transpose inclus). Restent non transmis : tempo, split, conductor \u2014 \u00e0 r\u00e9gler sur le clavier avant de sauver en PM.", "ok");
-  setTimeout(() => readAll(true), 400);
-}
-$("sendAll").onclick = sendAll;
-log("Pr\u00eat. Cliquer \u00ab Lire l'\u00e9tat du clavier \u00bb apr\u00e8s connexion.", "info");
-// ===== Panel Memory : accès direct par PM (dump 336 octets, méthode 2C) =====
-const PM_NAMES = []; for (const L of "ABC") for (let i = 1; i <= 8; i++) PM_NAMES.push(L + i);
-for (let i = 0; i < 24; i++) $("pmDumpSel").add(new Option(PM_NAMES[i], i));
-let pmRec = null, pmRecIdx = -1;
-function pmAddr(idx) { const off = idx * 336; return [0x41, (off >> 8) & 0x7f, off & 0x7f]; }
-function pmDecode(rec) {
-  if (!rec || rec.length < 328 || rec[1] !== 0x0a || rec[13] !== 0x0a) return null;
-  const part = (off, lbl) => { const r = rec.slice(off, off + 12); const s = KN.sounds.find(x => x[4] === r[2] && x[5] === ((r[6] || 0) * 16)); return lbl + " " + (s ? s[2] : "PC " + r[2] + " ?") + " — vol " + r[3] + ((r[4] & 0x40) ? ", Digital" : "") + ((r[4] & 0x20) ? ", DSP" : ""); };
-  const rf = rec.slice(276, 288);
-  const rhy = KN.rhythms.find(x => x[4] === rf[2] && x[5] === ((rec[288] || 0) * 16));
-  const apc = ["Off", "OneFing", "Fing", "Pianist"][(rf[4] || 0) & 3] + (((rf[4] || 0) & 4) ? "+Mem" : "");
-  const cond = ((rec[296] & 1) ? "R1" : "") + ((rec[296] & 2) ? "+R2" : "") + (rec[297] === 2 ? "+LEFT" : "");
-  return [part(0, "R1 :"), part(12, "R2 :"), part(24, "LEFT :"),
-    "Rythme : " + (rhy ? rhy[2] : "PC " + rf[2] + " ?") + " — vol " + rf[3] + " — APC " + apc + " — tempo " + (rec[290] * 2),
-    "Conductor : " + (cond || "aucun") + " · Drums vol " + rec[243] + " · Split " + rec[319],
-    "DSP : " + dspSummary(rec.slice(309, 318))].join("\n");
-}
-function handlePMRecord(dt) {
-  if (dt.length !== 336) { $("pmDumpSt").innerHTML = "✗ " + dt.length + " octets reçus (336 attendus)"; $("pmDumpSt").className = "ko"; log("[RX] PM : " + dt.length + " octets reçus, 336 attendus", "ko"); return; }
-  pmPrev = pmRec; pmRec = dt; pmRecIdx = Number($("pmDumpSel").value);
-  const d = pmDecode(dt);
-  if (d) { try { $("tempoInfo").textContent = String(dt[290] * 2); } catch (e) {} $("pmDumpSt").innerHTML = "✓ PM " + PM_NAMES[pmRecIdx] + " — 336 octets, checksum OK"; $("pmDumpSt").className = "ok"; $("pmRecInfo").textContent = d; log("[RX] ✓ PM " + PM_NAMES[pmRecIdx] + " lue (336 octets, checksum OK)", "ok"); }
-  else { $("pmDumpSt").textContent = "✗ signature de record non reconnue"; $("pmDumpSt").className = "ko"; $("pmRecInfo").textContent = "Tête : " + hex(dt.slice(0, 16)); log("[RX] PM reçue mais signature non reconnue — tête : " + hex(dt.slice(0, 16)), "ko"); }
-}
-// ===== sons Part MIDI 4-16 (Sound Setting, 20 1n 00) =====
-{
-  const ps = $("sndPartSel");
-  for (let n = 4; n <= 16; n++) ps.add(new Option("Part " + n + " (20 " + (0x0f + n).toString(16) + " 00)", String(n - 1)));
-  const gs = groupsOf(KN.sounds, 3);
-  for (const [g, list] of Object.entries(gs)) { const og = document.createElement("optgroup"); og.label = g;
-    for (const sd of list) { const o = document.createElement("option"); o.value = sd[0] + "/" + sd[1]; o.textContent = sd[2]; og.appendChild(o); } $("sndPartSound").appendChild(og); }
-}
-$("sndPartRead").onclick = () => {
-  if (!output) { log("Pas de sortie MIDI s\u00e9lectionn\u00e9e.", "ko"); return; }
-  const n = Number($("sndPartSel").value); $("sndPartSt").textContent = "attente\u2026"; $("sndPartSt").className = "info";
-  const msg = sysex2B([0x20, 0x10 + n, 0x00], 2);
-  send(msg); log("[TX] DRQ son Part " + (n + 1) + " \u2014 " + hex(msg), "info");
-};
-$("sndPartSend").onclick = () => {
-  if (!output) { log("Pas de sortie MIDI s\u00e9lectionn\u00e9e.", "ko"); return; }
-  const n = Number($("sndPartSel").value);
-  const [p, v] = $("sndPartSound").value.split("/").map(Number);
-  const sA = KN.sounds.find(x => x[0] === p && x[1] === v); if (!sA) return;
-  const msg = sysex2C([0x20, 0x10 + n, 0x00], [sA[4] & 0x7f, sA[5] & 0x7f]);
-  send(msg);
-  log("[TX] Son Part " + (n + 1) + " \u2192 " + sA[2] + " \u2014 2C \u00e9crit : " + hex(msg), "ok");
-  $("sndPartSt").textContent = "\u2192 " + sA[2] + " (relecture\u2026)"; $("sndPartSt").className = "ok";
-  setTimeout(() => { const m = sysex2B([0x20, 0x10 + n, 0x00], 2); send(m); log("[TX] Relecture (DRQ) \u2014 " + hex(m), "info"); }, 500);
-};
-// ===== diff des deux derni\u00e8res PM lues =====
-let pmPrev = null;
-{
-  const h = $("pmDiff");
-  h.onclick = () => {
-    if (!pmPrev || !pmRec) { log("Diff : lire deux fois une PM (changer un r\u00e9glage entre les deux lectures).", "ko"); return; }
-    const ch = [];
-    for (let i = 0; i < 336; i++) if (pmPrev[i] !== pmRec[i]) ch.push([i, pmPrev[i], pmRec[i]]);
-    if (!ch.length) { log("Diff PM : aucun octet modifi\u00e9 \u2014 r\u00e9glages identiques.", "ok"); $("pmRecInfo").textContent = "PM identiques (aucune diff\u00e9rence)."; return; }
-    log("Diff PM : " + ch.length + " octet(s) modifi\u00e9(s) \u2014 offsets dans le record de 336 octets :", "ok");
-    for (const [i, a, b] of ch.slice(0, 40)) log("  octet " + i + " : " + A2(a) + " \u2192 " + A2(b), "info");
-    $("pmRecInfo").textContent = "Diff (" + ch.length + ") : " + ch.map(([i, a, b]) => i + ":" + A2(a) + "\u2192" + A2(b)).join(" ");
-  };
-}
-$("apcScan").onclick = async () => {
-  if (!output) { log("Pas de sortie MIDI s\u00e9lectionn\u00e9e.", "ko"); return; }
-  const P = ["Accomp1", "Accomp2", "Accomp3", "Bass", "APC-Drums", "Chord", "R.Bass"];
-  log("Scan des 7 parts APC : adresses document\u00e9es (vol 02, reverb 07, ch 40, octave 41, local 42, midi-out 43), SIZ 1 (\u2248 7 s)\u2026", "info");
-  const AD = [[0x02, "volume"], [0x07, "reverb"], [0x40, "canal"], [0x41, "octave"], [0x42, "local"], [0x43, "midi-out"]];
-  for (let m = 0; m <= 6; m++) {
-    for (const [xx, lb] of AD) { send(sysex2B([0x20, 0x20 + m, xx], 1)); await wait(150); }
-    log("  part " + P[m] + " scann\u00e9e.", "info");
-  }
-  log("Sondes sons temps r\u00e9el : 20 13 00 \u2192 20 1f 00 (Part 4\u201316, SIZ 2)\u2026", "info");
-  for (let n = 3; n <= 15; n++) {
-    const msg = sysex2B([0x20, 0x10 + n, 0x00], 2);
-    send(msg);
-    log("[TX] DRQ son Part " + (n + 1) + " \u2014 " + hex(msg), "info");
-    await wait(200);
-  }
-  log("Scan termin\u00e9 \u2014 lignes \u2713 SON Part n = adresse qui r\u00e9pond ; une part muette = ERR 29 7e (inexistante).", "ok");
-};
-$("pmRead").onclick = () => {
-  if (!output) { log("Pas de sortie MIDI sélectionnée.", "ko"); return; }
-  const idx = Number($("pmDumpSel").value); pmRec = null; $("pmRecInfo").textContent = ""; $("pmDumpSt").textContent = "attente…"; $("pmDumpSt").className = "info";
-  send(sysex2C([0x20, 0x04, 0x00], [0x01]));
-  const a = pmAddr(idx);
-  setTimeout(() => { send(sysex2B(a, 336)); log("[TX] DRQ PM " + PM_NAMES[idx] + " (ADR 41 " + A2(a[1]) + " " + A2(a[2]) + ", SIZ 336)", "info"); }, 120);
-  setTimeout(() => { if (!pmRec) { $("pmDumpSt").textContent = "✗ aucune réponse du clavier"; $("pmDumpSt").className = "ko"; } }, 2500);
-};
-$("pmWrite").onclick = () => {
-  if (!output) { log("Pas de sortie MIDI sélectionnée.", "ko"); return; }
-  const idx = Number($("pmDumpSel").value);
-  if (!pmRec) { log("Lire d'abord une PM (bouton « Lire cette PM »).", "ko"); return; }
-  if (idx !== pmRecIdx) { const go = confirm("Le contenu affiché vient de " + PM_NAMES[pmRecIdx] + ".\nÉcrire dans " + PM_NAMES[idx] + " écrasera cette PM avec ce contenu.\nConfirmer ?"); if (!go) return; }
-  else if (!confirm("Écrire le contenu affiché dans la PM " + PM_NAMES[idx] + " du clavier ?")) return;
-  send(sysex2C([0x20, 0x04, 0x00], [0x01]));
-  const a = pmAddr(idx);
-  setTimeout(() => { send(sysex2C(a, pmRec)); log("[TX] 2C → écriture PM " + PM_NAMES[idx] + " (336 octets, ADR 41 " + A2(a[1]) + " " + A2(a[2]) + ")", "ok"); }, 120);
-};
-// ===== bibliothèque d'ensembles (localStorage) =====
-const LIBKEY = "kn2000-lib";
-const libGet = () => { try { return JSON.parse(localStorage.getItem(LIBKEY)) || []; } catch (e) { return []; } };
-const libSet = l => localStorage.setItem(LIBKEY, JSON.stringify(l));
-const num = t => { const v = Number(t); return Number.isFinite(v) ? v : null; };
-function snapshot() {
-  const snap = { parts: [], rhythm: null, tc: 0 };
-  for (const pt of PARTS) snap.parts.push({ id: pt.id, value: $(pt.id).value, label: $(pt.id + "v").textContent || $(pt.id).selectedOptions[0].textContent });
-  snap.rhythm = { value: $("rhySel").value, label: rhyLabel() };
-  snap.tc = $("tcBtn").textContent === "ON" ? 1 : 0;
-  snap.vols = { r1: num($("p1vol").value), r2: num($("p2vol").value), l: num($("p3vol").value), drums: num($("drumsVol").value),
-    apc: [0, 1, 2, 3, 4, 5, 6].map(m => num($("apcvol" + m).value)) };
-  snap.fx = [0, 1, 2].map(n => { const de = document.querySelector('[data-tgl="de' + n + '"]'), dsp = document.querySelector('[data-tgl="dsp' + n + '"]');
-    return { de: de && de.textContent !== "?" ? de.textContent : null, dsp: dsp && dsp.textContent !== "?" ? dsp.textContent : null }; });
-  snap.reverb = { on: reverbOn, type: reverbType, depth: reverbDepth };
-  snap.conductor = conductor;
-  snap.dsp = dspRaw ? dspSummary(dspRaw) : null;
-  snap.dspRaw = dspRaw ? [...dspRaw] : null;
-  snap.apc = { type: apcType, mem: apcMem };
-  snap.transpose = transpose;
-  return snap;
-}
-function bannerShow() {
-  const b = $("banner"); b.style.display = "block";
-  b.innerHTML = "\uD83C\uDFB8 R1 <b>" + ($("p1v").textContent || "—") + "</b> | R2 <b>" + ($("p2v").textContent || "—") + "</b> | LEFT <b>" + ($("p3v").textContent || "—") + "</b> | Rythme <b>" + rhyLabel() + "</b> | TC <b>" + $("tcBtn").textContent + "</b> | PM <b>" + (PM[Number($("pmSel").value)] ? PM[Number($("pmSel").value)][1] : "?") + "</b> | Right1 In <b>" + (conductor < 0 ? "?" : conductor === 1 ? "Cond" : "Direct") + "</b> | Reverb <b>" + (reverbOn === null ? "?" : reverbOn ? "ON" : "OFF") + (reverbType >= 0 ? " " + RV_TYPES[reverbType] : "") + (reverbDepth >= 0 ? " " + (reverbDepth + 1) + "/8" : "") + "</b>" + (dspRaw ? " | DSP <b>" + dspSummary(dspRaw) + "</b>" : "") + " | Drums vol <b>" + $("drumsVol").value + "</b>" + " | Transpose <b>" + (transpose >= 0 ? TR[transpose] : "?") + "</b>";
-}
-function validItem(it) { return it && it.name && it.snap && Array.isArray(it.snap.parts) && it.snap.parts.length >= 3 && it.snap.rhythm; }
-function libClean() { const l = libGet(); const bad = l.filter(x => !validItem(x)); const ok = l.filter(validItem); if (bad.length) { libSet(ok); log("Nettoyage : " + bad.length + " entrée(s) invalide(s) supprimée(s) de la bibliothèque.", "info"); } return ok; }
-function libRender() {
-  const list = libClean(), el = $("libList"); el.innerHTML = "";
-  if (!list.length) { el.innerHTML = "<span class='info'>Aucun ensemble. Sauver l'état actuel : stockage navigateur (localStorage) — utiliser Export JSON pour un fichier durable.</span>"; return; }
-  const t = document.createElement("table"); t.className = "libtab";
-  const hd = document.createElement("tr");
-  for (const h of ["Ensemble", "R1", "R2", "Left", "Rythme", "TC", "Vol R1/R2/L", ""]) { const th = document.createElement("th"); th.textContent = h; hd.appendChild(th); }
-  t.appendChild(hd);
-  for (const it of list) {
-    const p = i => (it.snap.parts[i] && it.snap.parts[i].label) || "?";
-    const v = it.snap.vols;
-    const vs = v ? [v.r1, v.r2, v.l].map(x => x == null ? "?" : x).join("/") : "?/?/?";
-    const tr = document.createElement("tr");
-    const tdN = document.createElement("td"); tdN.textContent = it.name; tdN.title = (it.date || "") + (it.snap.dsp ? " · " + it.snap.dsp : "") + (it.snap.transpose != null && it.snap.transpose >= 0 ? " · Tr " + TR[it.snap.transpose] : ""); tr.appendChild(tdN);
-    for (const lbl of [p(0), p(1), p(2), it.snap.rhythm.label || "?", it.snap.tc ? "ON" : "—", vs]) { const td = document.createElement("td"); td.textContent = lbl; td.title = lbl; tr.appendChild(td); }
-    const tdA = document.createElement("td");
-    const bLoad = document.createElement("button"); bLoad.textContent = "▶ Charger";
-    bLoad.onclick = () => libLoad(it.name);
-    const bDel = document.createElement("button"); bDel.className = "sec"; bDel.textContent = "✖";
-    bDel.onclick = () => { if (confirm("Supprimer \"" + it.name + "\" ?")) { libSet(libGet().filter(x => x.name !== it.name)); libRender(); } };
-    tdA.appendChild(bLoad); tdA.appendChild(bDel); tr.appendChild(tdA);
-    t.appendChild(tr);
-  }
-  el.appendChild(t);
-}
-$("libSave").onclick = () => {
-  const name = $("libName").value.trim();
-  if (!name) { log("Donner un nom à l'ensemble avant de sauver.", "ko"); $("libName").style.borderColor = "#ff8a80"; $("libName").focus(); return; }
-  $("libName").style.borderColor = "#345";
-  const list = libGet().filter(x => x.name !== name);
-  list.push({ name, date: new Date().toISOString().slice(0, 16).replace("T", " "), snap: snapshot() });
-  libSet(list); libRender(); $("libName").value = "";
-  const btn = $("libSave"); const t = btn.innerHTML;
-  btn.innerHTML = "\u2714 Sauv\u00e9 !"; btn.style.background = "#2a6";
-  setTimeout(() => { btn.innerHTML = t; btn.style.background = ""; }, 1500);
-  log("Ensemble \"" + name + "\" sauvegard\u00e9 dans le navigateur (localStorage).", "ok");
-};
-async function libLoad(name) {
-  const it = libGet().find(x => x.name === name); if (!it) return;
-  const s = it.snap;
-  for (const p of s.parts) { $(p.id).value = p.value; $(p.id + "v").textContent = p.label; }
-  $("rhySel").value = s.rhythm.value;
-  const tcOn = s.tc === 1;
-  $("tcBtn").textContent = tcOn ? "ON" : "OFF"; $("tcBtn").className = tcOn ? "on" : "sec";
-  log("Chargement de \"" + name + "\" vers le clavier\u2026", "info");
-  send(sysex2C([0x20, 0x04, 0x00], [0x01])); await wait(120);   // enables requis (méthodes validées)
-  send(sysex2C([0x20, 0x04, 0x01], [0x01])); await wait(120);
-  for (const pt of PARTS) { await sendPartSound(pt); await wait(120); }
-  await sendRhythm(); await wait(150);
-  send(sysex2C([0x20, 0x08, 0x08], [tcOn ? 1 : 0])); await wait(100);
-  if (s.vols) {
-    const pv = [[0, s.vols.r1], [1, s.vols.r2], [2, s.vols.l]];
-    for (const [n, v] of pv) if (v !== null && v !== undefined) { send(sysex2C([0x20, 0x10 + n, 0x02], [v & 0x7f])); await wait(80); }
-    if (s.vols.drums !== null && s.vols.drums !== undefined) { send(sysex2C([0x20, 0x1f, 0x02], [s.vols.drums & 0x7f])); await wait(80); }
-    if (Array.isArray(s.vols.apc)) for (let m = 0; m < 7; m++) { const v = s.vols.apc[m]; if (v !== null && v !== undefined) { send(sysex2C([0x20, 0x20 + m, 0x02], [v & 0x7f])); await wait(60); } }
-  }
-  if (s.fx) for (let n = 0; n < 3; n++) { const f = s.fx[n]; if (!f) continue;
-    if (f.de) { send(sysex2C([0x20, 0x10 + n, 0x06], [f.de === "ON" ? 0x7f : 0x00])); await wait(70); }
-    if (f.dsp) { send(sysex2C([0x20, 0x10 + n, 0x05], [f.dsp === "ON" ? 0x7f : 0x00])); await wait(70); } }
-  if (s.reverb) {
-    if (s.reverb.on !== null && s.reverb.on !== undefined) { send(sysex2C([0x20, 0x08, 0x10], [s.reverb.on ? 0x7f : 0x00])); await wait(80); }
-    if (s.reverb.type !== null && s.reverb.type >= 0) { send(sysex2C([0x20, 0x08, 0x11], [s.reverb.type & 0x7f])); await wait(80); }
-    if (s.reverb.depth !== null && s.reverb.depth >= 0) { send(sysex2C([0x20, 0x08, 0x12], [s.reverb.depth & 0x7f])); await wait(80); }
-  }
-  if (Array.isArray(s.dspRaw)) { send(sysex2C([0x20, 0x08, 0x21], s.dspRaw.slice(0, 9))); await wait(80); }
-  if (s.apc) {
-    if (s.apc.type !== null && s.apc.type >= 0) { send(sysex2C([0x20, 0x60, 0x02], [s.apc.type & 0x7f])); await wait(80); }
-    if (s.apc.mem !== null && s.apc.mem >= 0) { send(sysex2C([0x20, 0x60, 0x03], [s.apc.mem ? 1 : 0])); await wait(80); }
-  }
-  if (s.transpose !== null && s.transpose !== undefined && s.transpose >= 0) { send(sysex2C([0x20, 0x00, 0x02], [s.transpose & 0x7f])); await wait(80); transpose = s.transpose; $("trSel").value = String(s.transpose); }
-  log("\u2714 Ensemble \"" + name + "\" envoyé.", "ok");
-  setTimeout(() => { readAll(true); bannerShow(); }, 500);
-}
-$("libExport").onclick = () => {
-  const blob = new Blob([JSON.stringify(libGet(), null, 2)], { type: "application/json" });
-  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-  a.download = "kn2000-bibliotheque.json"; a.click(); URL.revokeObjectURL(a.href);
-  log("Bibliothèque exportée (" + libGet().length + " ensembles).", "ok");
-};
-$("libImportBtn").onclick = () => $("libImport").click();
-$("libImport").onchange = ev => {
-  const f = ev.target.files[0]; if (!f) return;
-  const r = new FileReader();
-  r.onload = () => {
-    let txt = String(r.result);
-    try {
-      if (txt.charCodeAt(0) === 0xFEFF) txt = txt.slice(1);          // BOM (Notepad & co)
-      txt = txt.trim();
-      const imp = JSON.parse(txt);
-      if (!Array.isArray(imp)) throw new Error("le JSON n'est pas une liste [...]");
-      const cur = libGet(); let n = 0;
-      for (const it of imp) {
-        if (!validItem(it)) { log("  Élément ignoré (structure invalide) : " + JSON.stringify(it).slice(0, 60), "info"); continue; }
-        const ex = cur.findIndex(x => x.name === it.name); if (ex >= 0) cur[ex] = it; else cur.push(it); n++;
-      }
-      libSet(cur); libRender();
-      log("Import : " + n + "/" + imp.length + " ensembles (\"" + f.name + "\", " + (f.size) + " octets).", "ok");
-    } catch (e) {
-      log("Import impossible : " + (e.message || e) + " — fichier \"" + f.name + "\" (" + f.size + " octets), début du contenu : " + txt.slice(0, 120).replace(/\n/g, " "), "ko");
-    }
-  };
-  r.readAsText(f); ev.target.value = "";
-};
-libRender();
-// rafraîchir le bandeau après chaque lecture d'état
-const _readAll = readAll;
-readAll = function (auto) { const p = _readAll(auto); return p && p.finally ? p.finally(() => bannerShow()) : (bannerShow(), p); };
-</script>
-</body>
-</html>
