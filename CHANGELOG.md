@@ -13,6 +13,10 @@ Outils :
 
 ## 2026-10-25
 
+### Sound Editor v0.9.8 — section Filter réorganisée
+- **Section Filter réorganisée** dans l'ordre de l'écran KN2000 : Filter type (THRU-6) en tête, puis Touch depth / Touch curve / Slope, et la paire Flt key lim en fin de section. Tout est regroupé dans une seule section (avant : type et key limits sur une ligne isolée hors section). Le slider Cutoff est conservé (présent dans la structure 144 octets même s'il n'apparaît pas sur cet écran).
+- Validation terrain v0.9.7 enregistrée : Enveloppe Key Follow OK (slopes, limits, présentation) — offsets Release (bloc+25/26) confirmés par contrôle croisé.
+
 ### Sound Editor v0.9.7 — section EKF réorganisée + key limits de Release
 - **Section « Enveloppe Key Follow » réorganisée** comme sur l'écran du KN2000 : pour chacun des trois étages ATK / DCY / REL, le Slope et la paire de Key Limits sont regroupés côte à côte (avant : slopes dispersés dans l'enveloppe, key limits d'Atk/Dcy seules sur une ligne, Release absent).
 - **Key limits de Release ajoutées** : la paire Rel KF lim est maintenant affichée et éditable (sélecteurs C0→G8, écriture read-modify-write armé 🔓), aux offsets bloc+25/+26 déjà lus par le parseur. ⚠️ Offsets Release restant à valider par contrôle croisé (éditer au clavier → re-dump → comparer l'octet).

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>KN2000 Sound Editor v0.9.7</title>
+<title>KN2000 Sound Editor v0.9.8</title>
 <style>
   :root { font-family: system-ui, sans-serif; background:#0b1220; color:#e2e8f0; }
   * { box-sizing:border-box; }
@@ -68,7 +68,7 @@
 </style>
 </head>
 <body>
-<div class="banner">🎹 Sound Editor <b>v0.9.7</b> — structure du son 144 octets (cartographie officielle p.24/30/31 + Digital Effects). Lecture AUTO à la connexion et au changement de slot (capture 📸 de l'original). Onglets GENERAL/TONE/EFFECT = écrans du manual. Onglet APC = surface de contrôle live (pads parts, knobs, LEDs). Écriture : bouton-état 🔒/🔓 dans la barre d'outils. ⚠️ Toujours faire un dump de sauvegarde avant d'écrire. ⚠️ Le KN2000 ne conserve les sons que ~80 min hors tension — garde tes packages/catalogue pour recharger après une coupure.</div>
+<div class="banner">🎹 Sound Editor <b>v0.9.8</b> — structure du son 144 octets (cartographie officielle p.24/30/31 + Digital Effects). Lecture AUTO à la connexion et au changement de slot (capture 📸 de l'original). Onglets GENERAL/TONE/EFFECT = écrans du manual. Onglet APC = surface de contrôle live (pads parts, knobs, LEDs). Écriture : bouton-état 🔒/🔓 dans la barre d'outils. ⚠️ Toujours faire un dump de sauvegarde avant d'écrire. ⚠️ Le KN2000 ne conserve les sons que ~80 min hors tension — garde tes packages/catalogue pour recharger après une coupure.</div>
 
 <header>
   <h1>🎹 Sound Editor</h1>
@@ -551,12 +551,13 @@ function toneCard(i){
   ${trow("Dcy slope","ekfD",-50,50)}<div class="prow"><label>Dcy KF lim</label><select class="klim" data-f="t${i}_dLo"></select><span class="hexv">–</span><select class="klim" data-f="t${i}_dHi"></select></div>
   ${trow("Rel slope","ekfR",-50,50)}<div class="prow"><label>Rel KF lim</label><select class="klim" data-f="t${i}_rLo"></select><span class="hexv">–</span><select class="klim" data-f="t${i}_rHi"></select></div>
   </div></div></div>
-  <div class="sect"><h3>Filter</h3><div class="grid2">
-  ${trow("Cutoff","cut",0,127)}${trow("Touch depth","ftch",0,50)}
+  <div class="sect"><h3>Filter — Type · TCH · CURV · Slope · Key Limits</h3>
+  <div class="prow"><label>Filter type</label><div class="seg" data-f="t${i}_ftype"></div></div>
+  <div class="grid2">${trow("Cutoff","cut",0,127)}${trow("Touch depth","ftch",0,50)}
   ${trow("Touch curve","fcur",-3,3)}${trow("Slope","fsl",-50,50)}</div>
   <svg viewBox="0 0 100 56" id="t${i}_fcurSvg" style="background:#0b1220;border-radius:6px;width:100%;height:52px"></svg>
-  <div class="envlegend">Flt touch curve — coupure vs vélocité (Reference Guide p.13)</div></div>
-  <div class="prow"><label>Filter type</label><div class="seg" data-f="t${i}_ftype"></div><label>Flt key lim</label><select class="klim" data-f="t${i}_fLo"></select><span class="hexv">–</span><select class="klim" data-f="t${i}_fHi"></select></div></div>`;
+  <div class="envlegend">Flt touch curve — coupure vs vélocité (Reference Guide p.13)</div>
+  <div class="prow"><label>Flt key lim</label><select class="klim" data-f="t${i}_fLo"></select><span class="hexv">–</span><select class="klim" data-f="t${i}_fHi"></select></div></div></div>`;
   return c;
 }
 const toneGrid=$("toneGrid"); TBASE.forEach((b,i)=>toneGrid.appendChild(toneCard(i)));
