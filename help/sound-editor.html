@@ -47,6 +47,7 @@
 <div class="warn">⚠️ <b>Avant toute écriture</b> : faire un dump de sauvegarde de la banque (onglet BANQUE → Dump banque) ou un export. Le Sound Editor écrit dans les Sound Memory A/B du KN2000.</div>
 <div class="tip">💡 L'option <b>⚡ Auto-appliquer</b> recharge après chaque écriture le son en cours sur les parts du clavier qui le jouent (nécessite « Realtime sysex » sur ON dans le KN2000).</div>
 <div class="tip">💡 Sans clavier, le bouton <b>🧪 Exemple A-1 usine</b> charge un son d'exemple pour explorer les écrans.</div>
+<div class="warn">⚠️ <b>Mémoire volatile</b> : le KN2000 ne conserve les sons que ~80 minutes hors tension. Après une coupure prolongée, les réglages usine reviennent — archive tes sons (💾 package, catalogue) pour pouvoir les renvoyer (📤) après chaque remise sous tension.</div>
 
 <h2>📚 Fonctions détaillées</h2>
 
@@ -130,6 +131,7 @@
 <div class="warn">⚠️ <b>Before any write</b>: make a bank backup dump (BANK tab → Bank dump) or an export. The Sound Editor writes to the KN2000's Sound Memory A/B.</div>
 <div class="tip">💡 The <b>⚡ Auto-apply</b> option reloads the edited sound onto the keyboard parts playing it after each write (requires “Realtime sysex” ON on the KN2000).</div>
 <div class="tip">💡 Without a keyboard, the <b>🧪 Factory A-1 example</b> button loads a sample sound to explore the screens.</div>
+<div class="warn">⚠️ <b>Volatile memory</b>: the KN2000 only keeps sounds ~80 minutes after power-off; factory settings return afterwards. Archive your sounds (💾 package, catalogue) so you can send them back (📤) after any extended power-off.</div>
 
 <h2>📚 Detailed features</h2>
 
@@ -201,6 +203,7 @@
 </div>
 
 <h2>🕐 Historique des versions / Version history</h2>
+<div class="ver"><b>v0.9.2</b><span class="date">25/10/2026</span> — Les 12 contrôles muets branchés (tous les segments écrivent par read-modify-write : octaves, wheel mode, sustain, A&amp;T, modulation mode/wave, filter type) ; correctif lecture Modulation Mode (0x16 → 0x19) ; LEDs des pads sur le canal 100 % de luminosité (0x96 — visibles en plein jour) ; avertissements mémoire volatile (~80 min hors tension).<br/><i>The 12 silent controls wired (all segment controls now write via read-modify-write); Modulation Mode read fix (0x16 → 0x19); pad LEDs on the 100 % brightness channel (0x96 — visible in daylight); volatile-memory warnings (~80 min after power-off).</i></div>
 <div class="ver"><b>v0.9.1</b><span class="date">25/10/2026</span> — Correctifs LEDs : couleur par défaut des tones ON/OFF passée du vert au blanc (le vert est réservé à l'état ON — le changement d'état est de nouveau visible) ; pads sélecteurs de banque visibles (gris = banque inactive, vert = active, LEDs de banque appliquées en dernier) ; protocole LED simple on/off pour les boutons Track/Scene utilisés comme sélecteurs.<br/><i>LED fixes: tones ON/OFF default colour moved from green to white (green reserved for ON state — state change visible again); bank-selector pads now visible (gray = inactive bank, green = active, bank LEDs applied last); simple on/off LED protocol for Track/Scene buttons used as selectors.</i></div>
 <div class="ver"><b>v0.9.0</b><span class="date">25/10/2026</span> — Surface APC étendue : 8 banques de knobs (64 mappings), n'importe quel bouton APC comme sélecteur de banque, LEDs des pads en continu (couleur par fonction, paramétrable), 74 paramètres assignables (enveloppes complètes + KF + filtres + FX), export/import de la config APC en JSON.<br/><i>Extended APC surface: 8 knob banks, any APC button as bank selector, continuous pad LEDs (per-function, configurable colours), 74 assignable parameters, JSON setup export/import.</i></div>
 <div class="ver"><b>v0.8.2</b><span class="date">24/10/2026</span> — Robustesse connexion : « ● connecté » n'est affiché qu'après vérification que le KN2000 répond (sinon « ⚠ pas de réponse » avec diagnostic). Correctif APC : l'onglet APC ne coupe plus le récepteur du port KN2000. Détection du port APC mémorisé obsolète (renumérotation USB). Docs navigateurs corrigées (Firefox ≠ sysex).<br/><i>Connection robustness: “● connected” only shown after the KN2000 answers. APC fix: the APC tab no longer breaks the KN2000 port receiver. Stale APC port detection (USB renumbering). Browser docs fixed (Firefox ≠ SysEx).</i></div>

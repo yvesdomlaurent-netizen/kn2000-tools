@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>KN2000 Sound Editor v0.9.1</title>
+<title>KN2000 Sound Editor v0.9.2</title>
 <style>
   :root { font-family: system-ui, sans-serif; background:#0b1220; color:#e2e8f0; }
   * { box-sizing:border-box; }
@@ -68,7 +68,7 @@
 </style>
 </head>
 <body>
-<div class="banner">🎹 Sound Editor <b>v0.9.1</b> — structure du son 144 octets (cartographie officielle p.24/30/31 + Digital Effects). Lecture AUTO à la connexion et au changement de slot (capture 📸 de l'original). Onglets GENERAL/TONE/EFFECT = écrans du manual. Onglet APC = surface de contrôle live (pads parts, knobs, LEDs). Écriture : bouton-état 🔒/🔓 dans la barre d'outils. ⚠️ Toujours faire un dump de sauvegarde avant d'écrire.</div>
+<div class="banner">🎹 Sound Editor <b>v0.9.2</b> — structure du son 144 octets (cartographie officielle p.24/30/31 + Digital Effects). Lecture AUTO à la connexion et au changement de slot (capture 📸 de l'original). Onglets GENERAL/TONE/EFFECT = écrans du manual. Onglet APC = surface de contrôle live (pads parts, knobs, LEDs). Écriture : bouton-état 🔒/🔓 dans la barre d'outils. ⚠️ Toujours faire un dump de sauvegarde avant d'écrire. ⚠️ Le KN2000 ne conserve les sons que ~80 min hors tension — garde tes packages/catalogue pour recharger après une coupure.</div>
 
 <header>
   <h1>🎹 Sound Editor</h1>
@@ -369,23 +369,34 @@ function segVal(f){ const seg=document.querySelector(`.seg[data-f="${f}"]`);
   const b=[...seg.children].find(x=>x.classList.contains("on")); return b?+b.dataset.v:null; }
 // Clic sur un bouton de segment → rafraîchit l'aperçu associé
 function segChanged(f,v){
+  // aperçus (visuels, non exclusifs de l'écriture ci-dessous)
   if(f==="atPat"){ const t=segVal("atType"); drawAtPattern(t==null?0:t, v==null?0:v); }
   else if(f==="atType"){ refreshAtPatterns(); }
   else if(f==="modWave"){ drawModWave(v); }
-  else if(f==="disType"){ // DIST/GROWL = bit7 de 0x1C (depth = bits 0-5 préservés)
-    if(typeof raw==="undefined"||!raw){ log("ℹ️ Distortion type : lis d'abord le son.","status-ko"); return; }
-    if(!ARMED){ log("ℹ️ Distortion type "+(v?"GROWL":"DIST")+" (écran) — écriture non armée.","status-ko"); return; }
-    const val=((v?raw[0x1C]|0x80:raw[0x1C]&0x7F)&0xff);
-    send(msgITR(curSlot,0x1C,val)); raw[0x1C]=val;
-    log("✍️ Distortion type "+(v?"GROWL":"DIST")+" → 0x1C = 0x"+val.toString(16).padStart(2,"0"));
-    scheduleApply(); }
-  else if(f==="fxPan"){ // MONO/STEREO = bit6 de 0x1F
-    if(typeof raw==="undefined"||!raw){ log("ℹ️ Effect Pan : lis d'abord le son.","status-ko"); return; }
-    if(!ARMED){ log("ℹ️ Effect Pan "+(v?"STEREO":"MONO")+" (écran) — écriture non armée.","status-ko"); return; }
-    const val=((v?raw[0x1F]|0x40:raw[0x1F]&~0x40)&0xff);
-    send(msgITR(curSlot,0x1F,val)); raw[0x1F]=val;
-    log("✍️ Effect Pan "+(v?"STEREO":"MONO")+" → 0x1F = 0x"+val.toString(16).padStart(2,"0"));
-    scheduleApply(); }
+  // ---- v0.9.2 : TOUS les segments branchés en écriture (read-modify-write) ----
+  const g=nm=>{ if(typeof raw==="undefined"||!raw){ log(`ℹ️ ${nm} : lis d'abord le son.`,"status-ko"); return false; } return true; };
+  const a=nm=>{ if(!ARMED){ log(`ℹ️ ${nm} (écran) — écriture non armée, rien envoyé.`,"status-ko"); return false; } return true; };
+  const w=(off,val,nm)=>{ val&=0xff; send(msgITR(curSlot,off,val)); raw[off]=val;
+    log(`✍️ ${nm} → 0x${off.toString(16)} = 0x${val.toString(16).padStart(2,"0")}`);
+    scheduleApply(); toast(nm); };
+  if(f==="disType"){ const nm="Distortion type "+(v?"GROWL":"DIST"); if(!g(nm)||!a(nm))return; // bit7 de 0x1C, depth bits 0-5 préservés
+    w(0x1C, v?(raw[0x1C]|0x80):(raw[0x1C]&0x7F), nm); }
+  else if(f==="fxPan"){ const nm="Effect Pan "+(v?"STEREO":"MONO"); if(!g(nm)||!a(nm))return; // bit6 de 0x1F
+    w(0x1F, v?(raw[0x1F]|0x40):(raw[0x1F]&~0x40), nm); }
+  else if(f==="octSh"){ const nm="Octave shift "+[-1,0,1,2][v]; if(!g(nm)||!a(nm))return; w(0x11,(raw[0x11]&0x3F)|((v&3)<<6),nm); }
+  else if(f==="octR"){ const nm="Right of split "+[-1,0,1,2][v]; if(!g(nm)||!a(nm))return; w(0x11,(raw[0x11]&0xCF)|((v&3)<<4),nm); }
+  else if(f==="octL"){ const nm="Left of split "+[-1,0,1,2][v]; if(!g(nm)||!a(nm))return; w(0x11,(raw[0x11]&0xF3)|((v&3)<<2),nm); }
+  else if(f==="wheelMode"){ const nm="Wheel mode "+(v?"VIB":"MOD"); if(!g(nm)||!a(nm))return; w(0x10, v?(raw[0x10]|0x08):(raw[0x10]&~0x08),nm); }
+  else if(f==="sustain"){ const nm="Sustain "+(v?"HOLD":"LONG"); if(!g(nm)||!a(nm))return; w(0x10, v?(raw[0x10]|0x04):(raw[0x10]&~0x04),nm); }
+  else if(f==="atOn"){ const nm="A&T "+["OFF","ON","TOUCH"][v]; if(!g(nm)||!a(nm))return; w(0x16,(raw[0x16]&0x3F)|((v&3)<<6),nm); }
+  else if(f==="atMode"){ const nm="A&T mode "+["1ST","2ND","ALL","INV"][v]; if(!g(nm)||!a(nm))return; w(0x16,(raw[0x16]&0xCF)|((v&3)<<4),nm); }
+  else if(f==="atType"){ const nm="A&T type "+(v?"TRILL":"BEND"); if(!g(nm)||!a(nm))return; w(0x16, v?(raw[0x16]|0x04):(raw[0x16]&~0x04),nm); }
+  else if(f==="atPat"){ const nm="A&T pattern P"+v; if(!g(nm)||!a(nm))return; w(0x16,(raw[0x16]&0xFC)|(v&3),nm); }
+  else if(f==="modMode"){ const nm="Modulation mode "+["1ST","2ND","ALL","INV"][v]; if(!g(nm)||!a(nm))return; w(0x19,(raw[0x19]&0xCF)|((v&3)<<4),nm); }
+  else if(f==="modWave"){ const nm="Modulation wave "+["SIN","TRI","SQR","SAW"][v]; if(!g(nm)||!a(nm))return; w(0x19,(raw[0x19]&0xF9)|((v&3)<<1),nm); }
+  else if(/^t(\d)_ftype$/.test(f)){ const i=+f[1]; const off=[0x28,0x4A,0x6C][i]+30;
+    const nm="Tone "+["1st","2nd","sub"][i]+" filter type "+(v===255?"THRU":v);
+    if(!g(nm)||!a(nm))return; w(off,v&0xff,nm); }
 }
 function setSwitch(f,on){ const s=document.querySelector(`.switch[data-f="${f}"]`); if(s) s.classList.toggle("on",!!on); }
 // Interrupteurs : le clic bascule l'état visuel (+ synchro des paires VIB) et ÉCRIT si armé
@@ -585,7 +596,7 @@ function parse(raw){
   m.vib={vol:raw[0x12],pitch:raw[0x13],speed:raw[0x14],delay:raw[0x15]};
   m.at={on:(raw[0x16]>>6)&3, mode:(raw[0x16]>>4)&3, type:(raw[0x16]>>2)&1, pat:raw[0x16]&3,
         depth:signed(raw[0x17]), speed:raw[0x18]};
-  m.mod={on:!!(raw[0x19]&0x40), mode:(raw[0x16]>>4)&3, wave:(raw[0x19]>>1)&3, depth:raw[0x1A], speed:raw[0x1B]};
+  m.mod={on:!!(raw[0x19]&0x40), mode:(raw[0x19]>>4)&3, wave:(raw[0x19]>>1)&3, depth:raw[0x1A], speed:raw[0x1B]}; // v0.9.2 : mode lu dans 0x19 (avant : 0x16, bug);
   m.dis={type:(raw[0x1C]>>7)&1, on:!!(raw[0x1C]&0x40), depth:raw[0x1C]&0x3f, touch:raw[0x1D]};
   m.reverb=raw[0x1E];
   m.fx={on:!!(raw[0x1F]&0x80), stereo:!!(raw[0x1F]&0x40), type:raw[0x1F]&0x3f,
@@ -855,6 +866,7 @@ $("btnKeepNew").onclick=()=>{
   if(!confirm("Garder le nouveau son sur "+slotName(curSlot)+" et oublier l'original « "+s.name+" » ?")) return;
   origDel(curSlot); refreshSessionUI();
   log("✅ Nouveau son validé sur "+slotName(curSlot)+" — original « "+s.name+" » oublié.","status-ok");
+  log("⚠️ Pense à archiver ce son (💾 package ou 💾 catalogue) : le KN2000 ne le conserve que ~80 min hors tension.","status-ko");
 };
 // ✍️ nom : écrit les 16 octets 0x00-0x0F
 $("btnNameWrite").onclick=async()=>{
@@ -1015,7 +1027,7 @@ $("btnBankSend").onclick=async()=>{
   if(nSlots<36) log(`⚠️ Banque partielle : ${nSlots}/36 slots — seuls ces ${nSlots} slots seront envoyés.`,"status-ko");
   if(!ARMED){ log("ℹ️ Envoyer le package exige l'écriture ARMÉE (bouton 🔒).","status-ko"); toast("Écriture non armée"); return; }
   if(!midiIn||!midiOut){ toast("Non connecté au KN2000"); return; }
-  if(!confirm("Envoyer la banque chargée vers le KN2000 ?\n"+nSlots+" slots × 144 octets ("+(nSlots*144)+" octets, ~"+Math.ceil(nSlots*144*60/60000)+" min)\nLa Sound Memory sera écrasée — garde un dump/package de sauvegarde !")) return;
+  if(!confirm("Envoyer la banque chargée vers le KN2000 ?\n"+nSlots+" slots × 144 octets ("+(nSlots*144)+" octets, ~"+Math.ceil(nSlots*144*60/60000)+" min)\nLa Sound Memory sera écrasée — garde un dump/package de sauvegarde !\n⚠️ Après coupure prolongée (>~80 min hors tension), le KN2000 perd les sons : garde ce package pour pouvoir le renvoyer.")) return;
   bankSending=true; $("btnBankSend").disabled=true;
   log(`📤 Envoi de la banque chargée vers le KN2000 : ${nSlots} slots, ITR séquencés 60 ms…`,"status-ok");
   for(let n=0;n<nSlots;n++){
@@ -1028,6 +1040,7 @@ $("btnBankSend").onclick=async()=>{
   }
   $("progress").textContent="✓ package envoyé";
   log("📤 Package entièrement envoyé vers le KN2000 — vérifie en relisant un slot ou en refaisant un dump.","status-ok");
+  log("⚠️ Mémoire volatile : le KN2000 ne conserve les sons que ~80 min hors tension — garde ce package pour pouvoir le renvoyer après une coupure.","status-ko");
 
   toast("Package envoyé vers le clavier");
   bankSending=false; $("btnBankSend").disabled=false;
@@ -1448,17 +1461,18 @@ let APC=(()=>{ const nb=()=>({cc:[],par:Array(8).fill(""),btn:null});
 function apcSave(){ try{ localStorage.setItem("kn2000_se_v06_apc", JSON.stringify(APC)); }catch(e){} }
 let apcLearn=null;
 function apcOut(){ if(!access||!APC.outId) return null; let o=null; access.outputs.forEach(x=>{ if(x.id===APC.outId) o=x; }); return o; }
-function apcLed(note,vel){ const o=apcOut(); if(o) o.send([0x90,note,vel]); }
+function apcLed(note,vel){ const o=apcOut(); if(o) o.send([0x90,note,vel]); } // boutons UI : LED mono, on/off seulement
+function apcLedP(note,vel){ const o=apcOut(); if(o) o.send([0x96,note,vel]); } // v0.9.2 : PADS RGB sur canal 0x96 = solid 100 % luminosité (0x90 = 10 %, invisible en jour)
 function apcBtnLeds(){ // sélecteurs de banque : pad → vert = banque active, gris = pad de banque inactif ; bouton (Track/Scene…) → LED simple on/off
   APC.banks.forEach((b,i)=>{ if(b.btn==null) return;
-    if(b.btn<40) apcLed(b.btn, i===APC.bank?0x21:0x02);   // pad RVB : palette
+    if(b.btn<40) apcLedP(b.btn, i===APC.bank?0x21:0x02);   // pad RVB : palette
     else apcLed(b.btn, i===APC.bank?0x01:0x00);           // bouton UI : LED simple (00=off, 01=on, 02=blink)
   });
 }
 const APC_PALETTE=[["éteint",0x00],["gris",0x02],["blanc",0x03],["rouge",0x05],["orange",0x09],["jaune",0x0D],["vert",0x21],["vert clair",0x1C],["turquoise",0x29],["bleu",0x45],["magenta",0x3D],["rose",0x33]];
 function apcColorOf(f){ if(APC.colors&&APC.colors[f]!=null) return APC.colors[f]; const t=APC_TOGGLES.find(x=>x.f===f); return t?t.c:0x00; }
 function apcPadsLeds(){ // couleur fonction en continu sur chaque pad assigné (état OFF) — les pads utilisés comme sélecteurs de banque sont gérés par apcBtnLeds
-  Object.keys(APC.pads).forEach(n=>{ if(APC.banks.some(b=>b.btn===+n)) return; apcLed(+n, apcColorOf(APC.pads[n])); });
+  Object.keys(APC.pads).forEach(n=>{ if(APC.banks.some(b=>b.btn===+n)) return; apcLedP(+n, apcColorOf(APC.pads[n])); });
 }
 function apcSt(){ const el=$("apcSt"); if(!el) return;
   let ok=false; if(access&&APC.inId){ access.inputs.forEach(x=>{ if(x.id===APC.inId) ok=true; }); }
@@ -1472,19 +1486,19 @@ function apcAttach(){
 }
 function apcSelectPart(pi){
   $("apcPart").textContent=PARTS[pi][0]+" : lecture…";
-  [0,1,2].forEach((p,i)=>apcLed(APC_PART_PADS[i], i===pi?0x03:0x02)); // blanc = active, gris = autres
+  [0,1,2].forEach((p,i)=>apcLedP(APC_PART_PADS[i], i===pi?0x03:0x02)); // blanc = active, gris = autres
   APC.part=pi; apcSave();
   if(!midiIn||!midiOut){ log("ℹ️ "+PARTS[pi][0]+" — connecte-toi au KN2000 pour lire la part.","status-ko"); return; }
   freshParts().then(sts=>{ const st=sts[pi];
     if(st&&(st.bank&0x80)&&st.pc<36){
       $("apcPart").textContent=PARTS[pi][0]+" : "+slotName(st.pc);
       log("🎛️ "+PARTS[pi][0]+" joue "+slotName(st.pc)+" — slot chargé, knobs actifs dessus.","status-ok");
-      apcLed(APC_PART_PADS[pi],0x21); // vert = Memory sous contrôle
+      apcLedP(APC_PART_PADS[pi],0x21); // vert = Memory sous contrôle
       if(st.pc!==curSlot){ $("slotSel").value=String(st.pc); $("slotSel").onchange(); }
     } else {
       $("apcPart").textContent=PARTS[pi][0]+" : pas une Sound Memory";
       log("ℹ️ "+PARTS[pi][0]+" = "+(st?interpPart(st.pc,st.bank):"?")+" — pas une Sound Memory, les knobs n'ont pas de cible machine.","status-ko");
-      apcLed(APC_PART_PADS[pi],0x05); // rouge = pas de Memory
+      apcLedP(APC_PART_PADS[pi],0x05); // rouge = pas de Memory
     }});
 }
 function apcMsg(ev){
@@ -1500,7 +1514,7 @@ function apcMsg(ev){
     const tg=APC.pads[note];
     if(tg){ const el=document.querySelector(`.switch[data-f="${tg}"]`);
       if(el){ el.click(); const t=APC_TOGGLES.find(x=>x.f===tg);
-        setTimeout(()=>apcLed(note, el.classList.contains("on")?0x21:apcColorOf(tg)),60);
+        setTimeout(()=>apcLedP(note, el.classList.contains("on")?0x21:apcColorOf(tg)),60);
       } else log("🎛️ Pad "+note+" : champ absent.","status-ko");
       return; }
     log("🎛️ APC note "+note+" — non mappée.");
@@ -1600,7 +1614,7 @@ $("apcIn").onchange=()=>{
   apcAttach(); apcUI();
 };
 $("apcOut").onchange=()=>{ APC.outId=$("apcOut").value||null; apcSave(); apcSt();
-  [0,1,2].forEach((p,i)=>apcLed(APC_PART_PADS[i],0x02)); apcPadsLeds(); apcBtnLeds(); };
+  [0,1,2].forEach((p,i)=>apcLedP(APC_PART_PADS[i],0x02)); apcPadsLeds(); apcBtnLeds(); };
 // ===== Export / import de la config APC (JSON) =====
 function apcExport(){
   const data=JSON.stringify({app:"kn2000-sound-editor",type:"apc-config",ver:1,ts:new Date().toISOString(),apc:APC},null,1);
@@ -1650,6 +1664,7 @@ $("btnClearLog").onclick=()=>{ $("log").innerHTML=""; log("Log vidé."); };
 </script>
 </body>
 </html>
+
 
 
 

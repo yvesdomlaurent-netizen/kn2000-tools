@@ -13,6 +13,12 @@ Outils :
 
 ## 2026-10-25
 
+### Sound Editor v0.9.2 — commandes branchées, luminosité LEDs, avertissements volatilité
+- **Les 12 contrôles muets branchés** : tous les segments (Octave shift / Right of split / Left of split, Wheel mode, Sustain pedal, A&T On/Mode/Type/Pattern, Modulation Mode et Wave, Filter type par tone) écrivent maintenant dans le KN2000 par read-modify-write (écriture armée requise, même logique que Distortion type / Effect Pan). Auparavant, ces contrôles ne modifiaient que l'écran — rien n'était envoyé (constaté terrain par Yves sur Octave shift).
+- **Correctif lecture** : Modulation Mode était lu dans l'octet 0x16 au lieu de 0x19 — corrigé.
+- **Luminosité des LEDs de pads** : les pads RGB sont maintenant pilotés sur le canal 0x96 (allumé fixe 100 %) au lieu de 0x90 (10 %) — les LEDs sont visibles en plein jour. Les boutons périphériques (LED mono) restent en on/off, non réglables. La logique des couleurs de la v0.9.1 est conservée.
+- **Avertissements mémoire volatile** : le KN2000 ne conserve les sons que ~80 min hors tension (message de la machine à la sauvegarde) — bandeau, confirmation et journal après l'envoi d'un package, rappel d'archivage après « ✅ Garder le nouveau son ». Garde tes packages/catalogue pour recharger après une coupure.
+
 ### Sound Editor v0.9.1 — correctifs LEDs retour terrain
 - **Pads ON/OFF : changement d'état de nouveau visible.** La couleur par défaut des tones ON/OFF était le vert (0x21), identique à la couleur d'état ON → aucun changement visible à l'appui. Les tones ON/OFF passent par défaut en **blanc** (état OFF) ; l'état ON reste **vert**. (Couleurs toujours paramétrables fonction par fonction.)
 - **Pads sélecteurs de banque : maintenant visibles.** Un pad utilisé comme bouton de banque s'affiche en **gris** (banque inactive) ou **vert** (banque active) — auparavant éteint sauf banque active, et l'éclairage « couleur fonction » pouvait écraser le vert (ordre d'application corrigé : les LEDs de banque sont appliquées en dernier).
