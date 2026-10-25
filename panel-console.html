@@ -118,7 +118,6 @@
 <div class="cols3">
   <div>
     <div id="col1"></div>
-
     <div class="part"><b>Rythme</b> <select id="rhySel"></select> Tempo <span class="val" id="tempoInfo">?</span></div>
     <div class="part"><b>Drums &amp; accompagnements</b><div class="vols" id="drumsGrid"></div></div>
   </div>
@@ -239,7 +238,6 @@ function refreshPorts() {
     $("st").textContent = "Web MIDI prêt"; $("st").className = "ok";
     const { rIn, rOut } = fillPorts();
     if (rIn && rOut) {
-
       log("🔌 Ports mémorisés : In = " + $("inSel").selectedOptions[0].textContent + " · Out = " + $("outSel").selectedOptions[0].textContent + " — tentative de connexion automatique (test de la réponse du KN2000)…", "info");
       connect();
     } else {
@@ -361,7 +359,6 @@ $("pmSel").value = "0";
 let apcCtl = null; let progMode = 0; let conductor = -1; let reverbOn = null; let reverbType = -1, reverbDepth = -1, dspRaw = null; let apcType = -1, apcMem = -1, transpose = -1;  // 20 0A 22 mode ; 20 0A 24 conductor ; 20 08 1x reverb ; 20 08 21 DSP ; 40 01 28/29 conductor réel (exp.)
 const RV_TYPES = ["Room1", "Room2", "Hall1", "Hall2", "Hall3", "Cathedral", "Echo1", "Echo2", "Echo3", "Echo4"];
 
-
 // ===== v3.0/v3.1 : contrôles volumes (sliders), transpose, reverb, DSP =====
 function setVol(id, v) { const el = $(id); if (el) el.value = v; const s = $(id + "v"); if (s) s.textContent = v; }
 const VOL_LABELS = { p1vol: "RIGHT 1", p2vol: "RIGHT 2", p3vol: "LEFT", drumsVol: "Drums", apcvol0: "Accomp 1", apcvol1: "Accomp 2", apcvol2: "Accomp 3", apcvol3: "Bass", apcvol4: "APC-Drums", apcvol5: "Chord", apcvol6: "R.Bass" };
@@ -481,7 +478,6 @@ document.body.addEventListener("change", e => {
 
 function dspSummary(dt) {
   if (!dt || !dt.length) return "?";
-
   const t = dt[0], nm = DSP_TYPES[t] !== undefined ? DSP_TYPES[t] : ("type " + t);
   let p = "";
   if (t === 1) p = "depth " + dt[1] + ", speed " + dt[2];
@@ -601,7 +597,6 @@ async function readAll(auto) {
   }
 }
 $("readAll").onclick = () => readAll(false);
-
 
 // ===== envois (m\u00e9thodes valid\u00e9es uniquement) =====
 async function sendPartSound(pt) {
@@ -723,7 +718,6 @@ $("sndPartSend").onclick = () => {
 };
 // ===== diff des deux derni\u00e8res PM lues =====
 let pmPrev = null;
-
 {
   const h = $("pmDiff");
   h.onclick = () => {
@@ -844,7 +838,6 @@ async function libLoad(name) {
   const tcOn = s.tc === 1;
   $("tcBtn").textContent = tcOn ? "ON" : "OFF"; $("tcBtn").className = tcOn ? "on" : "sec";
   log("Chargement de \"" + name + "\" vers le clavier\u2026", "info");
-
   send(sysex2C([0x20, 0x04, 0x00], [0x01])); await wait(120);   // enables requis (méthodes validées)
   send(sysex2C([0x20, 0x04, 0x01], [0x01])); await wait(120);
   for (const pt of PARTS) { await sendPartSound(pt); await wait(120); }
