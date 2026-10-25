@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>KN2000 Sound Editor v0.9.8</title>
+<title>KN2000 Sound Editor v0.9.9</title>
 <style>
   :root { font-family: system-ui, sans-serif; background:#0b1220; color:#e2e8f0; }
   * { box-sizing:border-box; }
@@ -68,7 +68,7 @@
 </style>
 </head>
 <body>
-<div class="banner">🎹 Sound Editor <b>v0.9.8</b> — structure du son 144 octets (cartographie officielle p.24/30/31 + Digital Effects). Lecture AUTO à la connexion et au changement de slot (capture 📸 de l'original). Onglets GENERAL/TONE/EFFECT = écrans du manual. Onglet APC = surface de contrôle live (pads parts, knobs, LEDs). Écriture : bouton-état 🔒/🔓 dans la barre d'outils. ⚠️ Toujours faire un dump de sauvegarde avant d'écrire. ⚠️ Le KN2000 ne conserve les sons que ~80 min hors tension — garde tes packages/catalogue pour recharger après une coupure.</div>
+<div class="banner">🎹 Sound Editor <b>v0.9.9</b> — structure du son 144 octets (cartographie officielle p.24/30/31 + Digital Effects). Lecture AUTO à la connexion et au changement de slot (capture 📸 de l'original). Onglets GENERAL/TONE/EFFECT = écrans du manual. Onglet APC = surface de contrôle live (pads parts, knobs, LEDs). Écriture : bouton-état 🔒/🔓 dans la barre d'outils. ⚠️ Toujours faire un dump de sauvegarde avant d'écrire. ⚠️ Le KN2000 ne conserve les sons que ~80 min hors tension — garde tes packages/catalogue pour recharger après une coupure.</div>
 
 <header>
   <h1>🎹 Sound Editor</h1>
@@ -503,21 +503,38 @@ document.addEventListener("change",e=>{
 const TBASE=[0x28,0x4A,0x6C], TAGS=["1st","2nd","sub"];
 function keyLabel(v){ if(v==null) return "—"; const n=Math.round(v); const o=Math.floor(n/12)-2; return ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"][n%12]+o; } // v0.9.6 : le clavier affiche un octave en dessous de la numérotation MIDI (page C5 = clavier C4)
 function envPath(atk,dcy1,sus1,dcy2,sus2,rls,W,H,pad){
-  // Forme conforme au graphique KN2000 : ATK montée au max (100%), DCY1 chute → SUS1,
-  // plateau (touche tenue), DCY2 chute → SUS2, plateau, key-off → RLS descente à 0.
+  // Modèle « points et pentes » conforme au KN2000 (25/10, formulation d'Yves) :
+  // Atk/Dcy1/Dcy2/Rls fixent une PENTE (loi de temps perceptive commune, exponentielle) ;
+  // Sus1/Sus2 fixent les NIVEAUX. Une pente court jusqu'au niveau cible : sa longueur en découle.
+  // Dcy1 descend du maxi vers Sus1 ; Dcy2 relie Sus1 à Sus2 (montante si Sus1 < Sus2) ;
+  // Rls descend de Sus2 vers 0 — et Rls 50 = asymptote : horizontale, le son ne s'éteint jamais.
   const y = v => pad + (1 - Math.max(0,Math.min(1,v/50)))*(H-2*pad);
-  const iw = W-2*pad, plate = iw*0.12;
-  const dur = Math.max(1, atk+dcy1+dcy2+rls);
-  const dw = iw - 2*plate;
+  const w = v => v<=0 ? 0 : Math.pow(2, Math.min(v,49)/5); // durée perceptive d'une pente à pleine hauteur (50)
+  const hD1 = Math.max(0,50-sus1)/50, hD2 = Math.abs(sus1-sus2)/50, hR = Math.max(0,sus2)/50;
+  const wa=w(atk), wd1=hD1*w(dcy1), wd2=hD2*w(dcy2);
+  const RLS_INF = rls>=50;
+  const wr = RLS_INF ? 0 : hR*w(rls);
+  const iw = W-2*pad, plate = iw*0.12, dw = iw-2*plate;
+  const sum = wa+wd1+wd2+wr;
+  // Échelle de temps INDÉPENDANTE des niveaux : la pente de chaque segment ne dépend que de son paramètre.
+  const sumRef = wa + w(dcy1) + w(dcy2) + (RLS_INF?0:w(rls)); // durées à pleine hauteur
+  const k = dw/Math.max(1e-6,sumRef);
   const x0 = pad;
-  const xa = x0 + atk/dur*dw;          // fin attack (sommet)
-  const xd1 = xa + dcy1/dur*dw;        // fin decay1 → niveau SUS1
-  const xk1 = xd1 + plate;            // fin plateau SUS1
-  const xd2 = xk1 + dcy2/dur*dw;       // fin decay2 → niveau SUS2
-  const xk2 = xd2 + plate;             // key-off (fin plateau SUS2)
-  const xr = xk2 + rls/dur*dw;         // fin release
-  const y0 = y(0), yTop = y(50);
-  const path = `M ${x0} ${y0} L ${xa} ${yTop} L ${xd1} ${y(sus1)} L ${xk1} ${y(sus1)} L ${xd2} ${y(sus2)} L ${xk2} ${y(sus2)} L ${xr} ${y0}`;
+  const xa = x0 + wa*k;              // fin attack (sommet)
+  const xd1 = xa + wd1*k;            // la pente Dcy1 s'arrête au niveau Sus1
+  const xk1 = xd1 + plate;           // fin plateau SUS1 (touche tenue)
+  const xd2 = xk1 + wd2*k;           // pente Dcy2 : Sus1 → Sus2 (sens selon les niveaux)
+  const xk2 = xd2 + plate;           // key-off (fin plateau SUS2)
+  const y0=y(0), yTop=y(50), xr=pad+iw;
+  let path;
+  if(RLS_INF || sum===0){ // release infini (ou rien à dessiner) : plateau final ouvert jusqu'au bord
+    path = `M ${x0} ${y0} L ${xa} ${yTop} L ${xd1} ${y(sus1)} L ${xk1} ${y(sus1)} L ${xd2} ${y(sus2)} L ${xk2} ${y(sus2)} L ${xr} ${y(sus2)} L ${xr-7} ${y(sus2)-5} M ${xr} ${y(sus2)} L ${xr-7} ${y(sus2)+5}`;
+  } else {
+    const xEnd = xk2 + wr*k;
+    // Si le silence arrive avant le bord droit (niveaux bas → segments courts), prolonger la ligne de silence.
+    const tail = xEnd < xr-1 ? ` L ${xr} ${y0}` : ``;
+    path = `M ${x0} ${y0} L ${xa} ${yTop} L ${xd1} ${y(sus1)} L ${xk1} ${y(sus1)} L ${xd2} ${y(sus2)} L ${xk2} ${y(sus2)} L ${xEnd} ${y0}${tail}`;
+  }
   return { path,
     pts:[[xa,yTop,"ATK "+atk],[xd1,y(sus1),"SUS1 "+sus1],[xd2,y(sus2),"SUS2 "+sus2],[xk2,y(sus2),"Key-off → RLS "+rls]],
     koff:xk2 };
@@ -534,7 +551,7 @@ function toneCard(i){
   <div class="sect"><h3>Volume · Touche</h3><div class="grid2">${trow("Volume","vol",0,127)}${trow("Touch depth","tch",0,127)}${trow("Touch curve","tcur",-3,3)}${trow("Lvl KF slope","lkf",-50,50)}</div>
   <svg viewBox="0 0 100 56" id="t${i}_tcurSvg" style="background:#0b1220;border-radius:6px;width:100%;height:52px"></svg>
   <div class="envlegend">Touch curve — réponse à la vélocité (Reference Guide p.13, courbes -3 à +3)</div></div>
-  <div class="sect"><h3>Envelope (0x33-0x39)</h3>
+  <div class="sect"><h3>Enveloppe (0x33-0x39) — Atk/Dcy/Rls = pentes · Sus1/Sus2 = niveaux</h3>
   <div class="envbox"><svg viewBox="0 0 360 120" id="t${i}_env">
     <line x1="10" y1="110" x2="350" y2="110" stroke="#1e293b"/>
     <path d="" fill="none" stroke="#38bdf8" stroke-width="2" id="t${i}_envp"/>

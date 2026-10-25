@@ -13,6 +13,11 @@ Outils :
 
 ## 2026-10-25
 
+### Sound Editor v0.9.9 — graphique d'enveloppe refait selon le modèle « points et pentes »
+- **Graphique d'enveloppe redessiné** (onglet TONE) selon le modèle validé au clavier : Atk/Dcy1/Dcy2/Rls fixent des **pentes** (même loi de temps perceptive, exponentielle — validé : Atk perceptible dès 14, ~1-2 s à 34, ~5 s à 40), Sus1/Sus2 fixent des **niveaux**. Une pente court jusqu'au niveau cible : changer Sustain ne change plus la pente, seulement son point d'arrêt (comportement identique à l'affichage du KN2000). Dcy2 se dessine **montant** si Sus1 < Sus2. **Rls 50 = asymptote** : ligne horizontale, fin ouverte, le son ne s'éteint jamais (validé terrain). Valeur 0 = transition verticale. Échelle de temps indépendante des niveaux.
+- **Documentation** : le modèle « points et pentes » (pentes vs niveaux, séquence ouverture → chute → palier → chute → palier → fermeture, tout jusqu'à Sus2 joue touche tenue) est intégré à l'aide FR/EN. La courbe reste une **indication visuelle**, pas un outil de mesure.
+- **Orthographe** : titre de section « Envelope » → « Enveloppe ».
+
 ### Sound Editor v0.9.8 — section Filter réorganisée
 - **Section Filter réorganisée** dans l'ordre de l'écran KN2000 : Filter type (THRU-6) en tête, puis Touch depth / Touch curve / Slope, et la paire Flt key lim en fin de section. Tout est regroupé dans une seule section (avant : type et key limits sur une ligne isolée hors section). Le slider Cutoff est conservé (présent dans la structure 144 octets même s'il n'apparaît pas sur cet écran).
 - Validation terrain v0.9.7 enregistrée : Enveloppe Key Follow OK (slopes, limits, présentation) — offsets Release (bloc+25/26) confirmés par contrôle croisé.

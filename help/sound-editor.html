@@ -64,6 +64,14 @@
   <li>Édition des trois tones : paramètres, enveloppes avec schémas visuels et courbes.</li>
   <li>Code couleur : <span style="color:#4ade80">champ confirmé</span> · <span style="color:#fbbf24">partiel</span> · <span style="color:#64748b">inconnu</span>.</li>
 </ul>
+<h4>Comprendre l'enveloppe (modèle « points et pentes »)</h4>
+<ul>
+  <li><b>Atk, Dcy 1, Dcy 2, Rls = des pentes</b> (durées) ; <b>Sus 1, Sus 2 = des niveaux</b> (amplitudes).</li>
+  <li>Séquence, touche enfoncée : ouverture (Atk jusqu'au point maxi) → chute (Dcy 1) → palier 1 (Sus 1) → pente (Dcy 2) → palier 2 (Sus 2). Seul le Release joue après le relâchement.</li>
+  <li>Une pente est fixée par son paramètre seul ; le Sustain déplace seulement le point où elle s'arrête (hauteur proportionnelle). Sus1 règle la hauteur du palier tenu, Dcy 1 le temps qu'on met à y descendre : ensemble ils dessinent la même pente — l'un verticalement, l'autre horizontalement.</li>
+  <li>Dcy 2 descend si Sus1 &gt; Sus2 et <b>remonte</b> si Sus1 &lt; Sus2. Release 50 = asymptote : le son ne s'éteint jamais.</li>
+  <li>Les durées croissent de façon exponentielle (Atk 14 à peine perceptible, ~1-2 s à 34, ~5 s à 40). Le schéma est une <b>indication visuelle</b>, pas un outil de mesure — l'oreille tranche.</li>
+</ul>
 
 <h3>Onglet EFFECT</h3>
 <ul>
@@ -148,6 +156,14 @@
   <li>Editing of the three tones: parameters, envelopes with visual diagrams and curves.</li>
   <li>Colour code: <span style="color:#4ade80">confirmed field</span> · <span style="color:#fbbf24">partial</span> · <span style="color:#64748b">unknown</span>.</li>
 </ul>
+<h4>Understanding the envelope ("points and slopes" model)</h4>
+<ul>
+  <li><b>Atk, Dcy 1, Dcy 2, Rls are slopes</b> (durations); <b>Sus 1, Sus 2 are levels</b> (amplitudes).</li>
+  <li>Sequence, key held: opening (Atk up to the peak) → drop (Dcy 1) → plateau 1 (Sus 1) → slope (Dcy 2) → plateau 2 (Sus 2). Only the Release plays after key-off.</li>
+  <li>A slope is set by its own parameter alone; the Sustain only moves the point where it stops (proportional height). Sus 1 sets how high the held plateau sits, Dcy 1 how long it takes to get there: together they draw the same slope — one vertically, the other horizontally.</li>
+  <li>Dcy 2 goes down if Sus1 &gt; Sus2 and <b>rises</b> if Sus1 &lt; Sus2. Release 50 = asymptote: the sound never fades out.</li>
+  <li>Durations grow exponentially (Atk 14 barely perceptible, ~1-2 s at 34, ~5 s at 40). The diagram is a <b>visual indication</b>, not a measuring tool — trust your ears.</li>
+</ul>
 
 <h3>EFFECT tab</h3>
 <ul>
@@ -203,6 +219,7 @@
 </div>
 
 <h2>🕐 Historique des versions / Version history</h2>
+<div class="ver"><b>v0.9.9</b><span class="date">25/10/2026</span> — Graphique d'enveloppe refait selon le modèle « points et pentes » validé au clavier : les pentes (Atk/Dcy/Rls) ne dépendent que de leur paramètre, les Sustain déplacent seulement leur point d'arrêt ; Dcy 2 se dessine montant si Sus1 &lt; Sus2 ; Release 50 = asymptote (le son ne s'éteint jamais) ; durées à l'échelle perceptive (exponentielle). Nouvelle section d'aide « Comprendre l'enveloppe » FR/EN ; orthographe « Enveloppe ».<br/><i>Envelope graph redrawn per the field-validated "points and slopes" model: slopes depend only on their parameter, Sustains only move their stop point; Dcy 2 drawn rising when Sus1 &lt; Sus2; Release 50 = asymptote (never fades); perceptual (exponential) time scale. New help section FR/EN; French spelling fix.</i></div>
 <div class="ver"><b>v0.9.8</b><span class="date">25/10/2026</span> — Section Filter réorganisée dans l'ordre de l'écran KN2000 : Filter type (THRU-6) en tête, Touch depth / curve / Slope, puis Flt key lim en fin de section ; le slider Cutoff est conservé (présent dans la structure 144 octets).<br/><i>Filter section reorganized to match the KN2000 screen order: Filter type (THRU-6) first, Touch depth / curve / Slope, then the key-limit pair at the end of the section; the Cutoff slider is kept (present in the 144-byte structure).</i></div>
 <div class="ver"><b>v0.9.7</b><span class="date">25/10/2026</span> — Section « Enveloppe Key Follow » réorganisée comme sur l'écran du KN2000 : ATK/DCY/REL chacun avec son Slope et sa paire de Key Limits côte à côte ; key limits de Release ajoutées (sélecteurs C0→G8, écriture armée 🔓, offsets bloc+25/+26 à valider par contrôle croisé).<br/><i>"Envelope Key Follow" section reorganized to match the KN2000 screen: ATK/DCY/REL each with its Slope and Key Limits pair side by side; Release key limits added (C0→G8 dropdowns, armed 🔓 write, block+25/+26 offsets to be field-verified by cross-check).</i></div>
 <div class="ver"><b>v0.9.6</b><span class="date">25/10/2026</span> — Correctifs : le segment Sustain pedal (LONG/HOLD, GENERAL → Controllers) était absent de la page (entrée de code accidentellement mise en commentaire) — il s'affiche et écrit de nouveau ; l'affichage des key limits est aligné sur le clavier (un octave trop haut avant : C5 page = C4 clavier) et la plage des sélecteurs étendue à C0..G8 (une limite C0 réglée au clavier laissait le sélecteur vide).<br/><i>Fixes: the Sustain pedal segment (LONG/HOLD, GENERAL → Controllers) was missing from the page (code entry accidentally commented out) — it is back and writes again; key-limit display now matches the keyboard (was one octave too high) and the selector range is extended to C0..G8 (a C0 limit set on the keyboard left the selector blank).</i></div>
