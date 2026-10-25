@@ -13,6 +13,12 @@ Outils :
 
 ## 2026-10-25
 
+### Sound Editor v0.9.14 — menu ⚙️ Réglages : tout le non-fonctionnel quitte le bandeau haut
+- **Menu ⚙️ Réglages** (retour terrain v0.9.13 : les badges changeaient d'onglet alors que les réglages sont ailleurs) : nouveau panneau sous le bandeau regroupant 🔌 connexion KN2000 (🔄 Ports, In/Out, Connecter, état), 🎛 APC (ports, encodage, état — déplacé de l'onglet APC), 📁 dossier de travail (déplacé de l'onglet BANQUE), 🌐 langue · aide · démo (🇫🇷/🇬🇧, ❓ Aide, 🧪 Exemple A-1).
+- **Badges** : le clic ouvre le menu Réglages sur la section correspondante (connexion / APC / dossier), plus aucun changement d'onglet.
+- **Menu ouvert automatiquement au démarrage si le KN2000 n'est pas connecté** ; il se replie tout seul quand la connexion s'établit (sauf si l'utilisateur l'a ouvert lui-même).
+- **Bandeau haut allégé** : ne reste que le fonctionnel — Slot, Nom, ✍️, ⬇️ Export JSON, 🧹/📜 Journal, 🔒 Écriture, ⚡ Auto-appliquer, 📍 Lire l'état, états des parts.
+
 ### Sound Editor v0.9.13 — charte d'ergonomie : badge d'état, commandes groupées, aide contextuelle, squelette i18n
 - **Badge d'état discret** en haut de page : 🎹 KN2000 (● connecté / ⚠ pas de réponse / ○), 🎛 APC, 📁 dossier de travail — cliquer un badge ouvre l'onglet correspondant (GENERAL / APC / BANQUE). Synchronisé automatiquement avec l'état existant (observateurs), sans toucher aux flux MIDI.
 - **Commandes regroupées sous labels** dans les onglets BANQUE et APC (et catalogue) : 🎚 Pilotage → 💾 Sauvegarder → 📂 Charger, même ordre partout — base du référentiel commun avant généralisation aux autres outils.

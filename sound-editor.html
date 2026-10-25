@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>KN2000 Sound Editor v0.9.13</title>
+<title>KN2000 Sound Editor v0.9.14</title>
 <style>
   :root { font-family: system-ui, sans-serif; background:#0b1220; color:#e2e8f0; }
   * { box-sizing:border-box; }
@@ -24,7 +24,7 @@
   .bdg.warn { background:#451a03; color:#fbbf24; border-color:#b45309; }
   .glbl { font-weight:700; font-size:.82rem; color:#94a3b8; margin-right:4px; white-space:nowrap; align-self:center; }
   .tab a.th { margin-left:8px; text-decoration:none; color:#38bdf8; font-weight:700; }
-  header a.ghost { background:#334155; color:#fff; border-radius:8px; padding:7px 12px; font-size:.85rem; text-decoration:none; margin:2px 2px 2px 0; display:inline-block; }
+  a.ghost { background:#334155; color:#fff; border-radius:8px; padding:7px 12px; font-size:.85rem; text-decoration:none; margin:2px 2px 2px 0; display:inline-block; }
   .tabs { display:flex; gap:4px; margin-bottom:12px; flex-wrap:wrap; }
   .tab { padding:8px 16px; border-radius:8px 8px 0 0; background:#1e293b; cursor:pointer; font-size:.9rem; border-bottom:3px solid transparent; }
   .tab.active { background:#131c30; border-bottom-color:#0284c7; color:#7dd3fc; font-weight:600; }
@@ -75,12 +75,12 @@
 </style>
 </head>
 <body>
-<div class="banner">🎹 Sound Editor <b>v0.9.13</b> — 36 slots Sound Memory (144 octets/son), onglets = écrans du KN2000, onglet APC = surface de contrôle live. Écriture : bouton-état 🔒/🔓. ⚠️ Dump de sauvegarde avant d'écrire · ⚠️ Sons conservés ~80 min hors tension — garde tes packages. Détails et tips : ❓ Aide.</div>
+<div class="banner">🎹 Sound Editor <b>v0.9.14</b> — 36 slots Sound Memory (144 octets/son), onglets = écrans du KN2000, onglet APC = surface de contrôle live. Écriture : bouton-état 🔒/🔓. ⚠️ Dump de sauvegarde avant d'écrire · ⚠️ Sons conservés ~80 min hors tension — garde tes packages. Détails et tips : ❓ Aide.</div>
 
 <div id="badgeBar">
-  <span class="bdg" id="bdgKn" title="Connexion KN2000 (ports, test de liaison) — clique pour aller à l'onglet GENERAL">🎹 KN2000 ○</span>
-  <span class="bdg" id="bdgApc" title="Connexion APC — clique pour aller à l'onglet APC">🎛 APC ○</span>
-  <span class="bdg" id="bdgDir" title="Dossier de travail (tous les exports/imports) — clique pour aller à l'onglet BANQUE">📁 —</span>
+  <span class="bdg" id="bdgKn" title="Connexion KN2000 — clique pour ouvrir les réglages (section connexion)">🎹 KN2000 ○</span>
+  <span class="bdg" id="bdgApc" title="Connexion APC — clique pour ouvrir les réglages (section APC)">🎛 APC ○</span>
+  <span class="bdg" id="bdgDir" title="Dossier de travail (tous les exports/imports) — clique pour ouvrir les réglages (section dossier)">📁 —</span>
 </div>
 
 <header>
@@ -88,17 +88,10 @@
   <label title="Slot Sound Memory édité (A-1 → B-18)">Slot <select id="slotSel"></select></label>
   <label title="Nom du son courant (16 caractères, octets 0x00-0x0F)">Nom <input type="text" id="nameIn" maxlength="16" size="16" placeholder="(lire pour afficher)"></label>
   <button class="ghost" id="btnNameWrite" title="Écrire le nom (16 octets 0x00-0x0F) dans le son courant — écriture armée requise">✍️ nom</button>
-  <button class="ghost" id="btnRefresh" title="Recherche les ports MIDI disponibles">🔄 Ports</button>
-  <label>In <select id="inSel"></select></label>
-  <label>Out <select id="outSel"></select></label>
-  <button id="btnConnect" title="Connecte l'éditeur au KN2000 (lecture auto du slot courant)">🔌 Connecter</button>
-  <span class="pill off" id="stMidi">non connecté</span>
-  <button class="ghost" id="btnDemo" title="Charge un exemple usine A-1 dans les écrans (démo, sans clavier)">🧪 Exemple A-1 usine</button>
-  <button class="ghost" id="btnExport" title="Exporte le son courant (144 octets) en fichier JSON">⬇️ Export JSON</button>
+  <button class="ghost" id="btnExport" title="Exporte le son courant (144 octets) en fichier JSON dans le dossier de travail">⬇️ Export JSON</button>
   <button class="ghost" id="btnClearLog" title="Vider le journal sysex">🧹 Vider le log</button>
   <button class="ghost" id="btnLogToggle" title="Afficher/masquer le journal sysex">📜 Journal</button>
-  <button class="ghost" id="btnLang" title="Bascule les libellés de l'interface FR/EN (éléments de la charte : badges, groupes de commandes)">🇫🇷 FR</button>
-  <a class="ghost" id="btnHelp" href="help/sound-editor.html" target="_blank" rel="noopener" title="Aide générale (démarrage, fonctions détaillées, tips, dépannage, historique)">❓ Aide</a>
+  <button class="ghost" id="btnCfg" title="Réglages & Aide : connexion KN2000 et APC, dossier de travail, langue, aide, démo">⚙️ Réglages</button>
   <button id="btnArm" class="ghost" title="Bascule l'écriture des modifications vers le KN2000 (curseurs, switches, changement de tone)">🔒 Écriture : OFF</button>
   <label style="white-space:nowrap;font-size:1.15rem;font-weight:600" title="Après chaque écriture : recharge le slot en cours sur les parts du clavier qui le jouent (voisin d'aller-retour PC 0 · bank 0). Requiert Realtime sysex ON."><input type="checkbox" id="autoApply" style="width:22px;height:22px;vertical-align:middle;transform:translateY(-3px)"> ⚡ Auto-appliquer</label>
   <button id="btnPartRead" class="ghost" title="Lit l'état des 3 parts du clavier (20 1n 00, SIZ 2) — indépendant du son en cours d'édition">📍 Lire l'état</button>
@@ -106,6 +99,33 @@
   <span class="pill off" id="srcPill" title="Origine des données affichées">aucune donnée</span>
   <span id="progress"></span>
 </header>
+
+<div class="card" id="cfgPanel" style="display:none">
+  <div class="prow" id="cfgKn"><span class="glbl" data-k="conn"></span>
+    <button class="ghost" id="btnRefresh" title="Recherche les ports MIDI disponibles">🔄 Ports</button>
+    <label title="Entrée MIDI venant du KN2000">In <select id="inSel"></select></label>
+    <label title="Sortie MIDI vers le KN2000">Out <select id="outSel"></select></label>
+    <button id="btnConnect" title="Connecte l'éditeur au KN2000 (lecture auto du slot courant)">🔌 Connecter</button>
+    <span class="pill off" id="stMidi">non connecté</span>
+  </div>
+  <div class="prow" id="cfgApc"><span class="glbl" data-k="apcgrp"></span>
+    <label title="Entrée MIDI de la surface APC (Port 1)">APC In <select id="apcIn"></select></label>
+    <label title="Sortie MIDI vers l'APC (retours LED)">APC Out <select id="apcOut"></select></label>
+    <span class="pill off" id="apcSt">non connecté</span>
+    <label title="Encodage des knobs : relatif ± par défaut ; si les valeurs partent dans le mauvais sens, essaie « inversé »">Encodage <select id="apcEnc"><option value="2c">relatif ± (65/63)</option><option value="inv">relatif inversé (1/127)</option><option value="abs">absolu 0-127</option></select></label>
+    <span class="val" id="apcPart">part : —</span>
+  </div>
+  <div class="prow" id="cfgDir"><span class="glbl" data-k="dirlbl"></span>
+    <button class="ghost" id="btnCatDir" style="display:none" title="Choisir le dossier de travail (utilisé par TOUS les exports/imports : catalogue, packages, banque, son seul, config APC ; mémorisé par le navigateur)">📁 Dossier de travail : non défini</button>
+    <button class="ghost" id="btnCatDirForget" style="display:none" title="Oublier le dossier de travail">✖</button>
+    <span class="legend" id="catDirLegend" style="display:none">📁 Dossier de travail : utilisé par TOUS les exports/imports (catalogue, packages 📦, banque 🏦, export d'un son seul, config APC 🎛️). L'export s'y écrit directement ; l'import y lit d'abord le fichier attendu, sinon le sélecteur s'y ouvre. Le dossier et son autorisation sont mémorisés par le navigateur.</span>
+  </div>
+  <div class="prow" id="cfgMisc"><span class="glbl" data-k="langaid"></span>
+    <button class="ghost" id="btnLang" title="Bascule les libellés de l'interface FR/EN (éléments de la charte : badges, groupes de commandes)">🇫🇷 FR</button>
+    <a class="ghost" id="btnHelp" href="help/sound-editor.html" target="_blank" rel="noopener" title="Aide générale (démarrage, fonctions détaillées, tips, dépannage, historique)">❓ Aide</a>
+    <button class="ghost" id="btnDemo" title="Charge un exemple usine A-1 dans les écrans (démo, sans clavier)">🧪 Exemple A-1 usine</button>
+  </div>
+</div>
 
 <div class="tabs">
   <div class="tab active" data-t="general">GENERAL <a class="th" href="help/sound-editor.html#se-01-general" target="_blank" rel="noopener" title="Aide : onglet GENERAL">❓</a></div>
@@ -238,10 +258,7 @@
     </div>
     <div class="prow"><span class="glbl" data-k="load"></span>
       <button class="ghost" id="btnCatImport" title="Ouvre le sélecteur dans le dossier choisi">📥 Import JSON</button>
-      <button class="ghost" id="btnCatDir" style="display:none" title="Choisir le dossier de travail (utilisé par TOUS les exports/imports : catalogue, packages, banque, son seul, config APC ; mémorisé par le navigateur)">📁 Dossier de travail : non défini</button>
-      <button class="ghost" id="btnCatDirForget" style="display:none" title="Oublier le dossier catalogue">✖</button>
     </div>
-    <div class="legend" id="catDirLegend" style="display:none">📁 Dossier de travail : utilisé par TOUS les exports/imports (catalogue, packages 📦, banque 🏦, export d'un son seul, config APC 🎛️). L'export s'y écrit directement ; l'import y lit d'abord le fichier attendu, sinon le sélecteur s'y ouvre. Le dossier et son autorisation sont mémorisés par le navigateur.</div>
     <div class="legend">Bibliothèque de sons isolés créés en session : nom + date + 144 octets, stockés dans le navigateur. « Envoyer » écrase le slot courant sélectionné en haut (confirmation + écriture armée requises).</div>
   </div>
 </div>
@@ -249,14 +266,7 @@
 <!-- ================= APC ================= -->
 <div class="panel" id="p-apc"><div class="grid">
   <div class="card" style="grid-column:1/-1"><h2>🎛️ APC Key 25 mk2 — surface de contrôle live</h2>
-    <p class="note">Choisis les ports MIDI de l'APC (surface de contrôle = le 2e port « APC Key 25 mk2 », pas le keybed). Les 3 pads de la 1re colonne (bas → haut) = <b>RIGHT1 / RIGHT2 / LEFT</b> : sélectionner une part qui joue une Sound Memory y charge le slot en lecture et rend les knobs actifs dessus. Les knobs ajustent les paramètres en direct (écriture live si 🔒 armé, avec ⚡ auto-apply). 8 banques de 8 knobs = 64 mappings — n'importe quel bouton de l'APC (Knob Control, Track, Scene, Stop, Play… ou un pad) peut servir de sélecteur de banque.</p>
-    <div class="prow">
-      <label title="Entrée MIDI de la surface APC (Port 1)">APC In <select id="apcIn"></select></label>
-      <label title="Sortie MIDI vers l'APC (retours LED)">APC Out <select id="apcOut"></select></label>
-      <span class="pill off" id="apcSt">non connecté</span>
-      <label title="Encodage des knobs : relatif ± par défaut ; si les valeurs partent dans le mauvais sens, essaie « inversé »">Encodage <select id="apcEnc"><option value="2c">relatif ± (65/63)</option><option value="inv">relatif inversé (1/127)</option><option value="abs">absolu 0-127</option></select></label>
-      <span class="val" id="apcPart">part : —</span>
-    </div>
+    <p class="note">Choisis les ports MIDI de l'APC dans ⚙️ Réglages (section 🎛 APC — surface de contrôle = le 2e port « APC Key 25 mk2 », pas le keybed). Les 3 pads de la 1re colonne (bas → haut) = <b>RIGHT1 / RIGHT2 / LEFT</b> : sélectionner une part qui joue une Sound Memory y charge le slot en lecture et rend les knobs actifs dessus. Les knobs ajustent les paramètres en direct (écriture live si 🔒 armé, avec ⚡ auto-apply). 8 banques de 8 knobs = 64 mappings — n'importe quel bouton de l'APC (Knob Control, Track, Scene, Stop, Play… ou un pad) peut servir de sélecteur de banque.</p>
   </div>
   <div class="card" style="grid-column:1/-1"><h2>Knobs — 8 banques × 8</h2>
     <p class="note">Par banque : « 🎓 CC » = clique puis tourne chaque knob une fois (les 8 numéros CC sont capturés) ; « 🎓 bouton » = clique puis presse n'importe quel bouton de l'APC (Knob Control, Track, Scene, Stop, Play… ou un pad) — ce bouton sélectionnera cette banque. La banque <b>active</b> est surlignée.</p>
@@ -1784,12 +1794,12 @@ $("btnClearLog").onclick=()=>{ $("log").innerHTML=""; log("Log vidé."); };
   apcUI();
 })();
 
-// ---- v0.9.13 : CHARTE ERGONOMIE — dictionnaire STR (FR/EN), badge d'état discret, commandes groupées, aide par onglet ----
+// ---- v0.9.13/14 : CHARTE ERGONOMIE — dictionnaire STR (FR/EN), badge d'état discret, commandes groupées, aide par onglet, menu ⚙️ Réglages ----
 // STR = squelette i18n : couvre les éléments de la charte (badges, groupes de commandes, bascule langue).
 // Les clés suivent la taxonomie <outil>.<zone>.<élément> — à étendre outil par outil à chaque MAJ (pas de big-bang).
 const STR={
- fr:{pilot:"🎚 Pilotage",save:"💾 Sauvegarder",load:"📂 Charger",kn_on:"🎹 KN2000 ● connecté",kn_off:"🎹 KN2000 ○",kn_ko:"🎹 KN2000 ⚠ pas de réponse",apc_on:"🎛 APC ● connecté",apc_off:"🎛 APC ○",dir_none:"dossier non défini",lang:"🇫🇷 FR"},
- en:{pilot:"🎚 Live control",save:"💾 Save",load:"📂 Load",kn_on:"🎹 KN2000 ● connected",kn_off:"🎹 KN2000 ○",kn_ko:"🎹 KN2000 ⚠ no reply",apc_on:"🎛 APC ● connected",apc_off:"🎛 APC ○",dir_none:"no working folder",lang:"🇬🇧 EN"}};
+ fr:{pilot:"🎚 Pilotage",save:"💾 Sauvegarder",load:"📂 Charger",kn_on:"🎹 KN2000 ● connecté",kn_off:"🎹 KN2000 ○",kn_ko:"🎹 KN2000 ⚠ pas de réponse",apc_on:"🎛 APC ● connecté",apc_off:"🎛 APC ○",dir_none:"dossier non défini",lang:"🇫🇷 FR",conn:"🔌 Connexion KN2000",apcgrp:"🎛 APC",dirlbl:"📁 Dossier de travail",langaid:"🌐 Langue · Aide · Démo"},
+ en:{pilot:"🎚 Live control",save:"💾 Save",load:"📂 Load",kn_on:"🎹 KN2000 ● connected",kn_off:"🎹 KN2000 ○",kn_ko:"🎹 KN2000 ⚠ no reply",apc_on:"🎛 APC ● connected",apc_off:"🎛 APC ○",dir_none:"no working folder",lang:"🇬🇧 EN",conn:"🔌 KN2000 link",apcgrp:"🎛 APC",dirlbl:"📁 Working folder",langaid:"🌐 Language · Help · Demo"}};
 let LANG="fr"; try{ LANG=localStorage.getItem("kn2000_se_lang")||"fr"; }catch(e){}
 function T(k){ return (STR[LANG]&&STR[LANG][k])||STR.fr[k]||k; }
 function badgeSync(){ // badge d'état discret — reflète stMidi / apcSt / dossier de travail sans toucher aux flux existants
@@ -1809,19 +1819,29 @@ function applyLang(){ // applique STR à tous les éléments marqués data-k + b
   const b=$("btnLang"); if(b){ b.textContent=T("lang"); b.title=(LANG==="fr"?"Switch charte labels to English":"Repasse les libellés de la charte en français"); }
   badgeSync();
 }
+let cfgOpen=false, cfgUser=false; // v0.9.14 : menu ⚙️ Réglages — ouvert auto au démarrage si non connecté ; cfgUser = l'utilisateur a choisi son état
+function cfgShow(sec){ cfgOpen=true; cfgUser=true; $("cfgPanel").style.display=""; if(sec){ const el=$(sec); if(el) el.scrollIntoView({block:"nearest"}); } }
+function cfgHide(){ cfgOpen=false; $("cfgPanel").style.display="none"; }
 function tabTo(t){ const el=document.querySelector('.tab[data-t="'+t+'"]'); if(el) el.click(); }
 (function charteInit(){
   try{
     new MutationObserver(badgeSync).observe($("stMidi"),{childList:true,subtree:true,characterData:true});
+    new MutationObserver(()=>{ badgeSync();
+      // v0.9.14 : la connexion s'établit → replier le menu s'il a été ouvert automatiquement (pas par l'utilisateur)
+      if(!cfgUser && cfgOpen && ($("stMidi").textContent||"").includes("●")) cfgHide();
+    }).observe($("stMidi"),{childList:true,subtree:true,characterData:true});
     new MutationObserver(badgeSync).observe($("apcSt"),{childList:true,subtree:true,characterData:true});
     new MutationObserver(badgeSync).observe($("btnCatDir"),{childList:true,subtree:true,characterData:true});
   }catch(e){}
   $("btnLang").onclick=()=>{ LANG=(LANG==="fr"?"en":"fr"); try{ localStorage.setItem("kn2000_se_lang",LANG); }catch(e){} applyLang(); };
   document.querySelectorAll(".tab a.th").forEach(a=>a.onclick=e=>e.stopPropagation()); // ❓ aide : ouvre l'ancre sans changer d'onglet
-  $("bdgKn").onclick=()=>tabTo("general");
-  $("bdgApc").onclick=()=>tabTo("apc");
-  $("bdgDir").onclick=()=>tabTo("bank");
+  $("btnCfg").onclick=()=>{ if(cfgOpen) cfgHide(); else cfgShow(); };
+  $("bdgKn").onclick=()=>{ if(cfgOpen&&cfgUser) cfgHide(); else cfgShow("cfgKn"); };
+  $("bdgApc").onclick=()=>{ if(cfgOpen&&cfgUser) cfgHide(); else cfgShow("cfgApc"); };
+  $("bdgDir").onclick=()=>{ if(cfgOpen&&cfgUser) cfgHide(); else cfgShow("cfgDir"); };
   applyLang();
+  // v0.9.14 : menu ouvert au démarrage si le KN2000 n'est pas connecté, replé sinon
+  if(!(($("stMidi").textContent||"").includes("●"))){ cfgOpen=true; $("cfgPanel").style.display=""; }
 })();
 </script>
 </body>
