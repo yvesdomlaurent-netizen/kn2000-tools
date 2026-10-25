@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>KN2000 Sound Editor v0.9.10</title>
+<title>KN2000 Sound Editor v0.9.11</title>
 <style>
   :root { font-family: system-ui, sans-serif; background:#0b1220; color:#e2e8f0; }
   * { box-sizing:border-box; }
@@ -68,7 +68,7 @@
 </style>
 </head>
 <body>
-<div class="banner">🎹 Sound Editor <b>v0.9.10</b> — structure du son 144 octets (cartographie officielle p.24/30/31 + Digital Effects). Lecture AUTO à la connexion et au changement de slot (capture 📸 de l'original). Onglets GENERAL/TONE/EFFECT = écrans du manual. Onglet APC = surface de contrôle live (pads parts, knobs, LEDs). Écriture : bouton-état 🔒/🔓 dans la barre d'outils. ⚠️ Toujours faire un dump de sauvegarde avant d'écrire. ⚠️ Le KN2000 ne conserve les sons que ~80 min hors tension — garde tes packages/catalogue pour recharger après une coupure.</div>
+<div class="banner">🎹 Sound Editor <b>v0.9.11</b> — structure du son 144 octets (cartographie officielle p.24/30/31 + Digital Effects). Lecture AUTO à la connexion et au changement de slot (capture 📸 de l'original). Onglets GENERAL/TONE/EFFECT = écrans du manual. Onglet APC = surface de contrôle live (pads parts, knobs, LEDs). Écriture : bouton-état 🔒/🔓 dans la barre d'outils. ⚠️ Toujours faire un dump de sauvegarde avant d'écrire. ⚠️ Le KN2000 ne conserve les sons que ~80 min hors tension — garde tes packages/catalogue pour recharger après une coupure.</div>
 
 <header>
   <h1>🎹 Sound Editor</h1>
@@ -503,48 +503,61 @@ document.addEventListener("change",e=>{
 const TBASE=[0x28,0x4A,0x6C], TAGS=["1st","2nd","sub"];
 function keyLabel(v){ if(v==null) return "—"; const n=Math.round(v); const o=Math.floor(n/12)-2; return ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"][n%12]+o; } // v0.9.6 : le clavier affiche un octave en dessous de la numérotation MIDI (page C5 = clavier C4)
 function envPath(atk,dcy1,sus1,dcy2,sus2,rls,W,H,pad){
-  // Modèle « points et pentes » (KN2000, formulation d'Yves) — v0.9.10 : ÉCHELLE DE TEMPS FIXE.
-  // Chaque pente ne dépend que de son paramètre : changer Dcy1 ne touche plus à la pente d'attaque,
-  // changer Atk ne touche plus à Dcy1, etc. (v0.9.9 normalisait par cas → tout bougeait ensemble).
-  // Atk/Dcy1/Dcy2/Rls = pentes (loi de temps perceptive exponentielle) ; Sus1/Sus2 = niveaux (points d'arrêt).
-  // Rls 50 = asymptote : horizontale, fin ouverte, le son ne s'éteint jamais.
-  // Débordement du cadre (paramètres longs) : coupé au bord droit avec chevron — le son continue au-delà.
+  // Modèle « points et pentes » (KN2000, formulation d'Yves) — v0.9.11 :
+  // - ÉCHELLE DE TEMPS FIXE : chaque pente ne dépend que de son paramètre.
+  // - PAS de plateau artificiel entre Sus1 et Dcy2 : Dcy2 fait le lien DIRECT
+  //   (0 = bascule abrupte sur Sus2 ; largeur proportionnelle à l'écart Sus1→Sus2).
+  // - 50 = pente nulle = asymptote pour TOUT paramètre de pente (Atk, Dcy1, Dcy2, Rls) :
+  //   la courbe part à l'horizontale jusqu'au bord droit + chevron (le stade ne se termine jamais).
+  // - Seul le plateau Sus2 reste (note enfoncée), jusqu'au marqueur key-off.
   const y = v => pad + (1 - Math.max(0,Math.min(1,v/50)))*(H-2*pad);
-  const TU = v => v<=0 ? 0 : Math.pow(2, Math.min(v,49)/5); // unités de temps d'une pente à pleine hauteur
-  const iw = W-2*pad, plate = iw*0.12, dw = iw-2*plate;
-  const k = dw/512;        // px par unité de temps — FIXE : pente 40 à pleine hauteur ≈ toute la largeur utile
+  const TU = v => v<=0 ? 0 : Math.pow(2, Math.min(v,49)/5); // unités de temps à pleine hauteur
+  const iw = W-2*pad, plate = iw*0.12;
+  const k = (iw-plate)/512;   // px/temps — FIXE : pente 40 à pleine hauteur ≈ largeur utile
   const xMax = pad+iw-2;
-  const h1 = Math.max(0,50-sus1)/50, h2 = Math.abs(sus1-sus2)/50, hR = Math.max(0,sus2)/50;
-  const RLS_INF = rls>=50;
-  const P = [[pad, y(0)]];
-  P.push([pad + TU(atk)*k, y(50)]);                // pente ATTACK (ne dépend que d'Atk)
-  P.push([P[1][0] + h1*TU(dcy1)*k, y(sus1)]);      // pente DCY1 → arrêt au niveau Sus1 (ne dépend que de Dcy1)
-  P.push([P[2][0] + plate, y(sus1)]);              // plateau 1 (touche tenue)
-  P.push([P[3][0] + h2*TU(dcy2)*k, y(sus2)]);      // pente DCY2 : Sus1 → Sus2 (montante si Sus1 < Sus2)
-  const kx = P[4][0] + plate;                      // key-off (fin plateau 2)
-  P.push([kx, y(sus2)]);
-  const endX = RLS_INF ? xMax : kx + hR*TU(rls)*k;
-  const endY = RLS_INF ? y(sus2) : y(0);           // pente RELEASE : Sus2 → 0 (asymptote si 50)
+  const y0=y(0), yTop=y(50);
+  const pts = [[pad, y0, false]];
+  // ATTaque
+  if(atk>=50) pts.push([pad, y0, true]);                 // pente nulle : ne démarre jamais
+  else pts.push([pad + TU(atk)*k, yTop, false]);
+  // DCY1 : du sommet, arrêt au niveau Sus1 (largeur ∝ (50-sus1))
+  if(dcy1>=50) pts.push([pts[1][0], yTop, true]);        // reste au sommet à l'infini
+  else pts.push([pts[1][0] + (Math.max(0,50-sus1)/50)*TU(dcy1)*k, y(sus1), false]);
+  // DCY2 : lien DIRECT Sus1 → Sus2 (pas de plateau) — montant ou descendant, 0 = bascule verticale
+  if(dcy2>=50) pts.push([pts[2][0], y(sus1), true]);     // n'atteint jamais Sus2
+  else pts.push([pts[2][0] + (Math.abs(sus1-sus2)/50)*TU(dcy2)*k, y(sus2), false]);
+  // PLATEAU Sus2 (note enfoncée) puis key-off
+  const kx = pts[3][0] + plate;
+  pts.push([kx, y(sus2), false]);
+  // RELEASE : Sus2 → 0 (largeur ∝ sus2)
+  let endX = null, endY = y0, inf = rls>=50;
+  if(!inf) endX = kx + (Math.max(0,sus2)/50)*TU(rls)*k;
+  // --- tracé avec coupure au bord droit + chevron si débordement ---
   const seg = (x1,y1,x2,y2) => { if(x2>xMax){ const t=(xMax-x1)/(x2-x1); return [xMax, y1+(y2-y1)*t, true]; } return [x2,y2,false]; };
-  let d = `M ${P[0][0].toFixed(1)} ${P[0][1].toFixed(1)}`, last = P[0], clipped = false;
-  for(let i=1;i<P.length && !clipped;i++){
-    const r = seg(last[0],last[1],P[i][0],P[i][1]);
+  let d = `M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`, last = pts[0], clipped = false, stopped = false;
+  for(let i=1;i<pts.length && !clipped && !stopped;i++){
+    const p = pts[i];
+    if(p[2]){ d += ` L ${xMax} ${p[1].toFixed(1)}`; stopped = true; break; } // asymptote : horizontale jusqu'au bord
+    const r = seg(last[0],last[1],p[0],p[1]);
     d += ` L ${r[0].toFixed(1)} ${r[1].toFixed(1)}`;
     if(r[2]) clipped = true;
     last = [r[0],r[1]];
   }
-  if(!clipped){
-    const r = seg(last[0],last[1],endX,endY);
-    d += ` L ${r[0].toFixed(1)} ${r[1].toFixed(1)}`;
-    if(r[2]) clipped = true;
-    else if(r[0] < xMax-1) d += ` L ${xMax} ${r[1].toFixed(1)}`; // prolonger le silence/plateau final jusqu'au bord
+  if(!clipped && !stopped){
+    if(inf){ d += ` L ${xMax} ${y(sus2).toFixed(1)}`; stopped = true; }
+    else if(endX!=null){
+      const r = seg(last[0],last[1],endX,endY);
+      d += ` L ${r[0].toFixed(1)} ${r[1].toFixed(1)}`;
+      if(r[2]) clipped = true;
+      else if(r[0] < xMax-1) d += ` L ${xMax} ${endY.toFixed(1)}`; // silence prolongé jusqu'au bord
+    }
   }
-  if(clipped || RLS_INF){ // fin ouverte : le son continue au-delà du cadre
-    const yy = (RLS_INF && !clipped) ? y(sus2) : last[1];
+  if(stopped || clipped){ // fin ouverte : le son continue au-delà du cadre
+    const yy = (stopped && !clipped) ? last[1] : last[1];
     d += ` M ${xMax+1} ${yy.toFixed(1)} L ${xMax-6} ${(yy-5).toFixed(1)} M ${xMax+1} ${yy.toFixed(1)} L ${xMax-6} ${(yy+5).toFixed(1)}`;
   }
   return { path: d,
-    pts:[[P[1][0],y(50),"ATK "+atk],[P[2][0],y(sus1),"SUS1 "+sus1],[P[4][0],y(sus2),"SUS2 "+sus2],[kx,y(sus2),"Key-off → RLS "+rls]],
+    pts:[[pts[1][0],pts[1][1],"ATK "+atk],[pts[2][0],pts[2][1],"SUS1 "+sus1],[pts[3][0],pts[3][1],"SUS2 "+sus2],[kx,y(sus2),"Key-off → RLS "+rls]],
     koff:kx };
 }
 function toneCard(i){

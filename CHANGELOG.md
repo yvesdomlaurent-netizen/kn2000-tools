@@ -13,6 +13,11 @@ Outils :
 
 ## 2026-10-25
 
+### Sound Editor v0.9.11 — enveloppe : plateau Sus1→Dcy2 supprimé, règle « 50 = pente nulle » généralisée
+- **Plateau artificiel supprimé** entre le point Sus 1 et la pente Dcy 2 (retour terrain : « ce bout d'horizontale, d'où vient-il ? Dcy 2 fait le lien direct ») : Dcy 2 part maintenant **exactement du point Sus 1**. Dcy 2 = 0 → bascule abrupte (verticale) sur la valeur Sus 2.
+- **Règle « 50 = pente nulle » généralisée à tous les paramètres de pente** (Atk, Dcy 1, Dcy 2, Rls — validée terrain pour Release et confirmée pour Dcy 2) : à 50, la courbe part à l'horizontale jusqu'au bord droit avec un chevron — le stade ne se termine jamais (limite théorique, le clavier plafonne à 50). Atk 50 = ligne plate au départ, conforme à l'affichage du KN2000.
+- Seul le plateau Sus 2 subsiste (note enfoncée), jusqu'au marqueur key-off.
+
 ### Sound Editor v0.9.10 — correctif enveloppe : échelle de temps fixe (chaque pente indépendante)
 - **Correctif du bug v0.9.9** : l'échelle de temps était normalisée à chaque cas (remplissage du cadre), donc changer un paramètre redimensionnait toutes les pentes — Decay 1 modifiait visuellement la pente d'attaque. L'échelle est maintenant **fixe** : la pente de chaque segment (Atk, Dcy 1, Dcy 2, Rls) ne dépend que de son propre paramètre, comme sur l'écran du KN2000.
 - **Sens de Sustain confirmé au clavier** : Sus 1 = 0 → la pente Dcy 1 court sur toute sa largeur jusqu'au sol ; Sus 1 = 50 → la pente disparaît (distance 0, palier direct au maximum).
