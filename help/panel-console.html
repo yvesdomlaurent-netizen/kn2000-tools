@@ -87,6 +87,7 @@
 <h2>❓ Dépannage</h2>
 <ul>
   <li><b>Aucun état ne s'affiche</b> : vérifier les ports, « Realtime sysex » sur ON dans le KN2000.</li>
+  <li><b>« Réponse d'erreur du KN2000 : ERR 7E »</b> (trame f0 50 29 7e) : le clavier refuse l'accès à l'adresse demandée (inexistante ou refusée) — vérifier « Realtime sysex » ON, et pour un dump PM, que la demande part bien après le 2C d'enable (20 04 00 01). Ce n'est pas un problème de câble : la machine répond.</li>
   <li><b>Un réglage ne s'applique pas</b> : utiliser « Diff 2 PM » pour vérifier si le réglage est bien stocké dans les Panel Memory.</li>
   <li><b>Découvrir une commande</b> : activer le Moniteur 🔍 et manipuler la même fonction sur le clavier.</li>
 </ul>
@@ -146,12 +147,14 @@
 <h2>❓ Troubleshooting</h2>
 <ul>
   <li><b>No state displayed</b>: check the ports and “Realtime sysex” ON on the KN2000.</li>
+  <li><b>“KN2000 error reply: ERR 7E”</b> (frame f0 50 29 7e): the keyboard refuses the requested address (non-existent or denied) — check “Realtime sysex” ON, and for a PM dump that the request is sent after the enable 2C (20 04 00 01). It is not a cable issue: the machine is answering.</li>
   <li><b>A setting does not apply</b>: use “Diff 2 PM” to check whether the setting is actually stored in the Panel Memories.</li>
   <li><b>Discovering a command</b>: enable the 🔍 Monitor and operate the same function on the keyboard.</li>
 </ul>
 </div>
 
 <h2>🕐 Historique des versions / Version history</h2>
+<div class="ver"><b>v1.0.1</b><span class="date">25/10/2026</span> — Corrections terrain : trame d'erreur du KN2000 (f0 50 29 7e) correctement identifiée (elle était rejetée en « checksum KO » trompeur) — pendant une lecture de PM, l'erreur s'affiche dans le champ d'état ; bouton 🧹 Vider dans l'en-tête du journal MIDI ; trames sysex trop courtes ignorées proprement.<br/><i>Field fixes: KN2000 error frame (f0 50 29 7e) properly identified (was rejected with a misleading “checksum KO”) — during a PM read the error now shows in the status field; 🧹 Clear button in the MIDI log header; too-short SysEx frames cleanly ignored.</i></div>
 <div class="ver"><b>v1.0</b><span class="date">25/10/2026</span> — Charte d'ergonomie (alignée sur le Sound Editor v0.9.13+) : barre de badges (🎹 KN2000, 📁 dossier) + titre centré + case 📜 Log MIDI + menu ⚙️ Réglages ; onglets ÉTAT / BIBLIOTHÈQUE / SONS PART 4–16 / PANEL MEMORY avec aide contextuelle par ancre (pc-01…pc-04) ; connexion fiabilisée (ports mémorisés et restaurés par nom, bouton Connecter, test de réponse avant toute lecture) ; dossier de travail partagé avec le Sound Editor pour l'export/import de la bibliothèque ; squelette i18n FR/EN.<br/><i>Ergonomic charter (aligned with Sound Editor v0.9.13+): badge bar (🎹 KN2000, 📁 folder) + centred title + 📜 Log MIDI checkbox + ⚙️ Settings menu; STATE / LIBRARY / SOUNDS PART 4–16 / PANEL MEMORY tabs with per-anchor contextual help; hardened connection (memorised ports restored by name, Connect button, reply test before any read); working folder shared with the Sound Editor for library export/import; FR/EN i18n skeleton.</i></div>
 <div class="ver"><b>v1.0 (publication initiale)</b><span class="date">24/10/2026</span> — Première publication sur GitHub Pages. Console de pilotage : sonorités par part, rythme/tempo, Techni-Chord, Panel Memory (rappel/lecture/écriture), lecture d'état, moniteur MIDI, diff de Panel Memories, bibliothèque d'ensembles avec export/import JSON.<br/><i>First release on GitHub Pages. Control console: part sounds, rhythm/tempo, Techni-Chord, Panel Memory (recall/read/write), state readout, MIDI monitor, Panel Memory diff, ensemble library with JSON export/import.</i></div>
 

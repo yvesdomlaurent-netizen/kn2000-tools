@@ -13,6 +13,11 @@ Outils :
 
 ## 2026-10-25
 
+### Panel Console v1.0.1 — corrections terrain v1.0
+- **Trame d'erreur du KN2000 reconnue** (`f0 50 29 <code> f7`, ex. ERR 7E « adresse inexistante ou demande refusée ») : elle était traitée comme une réponse 2C et rejetée en « checksum KO » (diagnostic trompeur). Elle est maintenant identifiée, journalisée avec un message explicite, met `connOk` (la machine répond) et, pendant une lecture de PM, affiche « ✗ erreur KN2000 » dans le champ d'état au lieu d'attendre le timeout « aucune réponse ».
+- **🧹 Vider le journal** : bouton dans un en-tête « 📜 Journal MIDI » affiché avec le journal (convention Sound Editor v0.9.15) — il manquait à la console.
+- Trames sysex trop courtes (< 12 octets) ignorées proprement au lieu d'un décodage hasardeux.
+
 ### Panel Console v1.0 — charte d'ergonomie (alignée Sound Editor v0.9.13+)
 - **Barre de badges** : 🎹 KN2000 (état liaison) et 📁 dossier à gauche, **titre centré**, à droite **case 📜 Log MIDI** (remplace le bouton Log ; marque les erreurs en rouge quand le journal est masqué) + bouton **⚙️ Réglages** — le bouton Moniteur quitte le bandeau haut.
 - **Menu ⚙️ Réglages** (ouvert automatiquement si le KN2000 n'est pas connecté) : 🔌 Connexion (In/Out, 🔄 Ports, 🔌 Connecter, état), 📁 Dossier de travail, 🔎 Moniteur, 🌐 langue, Aide (SVG livre au trait).
