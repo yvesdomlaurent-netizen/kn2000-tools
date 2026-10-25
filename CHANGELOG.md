@@ -13,6 +13,9 @@ Outils :
 
 ## 2026-10-25
 
+### Sound Editor v0.9.17 — icône d'aide en SVG (livre au trait)
+- **Les icônes d'aide des 5 onglets et le bouton « Aide » des Réglages passent en SVG inline** (livre dessiné au trait, bleu #38bdf8) — remplace l'emoji 📖/❓ qui s'affichait en carré blanc sur les systèmes sans glyphe correspondant ; rendu garanti, taille et couleur contrôlées, indépendant des polices.
+
 ### Sound Editor v0.9.16 — pavé supérieur en 2 lignes, session dans la barre, R1/R2, 📖
 - **Titre « 🎹 Sound Editor » remonté et centré** sur la ligne des badges (connexion · Log MIDI · ⚙️ Réglages).
 - **Barre de travail en 2 lignes** — ligne 1 : Slot, Nom, ✍️, ⬇️ Export, et à droite le pavé session (état de l'original + ↩️ Rétablir l'original / ✅ Garder le nouveau son, sortis de l'onglet GENERAL) ; ligne 2 : 🔒 Écriture, ⚡ Auto-appliquer, état machine / paquets reçus, et à droite l'état des parts.

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>KN2000 Sound Editor v0.9.16</title>
+<title>KN2000 Sound Editor v0.9.17</title>
 <style>
   :root { font-family: system-ui, sans-serif; background:#0b1220; color:#e2e8f0; }
   * { box-sizing:border-box; }
@@ -78,7 +78,7 @@
 </style>
 </head>
 <body>
-<div class="banner">🎹 Sound Editor <b>v0.9.16</b> — 36 slots Sound Memory (144 octets/son), onglets = écrans du KN2000, onglet APC = surface de contrôle live. Écriture : bouton-état 🔒/🔓. ⚠️ Dump de sauvegarde avant d'écrire · ⚠️ Sons conservés ~80 min hors tension — garde tes packages. Détails et tips : ❓ Aide.</div>
+<div class="banner">🎹 Sound Editor <b>v0.9.17</b> — 36 slots Sound Memory (144 octets/son), onglets = écrans du KN2000, onglet APC = surface de contrôle live. Écriture : bouton-état 🔒/🔓. ⚠️ Dump de sauvegarde avant d'écrire · ⚠️ Sons conservés ~80 min hors tension — garde tes packages. Détails et tips : ❓ Aide.</div>
 
 <div id="badgeBar">
   <span class="bdg" id="bdgKn" title="Connexion KN2000 — clique pour ouvrir les réglages (section connexion)">🎹 KN2000 ○</span>
@@ -134,17 +134,17 @@
   </div>
   <div class="prow" id="cfgMisc"><span class="glbl" data-k="langaid"></span>
     <button class="ghost" id="btnLang" title="Bascule les libellés de l'interface FR/EN (éléments de la charte : badges, groupes de commandes)">🇫🇷 FR</button>
-    <a class="ghost" id="btnHelp" href="help/sound-editor.html" target="_blank" rel="noopener" title="Aide générale (démarrage, fonctions détaillées, tips, dépannage, historique)">❓ Aide</a>
+    <a class="ghost" id="btnHelp" href="help/sound-editor.html" target="_blank" rel="noopener" title="Aide générale (démarrage, fonctions détaillées, tips, dépannage, historique)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7dd3fc" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Aide</a>
     <button class="ghost" id="btnDemo" title="Charge un exemple usine A-1 dans les écrans (démo, sans clavier)">🧪 Exemple A-1 usine</button>
   </div>
 </div>
 
 <div class="tabs">
-  <div class="tab active" data-t="general">GENERAL <a class="th" href="help/sound-editor.html#se-01-general" target="_blank" rel="noopener" title="Documentation : onglet GENERAL">📖</a></div>
-  <div class="tab" data-t="tone">TONE (1st · 2nd · sub) <a class="th" href="help/sound-editor.html#se-02-tone" target="_blank" rel="noopener" title="Documentation : onglet TONE (enveloppe, filtres, EKF)">📖</a></div>
-  <div class="tab" data-t="effect">EFFECT <a class="th" href="help/sound-editor.html#se-03-effect" target="_blank" rel="noopener" title="Documentation : onglet EFFECT">📖</a></div>
-  <div class="tab" data-t="bank">BANQUE (36 slots) <a class="th" href="help/sound-editor.html#se-04-banque" target="_blank" rel="noopener" title="Documentation : onglet BANQUE (dump, packages, catalogue, dossier de travail)">📖</a></div>
-  <div class="tab" data-t="apc">APC <a class="th" href="help/sound-editor.html#se-05-apc" target="_blank" rel="noopener" title="Documentation : onglet APC (knobs, pads, LEDs, config)">📖</a></div>
+  <div class="tab active" data-t="general">GENERAL <a class="th" href="help/sound-editor.html#se-01-general" target="_blank" rel="noopener" title="Documentation : onglet GENERAL"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></a></div>
+  <div class="tab" data-t="tone">TONE (1st · 2nd · sub) <a class="th" href="help/sound-editor.html#se-02-tone" target="_blank" rel="noopener" title="Documentation : onglet TONE (enveloppe, filtres, EKF)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></a></div>
+  <div class="tab" data-t="effect">EFFECT <a class="th" href="help/sound-editor.html#se-03-effect" target="_blank" rel="noopener" title="Documentation : onglet EFFECT"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></a></div>
+  <div class="tab" data-t="bank">BANQUE (36 slots) <a class="th" href="help/sound-editor.html#se-04-banque" target="_blank" rel="noopener" title="Documentation : onglet BANQUE (dump, packages, catalogue, dossier de travail)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></a></div>
+  <div class="tab" data-t="apc">APC <a class="th" href="help/sound-editor.html#se-05-apc" target="_blank" rel="noopener" title="Documentation : onglet APC (knobs, pads, LEDs, config)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></a></div>
 </div>
 
 <!-- ================= GENERAL ================= -->
