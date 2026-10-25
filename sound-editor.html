@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>KN2000 Sound Editor v0.9.6</title>
+<title>KN2000 Sound Editor v0.9.7</title>
 <style>
   :root { font-family: system-ui, sans-serif; background:#0b1220; color:#e2e8f0; }
   * { box-sizing:border-box; }
@@ -68,7 +68,7 @@
 </style>
 </head>
 <body>
-<div class="banner">🎹 Sound Editor <b>v0.9.6</b> — structure du son 144 octets (cartographie officielle p.24/30/31 + Digital Effects). Lecture AUTO à la connexion et au changement de slot (capture 📸 de l'original). Onglets GENERAL/TONE/EFFECT = écrans du manual. Onglet APC = surface de contrôle live (pads parts, knobs, LEDs). Écriture : bouton-état 🔒/🔓 dans la barre d'outils. ⚠️ Toujours faire un dump de sauvegarde avant d'écrire. ⚠️ Le KN2000 ne conserve les sons que ~80 min hors tension — garde tes packages/catalogue pour recharger après une coupure.</div>
+<div class="banner">🎹 Sound Editor <b>v0.9.7</b> — structure du son 144 octets (cartographie officielle p.24/30/31 + Digital Effects). Lecture AUTO à la connexion et au changement de slot (capture 📸 de l'original). Onglets GENERAL/TONE/EFFECT = écrans du manual. Onglet APC = surface de contrôle live (pads parts, knobs, LEDs). Écriture : bouton-état 🔒/🔓 dans la barre d'outils. ⚠️ Toujours faire un dump de sauvegarde avant d'écrire. ⚠️ Le KN2000 ne conserve les sons que ~80 min hors tension — garde tes packages/catalogue pour recharger après une coupure.</div>
 
 <header>
   <h1>🎹 Sound Editor</h1>
@@ -308,7 +308,7 @@ const MAP_DESC = {};
   d[0x1E]=["known","Sound REVERB DEPTH 0-31"];
   d[0x1F]=["known","Effect : On b7 · Pan/ST b6 · TYPE 0-B"];
   for(let i=0x20;i<=0x27;i++) d[i]=["partial","Effect param "+i.toString(16)+" (selon TYPE)"];
-  const TDESC = [["flags : Tone ON b7 · Vib b6"],["TTN SELECT 0-127"],["SUFFIX/SFX"],["KEY SHIFT ±24"],["TUNE ±50"],["VOLUME 0-127"],["TOUCH DEPTH"],["TOUCH CURVE ±3"],["LEVEL KF SLOPE ±50"],["LEVEL KF LOW KEY LIM"],["LEVEL KF HIGH KEY LIM"],["ATTACK 0-50"],["TOUCH ATTACK ±50"],["DECAY 1"],["SUSTAIN 1"],["DECAY 2"],["SUSTAIN 2"],["RELEASE"],["ATK KF SLOPE ±50"],["ATK KF LOW"],["ATK KF HIGH"],["DCY KF SLOPE ±50"],["DCY KF LOW"],["DCY KF HIGH"],["REL KF SLOPE ±50 (hyp.)"],["REL KF LOW (hyp.)"],["REL KF HIGH (hyp.)"],["FILTER CUTOFF 0-127"],["FILTER TOUCH DEPTH 0-50"],["FILTER TOUCH CURVE ±3"],["FILTER TYPE FF=THRU/0-6"],["FILTER SLOPE ±50"],["FILTER LOW KEY LIM"],["FILTER HIGH KEY LIM"]];
+  const TDESC = [["flags : Tone ON b7 · Vib b6"],["TTN SELECT 0-127"],["SUFFIX/SFX"],["KEY SHIFT ±24"],["TUNE ±50"],["VOLUME 0-127"],["TOUCH DEPTH"],["TOUCH CURVE ±3"],["LEVEL KF SLOPE ±50"],["LEVEL KF LOW KEY LIM"],["LEVEL KF HIGH KEY LIM"],["ATTACK 0-50"],["TOUCH ATTACK ±50"],["DECAY 1"],["SUSTAIN 1"],["DECAY 2"],["SUSTAIN 2"],["RELEASE"],["ATK KF SLOPE ±50"],["ATK KF LOW"],["ATK KF HIGH"],["DCY KF SLOPE ±50"],["DCY KF LOW"],["DCY KF HIGH"],["REL KF SLOPE ±50"],["REL KF LOW"],["REL KF HIGH"],["FILTER CUTOFF 0-127"],["FILTER TOUCH DEPTH 0-50"],["FILTER TOUCH CURVE ±3"],["FILTER TYPE FF=THRU/0-6"],["FILTER SLOPE ±50"],["FILTER LOW KEY LIM"],["FILTER HIGH KEY LIM"]];
   [0x28,0x4A,0x6C].forEach((base,ti)=>TDESC.forEach((t,i)=>{
     d[base+i]=[i<=1?"known":"known", ["1st","2nd","sub"][ti]+" : "+t[0]];
   }));
@@ -484,14 +484,14 @@ document.addEventListener("change",e=>{
   toast("Écrit "+f+" = "+s.value);
 });
 // ============ v0.9.5 : écriture des key limits par tone (sélecteurs F1-G9) ============
-const KLIM_OFF={aLo:19,aHi:20,dLo:22,dHi:23,fLo:32,fHi:33};
+const KLIM_OFF={aLo:19,aHi:20,dLo:22,dHi:23,rLo:25,rHi:26,fLo:32,fHi:33};
 document.addEventListener("change",e=>{
   const s=e.target;
   if(!s||s.tagName!=="SELECT"||!s.classList.contains("klim")||!s.dataset.f) return;
-  const m=s.dataset.f.match(/^t(\d)_(aLo|aHi|dLo|dHi|fLo|fHi)$/); if(!m) return;
+  const m=s.dataset.f.match(/^t(\d)_(aLo|aHi|dLo|dHi|rLo|rHi|fLo|fHi)$/); if(!m) return;
   const i=+m[1], fld=m[2], off=[0x28,0x4A,0x6C][i]+KLIM_OFF[fld];
   const val=Math.max(24,Math.min(127,Math.round(+s.value||24)));
-  const nm="Tone "+["1st","2nd","sub"][i]+" "+({aLo:"Atk KF lim bas",aHi:"Atk KF lim haut",dLo:"Dcy KF lim bas",dHi:"Dcy KF lim haut",fLo:"Flt key lim bas",fHi:"Flt key lim haut"})[fld]+" = "+keyLabel(val);
+  const nm="Tone "+["1st","2nd","sub"][i]+" "+({aLo:"Atk KF lim bas",aHi:"Atk KF lim haut",dLo:"Dcy KF lim bas",dHi:"Dcy KF lim haut",rLo:"Rel KF lim bas",rHi:"Rel KF lim haut",fLo:"Flt key lim bas",fHi:"Flt key lim haut"})[fld]+" = "+keyLabel(val);
   if(typeof raw==="undefined"||!raw){ log(`ℹ️ ${nm} — lis d'abord le son.`,"status-ko"); return; }
   if(!ARMED){ log(`ℹ️ ${nm} (écran) — écriture non armée, rien envoyé.`,"status-ko"); return; }
   send(msgITR(curSlot,off,val)); raw[off]=val; scheduleApply();
@@ -544,10 +544,13 @@ function toneCard(i){
   <div class="grid2">${trow("Attack","atk",0,50)}${trow("Decay 1","dc1",0,50)}
   ${trow("Sustain 1","s1",0,50)}${trow("Decay 2","dc2",0,50)}
   ${trow("Sustain 2","s2",0,50)}${trow("Release","rls",0,50)}
-  ${trow("Touch attack","tat",-50,50)}${trow("EKF atk slope","ekfA",-50,50)}
-  ${trow("EKF dcy slope","ekfD",-50,50)}${trow("EKF rls slope","ekfR",-50,50)}</div>
-  <div class="prow"><label>Atk KF lim</label><select class="klim" data-f="t${i}_aLo"></select><span class="hexv">–</span><select class="klim" data-f="t${i}_aHi"></select>
-    <label>Dcy KF lim</label><select class="klim" data-f="t${i}_dLo"></select><span class="hexv">–</span><select class="klim" data-f="t${i}_dHi"></select></div></div>
+  ${trow("Touch attack","tat",-50,50)}</div>
+  <div class="sect"><h3>Enveloppe Key Follow — EKF · ATK / DCY / REL : Slope + Key Limits (bloc+18..26)</h3>
+  <div class="grid2">
+  ${trow("Atk slope","ekfA",-50,50)}<div class="prow"><label>Atk KF lim</label><select class="klim" data-f="t${i}_aLo"></select><span class="hexv">–</span><select class="klim" data-f="t${i}_aHi"></select></div>
+  ${trow("Dcy slope","ekfD",-50,50)}<div class="prow"><label>Dcy KF lim</label><select class="klim" data-f="t${i}_dLo"></select><span class="hexv">–</span><select class="klim" data-f="t${i}_dHi"></select></div>
+  ${trow("Rel slope","ekfR",-50,50)}<div class="prow"><label>Rel KF lim</label><select class="klim" data-f="t${i}_rLo"></select><span class="hexv">–</span><select class="klim" data-f="t${i}_rHi"></select></div>
+  </div></div></div>
   <div class="sect"><h3>Filter</h3><div class="grid2">
   ${trow("Cutoff","cut",0,127)}${trow("Touch depth","ftch",0,50)}
   ${trow("Touch curve","fcur",-3,3)}${trow("Slope","fsl",-50,50)}</div>
@@ -666,7 +669,7 @@ function bind(m){
     drawVCurve("t"+i+"_tcurSvg", t.tcur); drawVCurve("t"+i+"_fcurSvg", t.fcur);
     // v0.9.5 : key limits modifiables — positionnement des sélecteurs
     const kl=(fld,v)=>{ const s=document.querySelector(`select.klim[data-f="t${i}_${fld}"]`); if(s) s.value=String(v); };
-    kl("aLo",t.aLo); kl("aHi",t.aHi); kl("dLo",t.dLo); kl("dHi",t.dHi); kl("fLo",t.fLo); kl("fHi",t.fHi);
+    kl("aLo",t.aLo); kl("aHi",t.aHi); kl("dLo",t.dLo); kl("dHi",t.dHi); kl("rLo",t.rLo); kl("rHi",t.rHi); kl("fLo",t.fLo); kl("fHi",t.fHi);
     setSlider("t"+i+"_cut",t.cut); setSlider("t"+i+"_ftch",t.ftch); setSlider("t"+i+"_fcur",t.fcur); setSlider("t"+i+"_fsl",t.fsl);
     setSeg("t"+i+"_ftype", t.ftype===255?0:([255,0,1,2,3,4,5,6].indexOf(t.ftype)));
     drawEnv(i,t);

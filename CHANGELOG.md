@@ -13,6 +13,10 @@ Outils :
 
 ## 2026-10-25
 
+### Sound Editor v0.9.7 — section EKF réorganisée + key limits de Release
+- **Section « Enveloppe Key Follow » réorganisée** comme sur l'écran du KN2000 : pour chacun des trois étages ATK / DCY / REL, le Slope et la paire de Key Limits sont regroupés côte à côte (avant : slopes dispersés dans l'enveloppe, key limits d'Atk/Dcy seules sur une ligne, Release absent).
+- **Key limits de Release ajoutées** : la paire Rel KF lim est maintenant affichée et éditable (sélecteurs C0→G8, écriture read-modify-write armé 🔓), aux offsets bloc+25/+26 déjà lus par le parseur. ⚠️ Offsets Release restant à valider par contrôle croisé (éditer au clavier → re-dump → comparer l'octet).
+
 ### Sound Editor v0.9.6 — correctifs Sustain pedal et affichage key limits
 - **Sustain pedal corrigé** : le segment LONG/HOLD (onglet GENERAL, carte Controllers) était absent de la page — l'entrée `sustain` était accidentellement avalée par un commentaire de code. Le segment s'affiche et écrit à nouveau (bit 2 de 0x10, armé 🔓 requis).
 - **Affichage des key limits aligné sur le clavier** : la page affichait un octave trop haut (C5 sur la page = C4 sur le clavier) ; les libellés sont maintenant alignés sur l'affichage du KN2000 (octave −1). Plage des sélecteurs étendue 24..127 (C0..G8) : une limite réglée sur C0 au clavier n'affichait plus de valeur (24 était hors de l'ancienne plage 29..127).
