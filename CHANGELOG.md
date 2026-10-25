@@ -13,6 +13,11 @@ Outils :
 
 ## 2026-10-25
 
+### Sound Editor v0.9.10 — correctif enveloppe : échelle de temps fixe (chaque pente indépendante)
+- **Correctif du bug v0.9.9** : l'échelle de temps était normalisée à chaque cas (remplissage du cadre), donc changer un paramètre redimensionnait toutes les pentes — Decay 1 modifiait visuellement la pente d'attaque. L'échelle est maintenant **fixe** : la pente de chaque segment (Atk, Dcy 1, Dcy 2, Rls) ne dépend que de son propre paramètre, comme sur l'écran du KN2000.
+- **Sens de Sustain confirmé au clavier** : Sus 1 = 0 → la pente Dcy 1 court sur toute sa largeur jusqu'au sol ; Sus 1 = 50 → la pente disparaît (distance 0, palier direct au maximum).
+- Si les réglages rendent la courbe plus longue que le cadre, elle est **coupée au bord droit avec un chevron** — le son continue au-delà (comme la ligne plate du KN2000 à Atk 50). Sinon, le silence/plateau final est prolongé jusqu'au bord.
+
 ### Sound Editor v0.9.9 — graphique d'enveloppe refait selon le modèle « points et pentes »
 - **Graphique d'enveloppe redessiné** (onglet TONE) selon le modèle validé au clavier : Atk/Dcy1/Dcy2/Rls fixent des **pentes** (même loi de temps perceptive, exponentielle — validé : Atk perceptible dès 14, ~1-2 s à 34, ~5 s à 40), Sus1/Sus2 fixent des **niveaux**. Une pente court jusqu'au niveau cible : changer Sustain ne change plus la pente, seulement son point d'arrêt (comportement identique à l'affichage du KN2000). Dcy2 se dessine **montant** si Sus1 < Sus2. **Rls 50 = asymptote** : ligne horizontale, fin ouverte, le son ne s'éteint jamais (validé terrain). Valeur 0 = transition verticale. Échelle de temps indépendante des niveaux.
 - **Documentation** : le modèle « points et pentes » (pentes vs niveaux, séquence ouverture → chute → palier → chute → palier → fermeture, tout jusqu'à Sus2 joue touche tenue) est intégré à l'aide FR/EN. La courbe reste une **indication visuelle**, pas un outil de mesure.
