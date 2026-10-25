@@ -13,6 +13,10 @@ Outils :
 
 ## 2026-10-25
 
+### Sound Editor v0.9.15 — finitions bandeau : ⚙️ à droite des badges, Log MIDI en case à cocher, 🧹 dans le journal
+- **⚙️ Réglages** déplacé au niveau des badges de connexion, complètement à droite ; **📜 Journal devient une case à cocher « 📜 Log MIDI »**, juste avant le bouton Réglages.
+- **🧹 Vider le log** quitte le bandeau haut et s'installe dans l'en-tête du journal sysex, à droite du titre (le journal ne se vide donc que là où il se lit).
+
 ### Sound Editor v0.9.14 — menu ⚙️ Réglages : tout le non-fonctionnel quitte le bandeau haut
 - **Menu ⚙️ Réglages** (retour terrain v0.9.13 : les badges changeaient d'onglet alors que les réglages sont ailleurs) : nouveau panneau sous le bandeau regroupant 🔌 connexion KN2000 (🔄 Ports, In/Out, Connecter, état), 🎛 APC (ports, encodage, état — déplacé de l'onglet APC), 📁 dossier de travail (déplacé de l'onglet BANQUE), 🌐 langue · aide · démo (🇫🇷/🇬🇧, ❓ Aide, 🧪 Exemple A-1).
 - **Badges** : le clic ouvre le menu Réglages sur la section correspondante (connexion / APC / dossier), plus aucun changement d'onglet.

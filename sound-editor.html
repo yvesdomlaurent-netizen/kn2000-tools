@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>KN2000 Sound Editor v0.9.14</title>
+<title>KN2000 Sound Editor v0.9.15</title>
 <style>
   :root { font-family: system-ui, sans-serif; background:#0b1220; color:#e2e8f0; }
   * { box-sizing:border-box; }
@@ -23,6 +23,7 @@
   .bdg.on { background:#14532d; color:#4ade80; border-color:#166534; }
   .bdg.warn { background:#451a03; color:#fbbf24; border-color:#b45309; }
   .glbl { font-weight:700; font-size:.82rem; color:#94a3b8; margin-right:4px; white-space:nowrap; align-self:center; }
+  label.ghost { background:#334155; border-radius:8px; padding:4px 10px; font-size:.82rem; cursor:pointer; display:inline-flex; align-items:center; gap:4px; white-space:nowrap; }
   .tab a.th { margin-left:8px; text-decoration:none; color:#38bdf8; font-weight:700; }
   a.ghost { background:#334155; color:#fff; border-radius:8px; padding:7px 12px; font-size:.85rem; text-decoration:none; margin:2px 2px 2px 0; display:inline-block; }
   .tabs { display:flex; gap:4px; margin-bottom:12px; flex-wrap:wrap; }
@@ -75,12 +76,15 @@
 </style>
 </head>
 <body>
-<div class="banner">🎹 Sound Editor <b>v0.9.14</b> — 36 slots Sound Memory (144 octets/son), onglets = écrans du KN2000, onglet APC = surface de contrôle live. Écriture : bouton-état 🔒/🔓. ⚠️ Dump de sauvegarde avant d'écrire · ⚠️ Sons conservés ~80 min hors tension — garde tes packages. Détails et tips : ❓ Aide.</div>
+<div class="banner">🎹 Sound Editor <b>v0.9.15</b> — 36 slots Sound Memory (144 octets/son), onglets = écrans du KN2000, onglet APC = surface de contrôle live. Écriture : bouton-état 🔒/🔓. ⚠️ Dump de sauvegarde avant d'écrire · ⚠️ Sons conservés ~80 min hors tension — garde tes packages. Détails et tips : ❓ Aide.</div>
 
 <div id="badgeBar">
   <span class="bdg" id="bdgKn" title="Connexion KN2000 — clique pour ouvrir les réglages (section connexion)">🎹 KN2000 ○</span>
   <span class="bdg" id="bdgApc" title="Connexion APC — clique pour ouvrir les réglages (section APC)">🎛 APC ○</span>
   <span class="bdg" id="bdgDir" title="Dossier de travail (tous les exports/imports) — clique pour ouvrir les réglages (section dossier)">📁 —</span>
+  <span style="flex:1"></span>
+  <label class="ghost" title="Afficher/masquer le journal MIDI (sysex)"><input type="checkbox" id="btnLogToggle" style="width:16px;height:16px;vertical-align:middle;transform:translateY(-1px)"> 📜 Log MIDI</label>
+  <button class="ghost" id="btnCfg" title="Réglages & Aide : connexion KN2000 et APC, dossier de travail, langue, aide, démo">⚙️ Réglages</button>
 </div>
 
 <header>
@@ -89,9 +93,6 @@
   <label title="Nom du son courant (16 caractères, octets 0x00-0x0F)">Nom <input type="text" id="nameIn" maxlength="16" size="16" placeholder="(lire pour afficher)"></label>
   <button class="ghost" id="btnNameWrite" title="Écrire le nom (16 octets 0x00-0x0F) dans le son courant — écriture armée requise">✍️ nom</button>
   <button class="ghost" id="btnExport" title="Exporte le son courant (144 octets) en fichier JSON dans le dossier de travail">⬇️ Export JSON</button>
-  <button class="ghost" id="btnClearLog" title="Vider le journal sysex">🧹 Vider le log</button>
-  <button class="ghost" id="btnLogToggle" title="Afficher/masquer le journal sysex">📜 Journal</button>
-  <button class="ghost" id="btnCfg" title="Réglages & Aide : connexion KN2000 et APC, dossier de travail, langue, aide, démo">⚙️ Réglages</button>
   <button id="btnArm" class="ghost" title="Bascule l'écriture des modifications vers le KN2000 (curseurs, switches, changement de tone)">🔒 Écriture : OFF</button>
   <label style="white-space:nowrap;font-size:1.15rem;font-weight:600" title="Après chaque écriture : recharge le slot en cours sur les parts du clavier qui le jouent (voisin d'aller-retour PC 0 · bank 0). Requiert Realtime sysex ON."><input type="checkbox" id="autoApply" style="width:22px;height:22px;vertical-align:middle;transform:translateY(-3px)"> ⚡ Auto-appliquer</label>
   <button id="btnPartRead" class="ghost" title="Lit l'état des 3 parts du clavier (20 1n 00, SIZ 2) — indépendant du son en cours d'édition">📍 Lire l'état</button>
@@ -293,7 +294,7 @@
 </div></div>
 
 <!-- ================= JOURNAL SYSEX (masqué par défaut) ================= -->
-<div class="card" id="logCard" style="display:none"><h2>Journal sysex</h2><div id="log"></div></div>
+<div class="card" id="logCard" style="display:none"><h2 style="display:flex;align-items:center;gap:8px">Journal sysex <button class="ghost" id="btnClearLog" title="Vider le journal sysex" style="margin-left:auto">🧹 Vider le log</button></h2><div id="log"></div></div>
 
 
 
@@ -1511,10 +1512,10 @@ function setArmed(v){ ARMED=v;
   log(v?"⚠️ Écriture ARMÉE — prudence.":"Écriture désarmée.", v?"status-ko":null); }
 $("btnArm").onclick=()=>setArmed(!ARMED);
 // Journal sysex : masqué par défaut, bascule via le bouton 📜 de la barre d'outils
-$("btnLogToggle").onclick=()=>{
+$("btnLogToggle").onclick=()=>{ // v0.9.15 : case à cocher « 📜 Log MIDI » (bandeau des badges)
   const c=$("logCard"); const show=c.style.display==="none";
   c.style.display=show?"":"none";
-  $("btnLogToggle").classList.toggle("warn",show);
+  $("btnLogToggle").checked=show;
   if(show) log("📜 Journal affiché."); };
 
 // ============ État clavier & application (parts R1/R2/L : 20 1n 00) ============
