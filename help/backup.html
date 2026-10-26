@@ -37,7 +37,7 @@
 
 <!-- ============ FR ============ -->
 <div class="fr-block" lang="fr">
-<div class="tip">💡 Cet outil catalogie l'état complet du clavier par dump handshake (protocole validé le 26/10/2026 avec la Panel Console v1.0.9 : exactement un ACK après chaque paquet reçu), puis exporte une <b>sauvegarde JSON unique horodatée</b>, décodable par une future appli Android de repli terrain.</div>
+<div class="tip">💡 Depuis la v0.4.0 la page est organisée en deux onglets — 📡 Dumps (sauvegarde KN2000 → page) et 📚 Catalogue (patches, tableau de bord, restauration). Cet outil catalogie l'état complet du clavier par dump handshake (protocole validé le 26/10/2026 avec la Panel Console v1.0.9 : exactement un ACK après chaque paquet reçu), puis exporte une <b>sauvegarde JSON unique horodatée</b>, décodable par une future appli Android de repli terrain.</div>
 
 <h2>🚀 Démarrage rapide</h2>
 <ol>
@@ -45,7 +45,8 @@
   <li>Brancher l'interface MIDI USB du KN2000, cliquer <b>🔄 Ports</b> et choisir In/Out.</li>
   <li>Brancher l'interface, la page tente la connexion automatique avec les ports mémorisés ; sinon choisir In/Out puis <b>🔌 Connecter</b> — le KN2000 est testé par un ping (DRQ 20 00 02) et les enables sont lus automatiquement une fois connecté (lecture seule, rien n'est écrit).</li>
   <li>Une fois la pastille <b>● connecté</b> affichée : cliquer <b>🔄 Dumper</b> sur l'aire voulue — <b>le dump se lance directement, aucune préparation au clavier n'est nécessaire</b> (découverte terrain du 26/10/2026 : la page SYSEX BULK DUMP du clavier n'a pas besoin d'être affichée).</li>
-  <li>Une fois les aires voulues cataloguées, cliquer <b>💾 Exporter le catalogue (JSON)</b>.</li>
+  <li>Une fois les aires voulues cataloguées, cliquer <b>💾 Cataloguer</b> par aire (patch du catalogue) puis <b>💾 Exporter le catalogue (JSON)</b> pour une copie fichier.</li>
+  <li>Restaurer : onglet <b>📚 Catalogue</b> → choisir l'aire et le mode (complet / différentiel) → <b>↩️ Restaurer</b> (Sound Memory validée terrain ; voir « Catalogue & restauration » ci-dessous).</li>
 </ol>
 
 <h2>🗺️ Aires (Reference Guide p.24-27) — toutes validées terrain ✅</h2>
@@ -97,7 +98,8 @@
 </ul>
 <div class="tip">💡 Le bloc 40 du panel s'arrête systématiquement à 1056/1088 octets (écart 32 constant observé sur toutes les captures et le terrain, sans conséquence) : les 32 octets manquants apparaissent en <code>--</code> dans le JSON — c'est normal.</div>
 
-<h2>✉️ Import &amp; envoi vers le KN2000 (expérimental)</h2>
+<h2>✉️ Import &amp; envoi manuel vers le KN2000 — voir la page 🛠️ outils</h2>
+<p>L'envoi manuel bloc par bloc (adresses de base, N octets/trame, pause, mode sons) et la 🔍 comparaison manuelle ont déménagé dans la <b>page outils techniques privée</b> (<code>tools.html</code>, lien depuis la page principale) — ils servent à valider les aires une à une. La page principale reste dédiée aux sauvegardes et restaurations courantes.</p>
 <p>La section <b>3 — Import catalogue &amp; envoi</b> recharge un JSON exporté par la page (format kn2000-catalog-v1) et <b>écrit</b> un bloc choisi vers le clavier, puis permet de vérifier par diff octet par octet.</p>
 <ol>
   <li><b>📂 Importer</b> le catalogue (JSON), choisir l'aire et le bloc.</li>
@@ -109,7 +111,20 @@
 <code>f0 50 2c 01 18 10 A1 A2 A3 00 Sh Sl &lt;nibbles&gt; 00 CK f7</code> — SIZ sur 3 octets 7-bit (octets originaux), données nibblisées ×2 (Reference Guide p.22), CN = 00, CK = XOR du corps &amp; 7f. Le Sound Editor écrivait octet par octet (60 ms) ; l'inconnue du test est la réaction du clavier aux trames <b>multi-octets</b>.</p>
 <div class="warn">⚠️ L'envoi est une <b>écriture réelle</b> dans la mémoire du clavier. Test recommandé sur la Sound Memory (récupérable par la procédure usine). Un bloc contenant des octets manquants (<code>--</code>) est refusé.</div>
 
+
+
+<h2>📚 Catalogue &amp; restauration (v0.4.0)</h2>
+<ol>
+  <li><b>💾 Cataloguer</b> (onglet Dumps) : le dernier dump d'une aire devient un <b>patch</b> du catalogue — nom automatique + date. Contenu <b>identique</b> au patch précédent → seule sa date est mise à jour ; contenu <b>différent</b> → nouvelle version. Les anciennes versions ne sont jamais écrasées (suppression explicite 🗑 uniquement).</li>
+  <li><b>Tableau de bord</b> (onglet Catalogue) : croisement par aire entre <b>ce qui réside dans le KN2000</b> (dernier dump, persistant) et <b>ce qui doit y aller</b> (patch courant) : 🟢 conforme / 🟡 N octets différents / ❌ jamais dumpé — plus la date du <b>dernier envoi vers le KN2000</b>.</li>
+  <li><b>📂 Importer un catalogue</b> : chaque aire d'un JSON kn2000-catalog-v1 devient un patch (dédupliqué par contenu). Les infos d'entête (blocs, tailles) et, pour la Sound Memory, les <b>36 noms de sons</b> sont affichés sous chaque patch Sound.</li>
+  <li><b>↩️ Restaurer</b> (Sound Memory, ✅ validée terrain) : <b>Complet</b> = entête 80 o + 36 sons en 73 trames ITW (120 o max/trame, pause 60 ms ≈ 5 s) ; <b>Différentiel</b> = ne renvoyer que les sons/entête qui diffèrent du dernier dump. Confirmation obligatoire — mémoires volatiles (~80 min hors tension), le clavier n'accuse jamais réception.</li>
+  <li>Après restauration : re-dumper l'aire → le tableau de bord doit passer 🟢. Panel / Composer / Sequencer : restauration <b>non validée</b> (barée) tant que l'écriture n'est pas prouvée — voir la page outils.</li>
+</ol>
+
 <h2>📜 Historique</h2>
+<div class="ver"><b>v0.4.0</b><span class="date">2026-10-26</span><br/>Finalisation usage : deux <b>onglets</b> — 📡 Dumps (dump par aire + tout-en-un, export JSON unique avec nom) et 📚 Catalogue (patches versionnés <b>dédupliqués par contenu</b> — identique = date mise à jour, différent = nouvelle version jamais écrasée). <b>Tableau de bord</b> : croisement dernier dump ↔ patch courant + date du dernier envoi vers le clavier. <b>Restauration</b> Sound Memory validée terrain : complète (entête + 36 sons, 73 trames) ou <b>différentielle</b> (seulement ce qui diffère du dernier dump) ; les autres aires restent barrées « à valider ». Le panneau technique (enables, adresses, trames, comparaison manuelle) déménage dans la page privée <code>tools.html</code>.</div>
+
 <div class="ver"><b>v0.3.1</b><span class="date">2026-10-26</span><br/>Limite de taille des trames ITW établie par bissection terrain : <b>120 octets originaux max</b> (255 sur le fil, buffer 256 du clavier ; 1, 16, 64, 96, 120 OK — 121, 128, 144 NOK). Mode sons en 2 trames par son (120 + 24), plafond N = 120 en mode « N octets ». Le clavier n'accuse jamais réception des écritures — l'écran et le re-dump sont les seuls juges.</div>
 <div class="ver"><b>v0.3</b><span class="date">2026-10-26</span><br/>Import d'un catalogue JSON + <b>envoi vers le KN2000 en trames ITW 2C</b> (mode sons, ou trames de N octets à adresse de base) + <b>🔍 Comparer</b> (diff octet par octet après re-dump). Découverte terrain : les dumps se lancent sans la page SYSEX BULK DUMP du clavier — tous les textes y faisant référence ont été retirés ; les 4 aires sont validées terrain.</div>
 <div class="ver"><b>v0.2.2</b><span class="date">2026-10-26</span><br/>SOUND MEMORY validée terrain (5184/5184, END) — le clavier envoie deux BTR pour le bloc 30 (entête 80 octets puis les sons 5184) : chaque BTR crée désormais une occurrence distincte (champ <code>seq</code> dans le JSON), l'entête n'est plus écrasée.</div>
@@ -155,8 +170,8 @@
 </ul>
 <div class="tip">💡 The panel's block 40 always stops at 1056/1088 bytes (constant 32-byte gap seen on every capture and in the field, harmless): the 32 missing bytes appear as <code>--</code> in the JSON — this is normal.</div>
 
-<h2>✉️ Import &amp; send to the KN2000 (experimental)</h2>
-<p>Section <b>3 — Import catalog &amp; send</b> reloads a JSON exported by the page (kn2000-catalog-v1) and <b>writes</b> a chosen block to the keyboard, then verifies with a byte-per-byte diff.</p>
+<h2>✉️ Manual import &amp; send to the KN2000 — see the 🛠️ tools page</h2>
+<p>Manual block-by-block sending (base addresses, N bytes/frame, pace, sounds mode) and manual 🔍 comparison have moved to the <b>private technical tools page</b> (<code>tools.html</code>, linked from the main page) — they are used to validate the areas one by one. The main page stays dedicated to everyday backups and restores. Section <b>3 — Import catalog &amp; send</b> reloads a JSON exported by the page (kn2000-catalog-v1) and <b>writes</b> a chosen block to the keyboard, then verifies with a byte-per-byte diff.</p>
 <ol>
   <li><b>📂 Import</b> the catalog (JSON), pick the area and block.</li>
   <li><b>✉️ Send</b>: two modes — <b>36 sounds</b> (each 144-byte sound goes as 2 ITW frames of 120 + 24 bytes at addresses <code>30 00 50 + n×90</code>) or <b>N-byte frames</b> at a linearly incremented base address (default <code>30 00 50</code>, N = 120 max, adjustable pace).</li>
@@ -167,7 +182,17 @@
 <code>f0 50 2c 01 18 10 A1 A2 A3 00 Sh Sl &lt;nibbles&gt; 00 CK f7</code> — 3×7-bit SIZ (original bytes), nibbilized ×2 data (Reference Guide p.22), CN = 00, CK = body XOR &amp; 7f. The Sound Editor wrote byte-per-byte (60 ms); the test's unknown is the keyboard's reaction to <b>multi-byte</b> frames.</p>
 <div class="warn">⚠️ Sending is a <b>real write</b> into the keyboard's memory. Recommended test on Sound Memory (recoverable through the factory procedure). A block containing missing bytes (<code>--</code>) is refused.</div>
 
+<h2>📚 Catalogue &amp; restore (v0.4.0)</h2>
+<ol>
+  <li><b>💾 Catalog</b> (Dumps tab): the latest dump of an area becomes a catalog <b>patch</b> — automatic name + date. Content <b>identical</b> to the previous patch → only its date is updated; content <b>different</b> → new version. Old versions are never overwritten (explicit 🗑 deletion only).</li>
+  <li><b>Dashboard</b> (Catalogue tab): per-area crossing between <b>what resides in the KN2000</b> (latest dump, persisted) and <b>what should go there</b> (current patch): 🟢 matching / 🟡 N bytes differ / ❌ never dumped — plus the date of the <b>last send to the KN2000</b>.</li>
+  <li><b>📂 Import a catalog</b>: each area of a kn2000-catalog-v1 JSON becomes a (content-deduplicated) patch. Header info (blocks, sizes) and, for Sound Memory, the <b>36 sound names</b> are shown under each Sound patch.</li>
+  <li><b>↩️ Restore</b> (Sound Memory, ✅ field-validated): <b>Full</b> = 80-byte header + 36 sounds in 73 ITW frames (max 120 bytes/frame, 60 ms pace ≈ 5 s); <b>Differential</b> = send only the sounds/header that differ from the latest dump. Mandatory confirmation — volatile memories (~80 min unpowered), the keyboard never acknowledges writes.</li>
+  <li>After a restore: re-dump the area → the dashboard must turn 🟢. Panel / Composer / Sequencer: restore <b>not validated</b> (greyed out) until writing is proven — see the tools page.</li>
+</ol>
+
 <h2>📜 History</h2>
+<div class="ver"><b>v0.4.0</b><span class="date">2026-10-26</span><br/>Usage finalization: two <b>tabs</b> — 📡 Dumps (per-area + all-in-one dump, single JSON export with name) and 📚 Catalogue (versioned <b>content-deduplicated</b> patches — identical = date updated, different = never-overwritten new version). <b>Dashboard</b>: latest dump ↔ current patch crossing + last send-to-keyboard date. Sound Memory <b>restore</b> (field-validated): full (header + 36 sounds, 73 frames) or <b>differential</b> (only what differs from the latest dump); other areas stay greyed out "to be validated". The technical panel (enables, addresses, frames, manual compare) moved to the private page <code>tools.html</code>.</div>
 <div class="ver"><b>v0.3.1</b><span class="date">2026-10-26</span><br/>ITW frame size limit established by field bisection: <b>max 120 original bytes</b> (255 on the wire, 256-byte keyboard buffer; 1, 16, 64, 96, 120 OK — 121, 128, 144 NOK). Sounds mode as 2 frames per sound (120 + 24), N capped at 120 in &quot;N-byte frames&quot; mode. The keyboard never acknowledges writes — the screen and re-dump are the only judges.</div>
 <div class="ver"><b>v0.3</b><span class="date">2026-10-26</span><br/>JSON catalog import + <b>send to the KN2000 in ITW 2C frames</b> (sounds mode, or N-byte frames at a base address) + <b>🔍 Compare</b> (byte-per-byte diff after re-dump). Field discovery: dumps start without the keyboard's SYSEX BULK DUMP page — all related texts removed; the 4 areas are field-validated.</div>
 <div class="ver"><b>v0.2.2</b><span class="date">2026-10-26</span><br/>SOUND MEMORY field-validated (5184/5184, END) — the keyboard sends two BTRs for block 30 (80-byte header then the 5184 sounds): each BTR now creates a distinct occurrence (<code>seq</code> field in the JSON), the header is no longer overwritten.</div>
