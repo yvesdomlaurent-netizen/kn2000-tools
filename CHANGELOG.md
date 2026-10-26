@@ -14,6 +14,11 @@ Outils :
 
 ## 2026-10-26
 
+### Sauvegarde / Catalogue v0.5.1 — retour terrain (Firefox) : bouton 📁 dossier — repli lecture seule
+- **Retour terrain v0.5.0** : sous Firefox, le bouton 📁 « Dossier de travail » n'ouvrait rien — `showDirectoryPicker` (File System Access) n'existe pas dans ce navigateur ; un message l'indiquait dans le journal MIDI.
+- **Correctif** : sans l'API (Firefox/Safari), le bouton ouvre un **sélecteur de dossier lecture seule** (`webkitdirectory`) : 📖 relire le master et 📖 importer fonctionnent depuis le dossier, les exports passent par téléchargements (session seulement, non mémorisé). Badge et bouton affichent « (lecture seule) ». Chrome/Edge inchangés (dossier mémorisé, écriture directe).
+- **Validation hors clavier** : 16 tests v0.4.x + 18 tests v0.5.x verts (dont lecture du master via le dossier de repli et fichier absent = null).
+
 ### Sauvegarde / Catalogue v0.5.0 — onglet 🗂️ Bibliothèque : master unique, imports/exports croisés, sons nommés
 - **Conteneur master unique `kn2000-master-v1`** : « 💾 Écrire le master » exporte la vérité binaire complète — toutes les aires dumpées (format store, octets bruts) + les 36 sons de la Sound Memory (slot, nom 16 o, `raw_hex` 144 o) + meta (nom, date, source). Pensé Android : **aucun localStorage nécessaire pour décoder** le fichier. « 📖 Relire » recharge un master (patches par aire + sons, dédupliqués).
 - **Dossier de travail partagé** (File System Access API, IndexedDB pour le handle) : la page retient un dossier local où écrire/relire `kn2000-instrument.json` et tous les exports — **le même dossier que le Sound Editor** (`kn2000_se`), donc une seule arborescence pour tous les outils. Fallback téléchargement/import classique si l'API est absente.

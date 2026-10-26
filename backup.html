@@ -46,7 +46,7 @@
 </style>
 </head>
 <body>
-<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.5.0</span>
+<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.5.1</span>
   <span class="pill warn" title="Page en construction : la restauration est validée terrain pour la Sound Memory uniquement ; Panel/Composer/Sequencer restent à valider (page outils)">🔨 en construction</span></h1>
 <div class="tip">💡 Sauvegarder et restaurer l'état du clavier : <strong>Dumps</strong> (KN2000 → page) puis <strong>Catalogue</strong> (patches versionnés, croisement KN2000 ↔ catalogue, restauration complète ou différentielle).
 <strong>Aucune préparation au clavier n'est nécessaire</strong> (validé terrain 26/10/2026). Mémoires volatiles : le KN2000 ne conserve ses mémoires que ~80 min hors tension.</div>
@@ -496,7 +496,7 @@ $("btnExport").onclick = () => {
     };
   }
   const cat = {
-    tool: "KN2000 Sauvegarde / Catalogue", format: "kn2000-catalog-v1", version: "0.5.0",
+    tool: "KN2000 Sauvegarde / Catalogue", format: "kn2000-catalog-v1", version: "0.5.1",
     name: $("expName").value.trim() || "",
     date: new Date().toISOString(), keyboard: "Technics SX-KN2000",
     encodage: "chaque bloc : 'data' = octets originaux en hex (2 chiffres/octet, MSB d'abord), '--' = octet manquant ; nibblisation/dénibblisation selon Reference Guide p.22 (SIZ = octets originaux)",
@@ -804,18 +804,30 @@ async function dirPerm(d, ro) {
   return (await r) === "granted";
 }
 function dirUI() {
-  $("btnDir").textContent = catDir ? "📁 " + catDir.name : "📁 Dossier de travail : non défini";
-  $("btnDirForget").style.display = catDir ? "" : "none";
+  $("btnDir").textContent = catDir ? "📁 " + catDir.name : (dirFiles ? "📁 " + dirName + " (lecture seule)" : "📁 Dossier de travail : non défini");
+  $("btnDirForget").style.display = (catDir || dirFiles) ? "" : "none";
   const stEl = $("dirSt");
-  stEl.textContent = catDir ? "dossier : " + catDir.name : "repli : téléchargements";
-  stEl.className = "pill " + (catDir ? "on" : "off");
+  stEl.textContent = catDir ? "dossier : " + catDir.name : (dirFiles ? "dossier : " + dirName + " (lecture seule)" : "repli : téléchargements");
+  stEl.className = "pill " + ((catDir || dirFiles) ? "on" : "off");
+}
+let dirFiles = null, dirName = null;   // repli lecture seule (Firefox/Safari) : fichiers du dossier choisis
+function dirPickFallback() {
+  const inp = document.createElement("input"); inp.type = "file"; inp.webkitdirectory = true;
+  inp.onchange = () => {
+    const fl = inp.files && inp.files.length ? Array.from(inp.files) : null;
+    if (!fl) return;
+    dirFiles = fl; dirName = (fl[0].webkitRelativePath || fl[0].name).split("/")[0];
+    catDir = null; dirUI();
+    log("📁 Dossier « " + dirName + " » en LECTURE SEULE (navigateur sans File System Access) : 📖 relire master / 📖 importer fonctionnent ; exports par téléchargements. Non mémorisé (session seulement).", "info");
+  };
+  inp.click();
 }
 $("btnDir").onclick = async () => {
-  if (!window.showDirectoryPicker) { log("📁 File System Access indisponible dans ce navigateur — repli téléchargements/sélecteur.", "ko"); return; }
-  try { catDir = await window.showDirectoryPicker({ mode: "readwrite" }); await idbSet("catDir", catDir); dirUI(); log("📁 Dossier de travail : " + catDir.name + " (partagé avec le Sound Editor) — mémorisé.", "ok"); }
-  catch (e) { if (e && e.name !== "AbortError") log("📁 Choix du dossier échoué : " + e.message, "ko"); }
+  if (!window.showDirectoryPicker) { dirPickFallback(); return; }   // Firefox/Safari : sélecteur webkitdirectory
+  try { catDir = await window.showDirectoryPicker({ mode: "readwrite" }); dirFiles = null; await idbSet("catDir", catDir); dirUI(); log("📁 Dossier de travail : " + catDir.name + " (partagé avec le Sound Editor) — mémorisé.", "ok"); }
+  catch (e) { if (e && e.name !== "AbortError") { log("📁 Choix du dossier échoué (" + e.name + ") : " + e.message + " — recliquer utilisera le sélecteur de repli.", "ko"); } }
 };
-$("btnDirForget").onclick = async () => { await idbSet("catDir", null); catDir = null; dirUI(); log("📁 Dossier oublié — repli téléchargements/sélecteur.", "info"); };
+$("btnDirForget").onclick = async () => { await idbSet("catDir", null); catDir = null; dirFiles = null; dirName = null; dirUI(); log("📁 Dossier oublié — repli téléchargements/sélecteur.", "info"); };
 async function saveJson(name, txt, label) {
   if (catDir && (await dirPerm(catDir))) {
     try { const fh = await catDir.getFileHandle(name, { create: true }); const w = await fh.createWritable(); await w.write(txt); await w.close();
@@ -826,8 +838,11 @@ async function saveJson(name, txt, label) {
   log("💾 " + (label || name) + " exporté (téléchargement).", "ok");
 }
 async function readJsonInDir(name) {
-  if (!catDir || !(await dirPerm(catDir, true))) return null;
-  try { const fh = await catDir.getFileHandle(name); const f = await fh.getFile(); return await f.text(); } catch (e) { return null; }
+  if (catDir && (await dirPerm(catDir, true))) {
+    try { const fh = await catDir.getFileHandle(name); const f = await fh.getFile(); return await f.text(); } catch (e) { return null; }
+  }
+  if (dirFiles) { const f = dirFiles.find(x => x.name === name || x.name.endsWith("/" + name)); if (f) { try { return await f.text(); } catch (e) { return null; } } }
+  return null;
 }
 function dlFallbackJson(cb) { const inp = document.createElement("input"); inp.type = "file"; inp.accept = ".json,application/json"; inp.onchange = () => { const f = inp.files && inp.files[0]; if (f) cb(f); }; inp.click(); }
 
@@ -846,7 +861,7 @@ function soundSlotList(ser) {   // 36 {slot, name, raw_hex} depuis l'aire sound
 function buildMaster() {
   return {
     format: "kn2000-master-v1", version: 1, keyboard: "Technics SX-KN2000",
-    meta: { name: "KN2000 instrument", date: new Date().toISOString(), source: "backup.html v0.5.0" },
+    meta: { name: "KN2000 instrument", date: new Date().toISOString(), source: "backup.html v0.5.1" },
     doc: "Vérité binaire unique. Toutes les sections sont optionnelles. areas.<id>.blocks[] : adr (hex bloc), seq (occurrence), siz (octets originaux annoncés), got (reçus), data = hex minuscule 2 chiffres/octet MSB d'abord, '--' = octet manquant. sons[] : slot A-1..B-18, name (16 premiers octets), raw_hex = 144 octets du son.",
     areas: st.lastDump,
     sons: soundSlotList(st.lastDump.sound) || undefined
