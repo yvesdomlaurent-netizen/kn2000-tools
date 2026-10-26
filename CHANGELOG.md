@@ -13,6 +13,11 @@ Outils :
 
 ## 2026-10-26
 
+### Panel Console v1.0.9 — ACK après chaque paquet (protocole handshake complet par le terrain)
+- **Retour terrain v1.0.8** : lecture des enables OK (tout ON), handshake complet OK, et l'ACK-BTR a **débloqué le dump** — les paquets CDD ont coulé pour la première fois (245 puis 370/1088 octets). Mais le KN2000 s'est arrêté après le 2ᵉ paquet et a répondu ERR 7E + erreur 42 : il attendait l'ACK **du paquet**.
+- **ACK après chaque paquet reçu** : BTR, CHAQUE paquet CDD (checksum OK), EOK, END — exactement un ACK par paquet, jamais deux. C'est le protocole de handshake complet : « état confirmé pendant la transmission » (p.25).
+- **Finition** : les ACK « rétroactifs » de fin de bloc de la v1.0.8 sont supprimés (un ACK non précédé d'un paquet est un candidat rejet ERR) ; la clôture de bloc devient purement logique (journal + avertissement si incomplet), déclenchée par le compte d'octets (SIZ atteint), l'arrivée du BTR suivant, ou l'EOK/END.
+
 ### Panel Console v1.0.8 — ACK-BTR immédiat + fin de bloc corrigée (retour terrain v1.0.7)
 - **Contexte du test terrain v1.0.7** : le handshake complet a fonctionné pour la première fois (DRQ → HRQ → HRT → HRT clavier → ACK → le dump est parti), mais le KN2000 a renvoyé le BTR du bloc 40 (2 puis 3 fois — cf. « 3 tentatives » p.25) puis a répondu ERR 7E avec erreur 42 affichée, **sans jamais envoyer les paquets CDD de suite**. Signature d'un émetteur qui attend une confirmation dès le BTR.
 - **ACK immédiat à réception de chaque BTR** (checksum OK) — le correctif central, choix minimal validé par Yves : en handshake, l'état est confirmé PENDANT la transmission (p.25). Les paquets CDD éventuels ne sont pas ACKés à ce stade (à ajuster selon le retour terrain).

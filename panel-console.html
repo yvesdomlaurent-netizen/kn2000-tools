@@ -70,7 +70,7 @@
   <span class="bdg" id="bdgKn" title="Connexion KN2000 — clique pour ouvrir les réglages (section connexion)">🎹 KN2000 ○</span>
   <span class="bdg" id="bdgDir" title="Dossier de travail (exports/imports de la bibliothèque) — clique pour ouvrir les réglages (section dossier)">📁 —</span>
   <span style="flex:1"></span>
-  <h1>🎹 KN2000 Console <span style="font-size:.6em;color:#8fd0ff">v1.0.8</span></h1>
+  <h1>🎹 KN2000 Console <span style="font-size:.6em;color:#8fd0ff">v1.0.9</span></h1>
   <span style="flex:1"></span>
   <label class="ghost" title="Afficher/masquer le journal MIDI (sysex)"><input type="checkbox" id="logBtn" style="width:15px;height:15px;vertical-align:middle;transform:translateY(-1px)"> 📜 Log MIDI</label>
   <button class="ghost" id="btnCfg" title="Réglages & Aide : connexion, dossier de travail, moniteur, langue">⚙️ Réglages</button>
@@ -897,12 +897,11 @@ function pmDumpIdle() {  // 9 s d'inactivité → clôture avec ce qu'on a
     log("⚠️ Timeout — HRQ reçus mais le dump n'est pas parti : regarder l'écran du KN2000 (erreur 42 ? page SYSEX BULK DUMP affichée ?). Avant tout nouvel essai : OFF/ON du clavier ou re-afficher la page BULK DUMP (fix du message v1.0.6 « dump muet »)", "ko");
   pmDumpEnd(false);
 }
-function pmAckBlock(adr, why) {  // v1.0.8 : ACK de fin de bloc (Body of data → ACK, p.26-27)
+function pmCloseBlock(adr, why) {  // v1.0.9 : clôture PUREMENT LOGIQUE d'un bloc (aucun ACK ici — chaque paquet reçus a déjà son ACK ; un ACK non précédé d'un paquet est un candidat rejet/ERR)
   const b = pmDump.blocks[adr];
-  if (!b || b.acked) return;
-  b.acked = true;
-  send(PM_ACK);
-  log("[RX] fin du bloc " + A2(adr) + " (" + why + ") — " + b.got + "/" + b.siz + " octets → [TX] ACK (23) (p.26 : Body of data → ACK)", "ok");
+  if (!b || b.closed) return;
+  b.closed = true;
+  log("[RX] fin du bloc " + A2(adr) + " (" + why + ") — " + b.got + "/" + b.siz + " octets reçus", "ok");
   if (b.got < b.siz) log("⚠️ Bloc " + A2(adr) + " clôt INCOMPLET : " + b.got + "/" + b.siz + " octets (écart " + (b.siz - b.got) + ") — à documenter au retour terrain", "ko");
 }
 function pmDumpMsg(d) {
@@ -916,8 +915,8 @@ function pmDumpMsg(d) {
     if (calc !== ck && (calc ^ cn) !== ck) { log("[RX] BTR checksum KO — ignoré : " + hex(d.slice(0, 12)), "ko"); return; }
     const adr = d[6], siz = d[9] << 14 | d[10] << 7 | d[11];
     pmDump.btrSeen = true;
-    if (pmDump.cur !== null && pmDump.cur !== adr) pmAckBlock(pmDump.cur, "nouveau bloc " + A2(adr) + " reçu");   // v1.0.8 : un nouveau BTR clôt le bloc précédent (signe réel de fin sur le terrain : le KN2000 enchaîne même si got < SIZ — bloc 40 à 1056/1088 sur les captures du 18/10)
-    pmDump.cur = adr; pmDump.blocks[adr] = { siz, data: new Array(siz).fill(null), got: 0, acked: false };
+    if (pmDump.cur !== null && pmDump.cur !== adr) pmCloseBlock(pmDump.cur, "nouveau bloc " + A2(adr) + " reçu");   // v1.0.9 : clôture logique SANS ACK (le dernier paquet du bloc précédent a déjà été ACKé ; le KN2000 enchaîne naturellement — terrain 26/10)
+    pmDump.cur = adr; pmDump.blocks[adr] = { siz, data: new Array(siz).fill(null), got: 0, closed: false };
     pmDumpStore(adr, 0, denibble(d.slice(12, d.length - 3)));
     log("[RX] BTR bloc " + A2(adr) + " — SIZ " + siz + " octets, checksum OK", "ok");
     // v1.0.8 (terrain 26/10, choix minimal d'Yves) : ACK immédiat à réception du BTR — le KN2000 renvoyait
@@ -934,12 +933,16 @@ function pmDumpMsg(d) {
     const calc = d.slice(1, d.length - 3).reduce((a, x) => a ^ x, 0);
     if (calc !== ck && (calc ^ cn) !== ck) { log("[RX] paquet checksum KO — ignoré (régime passif, pas de NAK) : " + hex(d.slice(0, 8)), "ko"); return; }
     pmDumpStore(pmDump.cur, b.got, denibble(d.slice(3, d.length - 3)));
-    log("[RX] CDD — bloc " + A2(pmDump.cur) + " : " + b.got + "/" + b.siz + " octets reçus", "info");   // v1.0.8 : chaque paquet est visible (ils étaient invisibles au test v1.0.7)
-    if (b.got >= b.siz) { pmAckBlock(pmDump.cur, "SIZ atteint"); pmDump.cur = null; }   // v1.0.8 : fin de bloc par COMPTE D'OCTETS — correction majeure : CN=00 n'est PAS un marqueur de fin (CN=00 apparaît en plein milieu des blocs dans les captures du 18/10) ; le bloc 40 s'arrête à 1056/1088 → l'ACK rétroactif sur BTR suivant/EOK couvre ce cas
+    // v1.0.9 (terrain 26/10, test v1.0.8) : ACK après CHAQUE paquet CDD — l'ACK-BTR a débloqué le dump,
+    // mais le KN2000 a enchaîné 2 paquets puis s'est arrêté en ERR 7E/erreur 42 en attendant l'ACK du
+    // 2e paquet : le handshake confirme chaque paquet (p.25 « état confirmé pendant la transmission »).
+    send(PM_ACK);
+    log("[RX] CDD — bloc " + A2(pmDump.cur) + " : " + b.got + "/" + b.siz + " octets reçus → [TX] ACK (23)", "info");
+    if (b.got >= b.siz) { pmCloseBlock(pmDump.cur, "SIZ atteint"); pmDump.cur = null; }   // v1.0.9 : clôture logique par compte d'octets (CN=00 n'est PAS un marqueur de fin — il apparaît en plein milieu des blocs dans les captures du 18/10)
     return;
   }
   if (cmd === 0x27 || cmd === 0x28) {
-    if (pmDump.cur !== null) { pmAckBlock(pmDump.cur, cmd === 0x27 ? "EOK reçu" : "END reçu"); pmDump.cur = null; }   // v1.0.8 : l'EOK/END clôt le bloc en cours
+    if (pmDump.cur !== null) { pmCloseBlock(pmDump.cur, cmd === 0x27 ? "EOK reçu" : "END reçu"); pmDump.cur = null; }   // v1.0.9 : clôture logique de l'EOK/END (l'ACK envoyé juste après acquitte le paquet EOK/END lui-même)
     send(PM_ACK);
     log("[RX] " + (cmd === 0x27 ? "EOK (27)" : "END (28)") + " → [TX] ACK (23) (p.26)", "ok");
     if (cmd === 0x28) pmDumpEnd(true);
