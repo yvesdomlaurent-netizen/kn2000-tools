@@ -14,6 +14,12 @@ Outils :
 
 ## 2026-10-26
 
+### Sauvegarde / Catalogue v0.5.2 — onglet 🗂️ Bibliothèque : carte 🎛️ Panel Memories (24)
+- **Cadrage Yves** : après l'import de l'état clavier, l'onglet Bibliothèque doit montrer le résultat — dont les 24 PM. Vérification : rien n'avait été perdu (l'onglet n'avait jamais affiché les PM ; c'était la Panel Console qui les listait).
+- **Carte 🎛️ Panel Memories (24)** : vue automatique des 24 PM (A1…C8, 336 o chacune) extraite du **bloc 41 du patch PANEL courant** — décodeur repris de la Panel Console (sons R1/R2/LEFT, rythme, tempo, APC, conductor, DSP ; **survol = résumé complet**). Source affichée (patch + date) ; PM incomplète signalée ; rafraîchie à chaque changement de patch.
+- **Master étendu** : section `pms` (24 × {slot, raw_hex 336 o}) — les PM sont dans la vérité binaire, décodables par une appli externe. Round-trip vérifié byte-exact.
+- **Validation hors clavier** : 16 tests v0.4.x + 23 tests v0.5.x verts (extraction 24 segments, décodeur PM signature/sons/rythme/tempo, refus signature absente, master pms round-trip).
+
 ### Sauvegarde / Catalogue v0.5.1 — retour terrain (Firefox) : bouton 📁 dossier — repli lecture seule
 - **Retour terrain v0.5.0** : sous Firefox, le bouton 📁 « Dossier de travail » n'ouvrait rien — `showDirectoryPicker` (File System Access) n'existe pas dans ce navigateur ; un message l'indiquait dans le journal MIDI.
 - **Correctif** : sans l'API (Firefox/Safari), le bouton ouvre un **sélecteur de dossier lecture seule** (`webkitdirectory`) : 📖 relire le master et 📖 importer fonctionnent depuis le dossier, les exports passent par téléchargements (session seulement, non mémorisé). Badge et bouton affichent « (lecture seule) ». Chrome/Edge inchangés (dossier mémorisé, écriture directe).
