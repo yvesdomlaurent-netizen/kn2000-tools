@@ -9,4 +9,4 @@ Un éditeur de sons Web MIDI pour le clavier Technics SX-KN2000 — dans le navi
 
 ⚠️ Avant toute écriture : faire un dump de sauvegarde de la banque.
 
-Fonctionne avec l'interface MIDI USB du KN2000. README détaillé (captures) à venir.
+Fonctionne avec l'interface MIDI du KN2000. README détaillé (captures) à venir.
