@@ -70,7 +70,7 @@
   <span class="bdg" id="bdgKn" title="Connexion KN2000 — clique pour ouvrir les réglages (section connexion)">🎹 KN2000 ○</span>
   <span class="bdg" id="bdgDir" title="Dossier de travail (exports/imports de la bibliothèque) — clique pour ouvrir les réglages (section dossier)">📁 —</span>
   <span style="flex:1"></span>
-  <h1>🎹 KN2000 Console <span style="font-size:.6em;color:#8fd0ff">v1.0.1</span></h1>
+  <h1>🎹 KN2000 Console <span style="font-size:.6em;color:#8fd0ff">v1.0.7</span></h1>
   <span style="flex:1"></span>
   <label class="ghost" title="Afficher/masquer le journal MIDI (sysex)"><input type="checkbox" id="logBtn" style="width:15px;height:15px;vertical-align:middle;transform:translateY(-1px)"> 📜 Log MIDI</label>
   <button class="ghost" id="btnCfg" title="Réglages & Aide : connexion, dossier de travail, moniteur, langue">⚙️ Réglages</button>
@@ -96,6 +96,11 @@
     <button class="ghost" id="btnCatDir" style="display:none" title="Choisir le dossier de travail (export/import de la bibliothèque ; mémorisé par le navigateur, partagé avec le Sound Editor)">📁 Dossier de travail : non défini</button>
     <button class="ghost" id="btnCatDirForget" style="display:none" title="Oublier le dossier de travail">✖</button>
     <span class="legend" id="catDirLegend" style="display:none">📁 Dossier de travail : l'export de la bibliothèque s'y écrit directement ; l'import y lit d'abord « kn2000-bibliotheque.json », sinon le sélecteur s'y ouvre. Dossier et autorisation mémorisés par le navigateur — partagé avec le Sound Editor.</span>
+  </div>
+  <div class="prow" id="cfgMidi"><span class="glbl" data-k="midi"></span>
+    <button class="ghost" id="midiFnReadBtn" title="Lit l'état des 6 fonctions MIDI (sysex, commandes, program change…) via DRQ — ces adresses répondent même si tout est OFF (doc p.28 note *2)">📡 Lire l'état</button>
+    <button class="ghost" id="midiFnOnBtn" title="Active à distance les 6 fonctions MIDI (20 04 00/01/02, 20 0A 00/01/0D = 01) — l'état initial est mémorisé avant activation ; les enables persistent sur le clavier, même après extinction">✅ Tout activer</button>
+    <button class="ghost" id="midiFnRestoreBtn" title="Réécrit sur le clavier l'état initial mémorisé (valeurs d'origine lues avant la première activation)">↩️ Rétablir l'état initial</button>
   </div>
   <div class="prow" id="cfgMisc"><span class="glbl" data-k="misc"></span>
     <button class="ghost" id="monBtn" title="Affiche tout ce que le KN2000 envoie (CC, PC, sysex) — utile pour découvrir les commandes">🔎 Moniteur : ON</button>
@@ -165,11 +170,13 @@
 
 <!-- ================= PANEL MEMORY ================= -->
 <div class="panel" id="p-pm">
-<h2>⚙️ Panel Memory — accès direct par PM (dump 336 octets, méthode 2C) — section avancée</h2>
+<h2>⚙️ Panel Memory — lecture des 24 PM par dump panel complet (protocole dump) — section avancée</h2>
 <div class="part">
   <select id="pmDumpSel"></select>
-  <button class="sec" id="pmRead">&#128220; Lire cette PM</button>
-  <button id="pmWrite">&#10148; &#201;crire vers le clavier</button>
+  <button class="sec" id="pmRead" title="Affiche la PM choisie : depuis le cache local si elle y est complète, sinon lance un dump panel complet (~10-20 s)">📄 Lire cette PM</button>
+  <button class="sec" id="pmDumpAll" title="Force un dump panel complet (blocs 40+41) : les banques reçues complètes rafraîchissent le cache, les autres restent — rien n'est perdu">🔄 Re-dump complet</button>
+  <button id="pmWrite" disabled title="Écriture 2C vers le bloc 41 NON testée sur le clavier — désactivée en attendant une validation dédiée (PM sacrifiable)">➡ Écrire vers le clavier</button>
+  <span id="pmCacheSt" class="info" style="font-size:12px"></span><br>
   <span id="pmDumpSt" class="info">—</span>
   <button class="sec" id="pmDiff" title="Compare les deux derni\u00e8res PM lues octet par octet \u2014 r\u00e9v\u00e8le si un r\u00e9glage (ex. son d'une Part) est stock\u00e9 dans la PM">&#8646; Diff 2 PM</button>
   <button class="sec" id="apcScan" title="Interroge les adresses document\u00e9es (20 2m 02/07/40-43) puis les sons 20 1n 00 des Part 4\u201316">&#9903; Scanner adresses part APC</button>
@@ -248,7 +255,7 @@ function refreshPorts() {
     }
   }).catch(err => {
     const cause = err && err.name === "NotAllowedError" ? "ACCÈS REFUSÉ — une popup Chrome demande l'autorisation système MIDI : la valider (et vérifier chrome://settings/content/midiDevices)" : err && err.name === "SecurityError" ? "SYSEX BLOQUÉ — page non servie en http(s):// (file:// interdit pour le sysex)" : (err && err.name ? err.name : "erreur inconnue");
-    $("st").innerHTML = "Web MIDI ÉCHEC : " + cause + " — procédure : dossier + python -m http.server 8000 + http://localhost:8000/panel-console.html (Chrome/Edge)";
+    $("st").innerHTML = "Web MIDI ÉCHEC : " + cause + " — procédure : dossier + python -m http.server 8000 + http://localhost:8000/panel-console.html (Chrome, Edge ou Firefox 108+)";
     $("st").className = "ko";
     stMidiSet("non connecté", "warn");
     log("Web MIDI refusé : " + (err && err.message ? err.message : err), "ko");
@@ -496,8 +503,72 @@ function matchSound(pc, bank) { return KN.sounds.find(s => s[4] === pc && s[5] =
 function matchRhythm(pc, bank) { return KN.rhythms.find(r => r[4] === pc && r[5] === bank) || null; }  // idem *5
 function setPartUI(n, pc, bank) { const s = matchSound(pc, bank); if (!s) return log("  part " + (n + 1) + " : PC " + pc + " bank " + bank + " non mapp\u00e9", "info");
   $("p" + (n + 1)).value = s[0] + "/" + s[1]; $("p" + (n + 1) + "v").textContent = s[2]; log("  \u2713 " + PARTS[n].name + " = " + s[2], "ok"); }
+// ===== v1.0.2 : fonctions MIDI à distance — enables 20 04 / 20 0A (doc p.28 note *2 : « invariably transmitted/received regardless of settings » : reçus par le clavier même si tout est OFF ; persistants après extinction) =====
+const MIDI_FN = [
+  { adr: [0x20, 0x04, 0x00], name: "Non-Real Time Sysex Enable" },
+  { adr: [0x20, 0x04, 0x01], name: "Real Time Sysex Enable" },
+  { adr: [0x20, 0x04, 0x02], name: "Real Time Command Enable" },
+  { adr: [0x20, 0x0a, 0x00], name: "Program Change Enable" },
+  { adr: [0x20, 0x0a, 0x01], name: "Bank Select Enable" },
+  { adr: [0x20, 0x0a, 0x0d], name: "Fill In/Intro/Ending Enable" }
+];
+const mfKey = mf => A2(mf.adr[0]) + " " + A2(mf.adr[1]) + " " + A2(mf.adr[2]);
+const MIDI_FN_BY_KEY = {}; MIDI_FN.forEach(mf => MIDI_FN_BY_KEY[mfKey(mf)] = mf);
+let midiFnCur = {};   // dernier état lu (clé -> valeur)
+const MF_INIT_KEY = "kn2000_pc_midi_fn_init";
+function mfInitLoad() { try { return JSON.parse(localStorage.getItem(MF_INIT_KEY) || "null"); } catch (e) { return null; } }
+function mfInitSave(v) { try { localStorage.setItem(MF_INIT_KEY, JSON.stringify(v)); } catch (e) { } }
+function midiFnApply(mf, dt) {
+  const on = dt[0] !== 0;
+  midiFnCur[mfKey(mf)] = dt[0];
+  log("  ✓ " + mf.name + " (" + mfKey(mf) + ") = " + (on ? "ON (" + hex(dt) + ")" : "OFF"), "ok");
+}
+async function midiFnRead(reason) {
+  if (!output) { log("Pas de sortie MIDI sélectionnée.", "ko"); return false; }
+  log((reason ? reason + " : " : "") + "lecture de l'état des 6 fonctions MIDI (DRQ 20 04 / 20 0A, SIZ 1)…", "info");
+  send(sysex2C([0x20, 0x04, 0x00], [0x01])); await wait(120);   // enable non-RT garanti pour que le clavier réponde
+  MIDI_FN.forEach(mf => delete midiFnCur[mfKey(mf)]);
+  for (const mf of MIDI_FN) { if (!send(sysex2B(mf.adr, 1))) return false; await wait(150); }
+  await wait(300);
+  const got = MIDI_FN.filter(mf => midiFnCur[mfKey(mf)] !== undefined);
+  if (!got.length) { log("⚠️ Aucune réponse aux DRQ d'état — liaison OK ? (ces adresses répondent même si tout est OFF)", "ko"); return false; }
+  const init = mfInitLoad();
+  if (!init || !init.vals) {
+    const vals = {}; MIDI_FN.forEach(mf => vals[mfKey(mf)] = midiFnCur[mfKey(mf)]);
+    mfInitSave({ date: new Date().toISOString(), vals });
+    log("💾 État initial mémorisé (navigateur) — « ↩️ Rétablir l'état initial » pourra le réécrire sur le clavier.", "info");
+  } else {
+    const d = new Date(init.date), ds = (d.toLocaleDateString ? d.toLocaleDateString("fr-FR") + " " + d.toLocaleTimeString("fr-FR") : d.toISOString());
+    const diff = MIDI_FN.some(mf => init.vals[mfKey(mf)] !== undefined && midiFnCur[mfKey(mf)] !== undefined && init.vals[mfKey(mf)] !== midiFnCur[mfKey(mf)]);
+    log(diff ? "ℹ️ État actuel DIFFÉRENT de l'état initial mémorisé (" + ds + ")." : "ℹ️ État conforme à l'état initial mémorisé (" + ds + ").", "info");
+  }
+  return true;
+}
+async function midiFnEnableAll() {
+  if (!output) { log("Pas de sortie MIDI sélectionnée.", "ko"); return; }
+  log("Activation des 6 fonctions MIDI à distance (20 04 00/01/02, 20 0A 00/01/0D = 01)…", "info");
+  await midiFnRead("Avant activation");   // capture et mémorise l'état initial si pas encore fait
+  for (const mf of MIDI_FN) { if (!send(sysex2C(mf.adr, [0x01]))) return; await wait(120); }
+  log("✅ 6 enables envoyés (= 01). Vérification de l'état…", "ok");
+  await midiFnRead("Après activation");
+}
+async function midiFnRestore() {
+  const init = mfInitLoad();
+  if (!init || !init.vals) { log("Aucun état initial mémorisé — fais d'abord « 📡 Lire l'état » ou « ✅ Tout activer ».", "ko"); return; }
+  if (!output) { log("Pas de sortie MIDI sélectionnée.", "ko"); return; }
+  const d = new Date(init.date), ds = (d.toLocaleDateString ? d.toLocaleDateString("fr-FR") + " " + d.toLocaleTimeString("fr-FR") : d.toISOString());
+  log("Rétablissement de l'état initial mémorisé (" + ds + ")…", "info");
+  for (const mf of MIDI_FN) { const v = init.vals[mfKey(mf)]; if (v === undefined) continue; if (!send(sysex2C(mf.adr, [v]))) return; await wait(120); }
+  log("↩️ État initial réécrit sur le clavier. Vérification…", "ok");
+  await midiFnRead("Après rétablissement");
+}
+$("midiFnReadBtn").onclick = () => midiFnRead();
+$("midiFnOnBtn").onclick = () => midiFnEnableAll();
+$("midiFnRestoreBtn").onclick = () => midiFnRestore();
 function applyState(adr, dt) {
   const k = A2(adr[0]) + " " + A2(adr[1]) + " " + A2(adr[2]);
+  const mf = MIDI_FN_BY_KEY[k];
+  if (mf) { midiFnApply(mf, dt); return; }   // v1.0.2 : état des fonctions MIDI à distance
   if (k === "20 0a 22") { progMode = dt[0]; log("  \u2713 Program change mode = " + ["Norm", "Technics", "?", "GM"][dt[0]] || dt[0], "ok"); }
   else if (k === "20 00 10") { $("pmSel").value = String(dt[0]); log("  \u2713 Panel Memory = " + (PM[dt[0]] ? PM[dt[0]][1] : dt[0]), "ok"); }
   else if (k === "20 08 08") { const on = dt[0] === 1; setTgl("tcBtn", on); log("  \u2713 Techni-Chord = " + (on ? "On" : "Off"), "ok"); }
@@ -556,7 +627,7 @@ function logRaw(d) {
 $("monBtn").onclick = () => { monitor = !monitor; $("monBtn").textContent = "\u{1F50D} Moniteur: " + (monitor ? "ON" : "OFF"); log("Moniteur MIDI " + (monitor ? "activ\u00e9" : "d\u00e9sactiv\u00e9") + ".", "info"); };
 function onMsg(ev) {
   const d = ev.data; if (!d) return;
-  if (monitor && d[0] !== 0xfe && !(d[0] === 0xf0 && d[1] === 0x50 && d[2] === 0x2c)) logRaw(d);   // tout sauf les réponses 2C à nos DRQ
+  if (monitor && d[0] !== 0xfe && !(d[0] === 0xf0 && d[1] === 0x50)) logRaw(d);   // v1.0.7 : tout le sysex Technics (50) est traité/logué par le moteur — pas de doublon brut (fix v1.0.6)
   // v1.0.1 : trame d'erreur du KN2000 (f0 50 29 <code> f7) — ce n'est PAS une 2C, ne pas la traiter en checksum KO
   if (d[0] === 0xf0 && d[1] === 0x50 && d[2] === 0x29) {
     connOk = true; // la machine répond (c'est une réponse, même d'erreur)
@@ -566,8 +637,14 @@ function onMsg(ev) {
     if (pmWait) { pmWait = false; $("pmDumpSt").textContent = "✗ erreur KN2000 : " + msg; $("pmDumpSt").className = "ko"; }
     return;
   }
+  // v1.0.3 : protocole dump panel (HRQ/HRT/BTR/CDD/EOK/END) — trames courtes, AVANT le filtre <12 octets
+  if (d[0] === 0xf0 && d[1] === 0x50) {
+    const c2 = d[2];
+    if (pmDump.on && (c2 === 0x21 || c2 === 0x22 || c2 === 0x2d || c2 === 0x7e || c2 === 0x27 || c2 === 0x28)) { pmDumpMsg([...d]); return; }
+    if (!pmDump.on && (c2 === 0x2d || c2 === 0x7e)) { log("[RX] trame dump " + A2(c2) + " reçue hors session — ignorée (" + d.length + " oct)", "info"); return; }
+  }
   if (d[0] === 0xf0 && d.length < 12) { log("[RX] trame sysex trop courte (" + d.length + " octets) ignorée : " + hex([...d]), "ko"); return; }
-   // seulement les 2C re\u00e7us
+  if (!(d[0] === 0xf0 && d[1] === 0x50 && d[2] === 0x2c)) return;  // v1.0.6 : ne traiter que les 2C — le non-sysex (notes, CC…) est ignoré (bug v1.0.5 : « 2C checksum KO » sur les notes)
   const ck = d[d.length - 2], cn = d[d.length - 3];
   const calc = d.slice(1, d.length - 3).reduce((a, x) => a ^ x, 0);   // CN exclu du checksum
   if (calc !== ck && (calc ^ cn) !== ck) { log("[RX] 2C checksum KO : attendu " + A2(ck) + ", calcul\u00e9 " + A2(calc) + " \u2014 message ignor\u00e9", "ko"); return; }
@@ -761,14 +838,143 @@ $("apcScan").onclick = async () => {
   }
   log("Scan termin\u00e9 \u2014 lignes \u2713 SON Part n = adresse qui r\u00e9pond ; une part muette = ERR 29 7e (inexistante).", "ok");
 };
+// ===== v1.0.3 : moteur de dump panel (blocs 40+41) → cache 24 PM, fusion entre essais =====
+// La lecture PM individuelle (DRQ 41 00 00 SIZ 336) est REFUSÉE par le KN2000 (ERR 7E) : Panel Memory
+// est une aire dump (doc p.25). On passe donc par le dump panel complet (mécanique éprouvée).
+// v1.0.7 — DOC-COMPLIANT (GO d'Yves 26/10) : la séquence p.25 doit être établie AVANT toute suite.
+// DRQ 40 00 00 (code 42H) → le KN2000 (Master) annonce par HRQ → NOUS (Slave) répondons HRT (22)
+// → le KN2000 renvoie sa HRT → nous ACKons (23) → dump : chaque fin de bloc (Body) → ACK,
+// EOK (27) → ACK, END (28) → ACK (p.26). AUCUN re-DRQ automatique (le re-DRQ parasite de la v1.0.5
+// est le suspect n°1 de l'erreur 42) : en cas d'échec → OFF/ON ou re-afficher la page BULK DUMP,
+// relance manuelle. Règle de fusion conservée (filet de sécurité) : on ne jette rien — un bloc 41
+// complet (8064 octets) fusionne ses 24 banques ; les banques déjà validées restent.
+const PM_CACHE_KEY = "kn2000_pc_pm_cache";
+function pmCacheLoad() { try { return JSON.parse(localStorage.getItem(PM_CACHE_KEY) || "null"); } catch (e) { return null; } }
+function pmCacheSave(c) { try { localStorage.setItem(PM_CACHE_KEY, JSON.stringify(c)); } catch (e) { } }
+function pmCacheUI() {
+  const el = $("pmCacheSt"); if (!el) return;
+  const c = pmCacheLoad();
+  if (!c || !c.banks) { el.textContent = "💾 Cache : 0/24 PM complètes (aucun dump validé)"; return; }
+  const n = c.banks.filter(b => b && b.ok).length;
+  el.textContent = "💾 Cache : " + n + "/24 PM complètes — dernier essai " + (c.date ? new Date(c.date).toLocaleString("fr-FR") : "?");
+}
+const pmDump = { on: false, reqIdx: -1, attempt: 1, max: 1, blocks: {}, cur: null, timer: null, hrqSeen: false, hrtSeen: false, btrSeen: false };  // v1.0.7 : max=1 — plus AUCUN re-DRQ auto
+const PM_DUMPREQ = [0xf0, 0x50, 0x2b, 0x01, 0x18, 0x10, 0x40, 0x00, 0x00, 0x00, 0x00, 0x42, 0x00, 0x70, 0xf7];  // dump request panel (code 42H, tc 70)
+const PM_HRT = [0xf0, 0x50, 0x22, 0x01, 0x18, 0x10, 0xf7];      // v1.0.7 : HRT (22) — réponse de l'esclave au HRQ (doc p.25)
+const PM_ACK = [0xf0, 0x50, 0x23, 0x7e, 0xf7];                  // v1.0.7 : ACK (23, PC=DMY 7e) — doc p.23/p.25
+function pmDumpStore(adr, off, bytes) {
+  const b = pmDump.blocks[adr]; if (!b) return;
+  for (let i = 0; i < bytes.length && off + i < b.data.length; i++)
+    if (b.data[off + i] === null) { b.data[off + i] = bytes[i]; b.got++; }
+}
+function pmDumpStart(reqIdx, attempt) {
+  // v1.0.7 : doc-compliant — DRQ envoyé UNE fois, puis la séquence p.25 est jouée par pmDumpMsg :
+  // HRQ (clavier) → notre HRT ; HRT (clavier) → notre ACK ; fin de bloc/EOK/END → notre ACK.
+  pmDump.on = true; pmDump.reqIdx = reqIdx; pmDump.attempt = attempt || 1;
+  pmDump.blocks = {}; pmDump.cur = null; pmDump.hrqSeen = false; pmDump.hrtSeen = false; pmDump.btrSeen = false;
+  if (pmDump.timer) clearTimeout(pmDump.timer);
+  pmDump.timer = setTimeout(pmDumpIdle, 9000);
+  setTimeout(() => { send(PM_DUMPREQ); log("[TX] Dump request panel (ADR 40 00 00, code 42H) — page SYSEX BULK DUMP à afficher au clavier ; essai unique (pas de re-DRQ auto)", "info"); }, 120);
+}
+function pmDumpIdle() {  // 9 s d'inactivité → clôture avec ce qu'on a
+  if (!pmDump.on) return;
+  if (pmDump.hrqSeen && !pmDump.btrSeen)
+    log("⚠️ Timeout — HRQ reçus mais le dump n'est pas parti : regarder l'écran du KN2000 (erreur 42 ? page SYSEX BULK DUMP affichée ?). Avant tout nouvel essai : OFF/ON du clavier ou re-afficher la page BULK DUMP (fix du message v1.0.6 « dump muet »)", "ko");
+  else if (pmDump.hrqSeen && pmDump.hrtSeen && !pmDump.btrSeen)
+    log("⚠️ Timeout — handshake établi (HRT reçue, ACK envoyé) mais pas de bloc reçu : côté clavier ? OFF/ON puis nouvel essai", "ko");
+  else
+    log("⚠️ Timeout — pas de HRQ reçu : liaison (câble/ports) ? page SYSEX BULK DUMP affichée au clavier ?", "ko");
+  pmDumpEnd(false);
+}
+function pmDumpMsg(d) {
+  if (pmDump.timer) { clearTimeout(pmDump.timer); pmDump.timer = setTimeout(pmDumpIdle, 9000); }
+  const cmd = d[2];
+  if (cmd === 0x21) { pmDump.hrqSeen = true; send(PM_HRT); log("[RX] HRQ (21) du KN2000 → [TX] HRT (22) — séquence p.25 : Master HRQ → Slave HRT → Master HRT → Slave ACK", "info"); return; }
+  if (cmd === 0x22) { pmDump.hrtSeen = true; send(PM_ACK); log("[RX] HRT (22) du KN2000 → [TX] ACK (23) — handshake établi, le dump doit partir (p.25)", "info"); return; }
+  if (cmd === 0x2d) {  // BTR : entête de bloc + 240 tokens inline dénibblisés (120 octets)
+    const ck = d[d.length - 2], cn = d[d.length - 3];
+    const calc = d.slice(1, d.length - 3).reduce((a, x) => a ^ x, 0);
+    if (calc !== ck && (calc ^ cn) !== ck) { log("[RX] BTR checksum KO — ignoré : " + hex(d.slice(0, 12)), "ko"); return; }
+    const adr = d[6], siz = d[9] << 14 | d[10] << 7 | d[11];
+    pmDump.btrSeen = true;
+    pmDump.cur = adr; pmDump.blocks[adr] = { siz, data: new Array(siz).fill(null), got: 0 };
+    pmDumpStore(adr, 0, denibble(d.slice(12, d.length - 3)));
+    log("[RX] BTR bloc " + A2(adr) + " — SIZ " + siz + " octets, checksum OK", "ok");
+    return;
+  }
+  if (cmd === 0x7e) {  // CDD : suite des données du bloc courant
+    const b = pmDump.cur !== null ? pmDump.blocks[pmDump.cur] : null;
+    if (!b) { log("[RX] paquet CDD sans bloc courant — ignoré", "ko"); return; }
+    const ck = d[d.length - 2], cn = d[d.length - 3];
+    const calc = d.slice(1, d.length - 3).reduce((a, x) => a ^ x, 0);
+    if (calc !== ck && (calc ^ cn) !== ck) { log("[RX] paquet checksum KO — ignoré (régime passif, pas de NAK) : " + hex(d.slice(0, 8)), "ko"); return; }
+    pmDumpStore(pmDump.cur, b.got, denibble(d.slice(3, d.length - 3)));
+    if (cn === 0x00) {  // fin de bloc (Body of data complet) → ACK (doc p.26)
+      send(PM_ACK);
+      log("[RX] fin du bloc " + A2(pmDump.cur) + " — " + b.got + "/" + b.siz + " octets reçus → [TX] ACK (23) (p.26 : Body of data → ACK)", b.got >= b.siz ? "ok" : "info");
+      pmDump.cur = null;
+    }
+    return;
+  }
+  if (cmd === 0x27 || cmd === 0x28) {
+    send(PM_ACK);
+    log("[RX] " + (cmd === 0x27 ? "EOK (27)" : "END (28)") + " → [TX] ACK (23) (p.26)", "ok");
+    if (cmd === 0x28) pmDumpEnd(true);
+  }
+}
+function pmDumpEnd(finished) {
+  if (!pmDump.on) return;
+  pmDump.on = false;
+  if (pmDump.timer) { clearTimeout(pmDump.timer); pmDump.timer = null; }
+  const blk = pmDump.blocks[0x41];
+  const cache = pmCacheLoad() || { date: null, banks: new Array(24).fill(null) };
+  if (!cache.banks || cache.banks.length !== 24) cache.banks = new Array(24).fill(null);
+  let okNew = 0;
+  // Règle de sûreté : les paquets 7e ne portent PAS d'adresse — si un paquet est perdu, tout ce qui
+  // suit serait stocké au mauvais offset. On ne fusionne donc qu'un bloc 41 COMPLET (8064 octets
+  // reçus = 24×336) ; un bloc partiel ne touche jamais le cache (aucune corruption possible).
+  const blkFull = blk && blk.got >= 8064;
+  if (blkFull) for (let i = 0; i < 24; i++) {
+    const s = i * 336;
+    const seg = blk.data.slice(s, s + 336);
+    if (seg.every(x => x !== null)) { cache.banks[i] = { ok: true, date: new Date().toISOString(), data: seg }; okNew++; }
+  }
+  cache.date = new Date().toISOString();
+  pmCacheSave(cache); pmCacheUI();
+  const ok41 = blk ? blk.got : 0, siz41 = blk ? blk.siz : 8064;
+  const okTotal = cache.banks.filter(b => b && b.ok).length;
+  log("Dump " + (finished ? "terminé (END)" : "interrompu") + " — bloc 41 : " + ok41 + "/" + siz41 + " octets" + (blkFull ? " — " + okNew + " banques fusionnées, cache : " + okTotal + "/24" : (blk ? " — INCOMPLET : aucune fusion (cache conservé)" : " — pas de bloc 41 reçu")), blkFull ? "ok" : "info");
+  const idx = pmDump.reqIdx;
+  if (idx >= 0) {
+    if (cache.banks[idx] && cache.banks[idx].ok) { handlePMRecord(cache.banks[idx].data); log("📄 PM " + PM_NAMES[idx] + " affichée depuis le cache complété", "ok"); }
+    else {
+      pmWait = false;
+      $("pmDumpSt").textContent = "✗ PM " + PM_NAMES[idx] + " incomplète (" + okTotal + "/24 en cache) — OFF/ON du clavier ou re-afficher la page SYSEX BULK DUMP, puis « 🔄 Re-dump complet » (banques validées conservées)";
+      $("pmDumpSt").className = "ko";
+      log("⚠️ Pas de re-DRQ automatique en v1.0.7 (un re-DRQ parasite relance la page BULK DUMP et contamine le handshake — suspect n°1 de l'erreur 42) : OFF/ON du clavier ou re-afficher la page SYSEX BULK DUMP, puis cliquer à nouveau.", "ko");
+    }
+  }
+}
 $("pmRead").onclick = () => {
   if (!output) { log("Pas de sortie MIDI sélectionnée.", "ko"); return; }
-  const idx = Number($("pmDumpSel").value); pmRec = null; pmWait = true; $("pmRecInfo").textContent = ""; $("pmDumpSt").textContent = "attente…"; $("pmDumpSt").className = "info";
-  send(sysex2C([0x20, 0x04, 0x00], [0x01]));
-  const a = pmAddr(idx);
-  setTimeout(() => { send(sysex2B(a, 336)); log("[TX] DRQ PM " + PM_NAMES[idx] + " (ADR 41 " + A2(a[1]) + " " + A2(a[2]) + ", SIZ 336)", "info"); }, 120);
-  setTimeout(() => { pmWait = false; if (!pmRec) { $("pmDumpSt").textContent = "✗ aucune réponse du clavier"; $("pmDumpSt").className = "ko"; } }, 2500);
+  const idx = Number($("pmDumpSel").value);
+  const cache = pmCacheLoad();
+  if (cache && cache.banks && cache.banks[idx] && cache.banks[idx].ok) {
+    pmRec = null; pmWait = false; $("pmRecInfo").textContent = "";
+    handlePMRecord(cache.banks[idx].data);
+    log("📄 PM " + PM_NAMES[idx] + " lue depuis le cache local (" + new Date(cache.banks[idx].date).toLocaleString("fr-FR") + ") — 🔄 Re-dump complet pour rafraîchir", "info");
+    return;
+  }
+  pmRec = null; pmWait = true; $("pmRecInfo").textContent = ""; $("pmDumpSt").textContent = "dump panel en cours…"; $("pmDumpSt").className = "info";
+  pmDumpStart(idx, 1);
 };
+$("pmDumpAll").onclick = () => {
+  if (!output) { log("Pas de sortie MIDI sélectionnée.", "ko"); return; }
+  const idx = Number($("pmDumpSel").value);
+  pmRec = null; pmWait = true; $("pmRecInfo").textContent = ""; $("pmDumpSt").textContent = "dump panel en cours…"; $("pmDumpSt").className = "info";
+  pmDumpStart(idx, 1);
+};
+pmCacheUI();
 $("pmWrite").onclick = () => {
   if (!output) { log("Pas de sortie MIDI sélectionnée.", "ko"); return; }
   const idx = Number($("pmDumpSel").value);
@@ -910,8 +1116,8 @@ readAll = function (auto) { const p = _readAll(auto); return p && p.finally ? p.
 
 // ===== v1.0 CHARTE ERGONOMIE — dictionnaire STR (FR/EN), badges d'état, menu ⚙️ Réglages (identique Sound Editor v0.9.13+) =====
 const STR = {
- fr: { kn_on: "🎹 KN2000 ● connecté", kn_off: "🎹 KN2000 ○", kn_ko: "🎹 KN2000 ⚠ pas de réponse", dir_none: "dossier non défini", lang: "🇫🇷 FR", conn: "🔌 Connexion KN2000", dirlbl: "📁 Dossier de travail", misc: "🔎 Moniteur · 🌐 Langue · Aide" },
- en: { kn_on: "🎹 KN2000 ● connected", kn_off: "🎹 KN2000 ○", kn_ko: "🎹 KN2000 ⚠ no reply", dir_none: "no working folder", lang: "🇬🇧 EN", conn: "🔌 KN2000 link", dirlbl: "📁 Working folder", misc: "🔎 Monitor · 🌐 Language · Help" } };
+ fr: { kn_on: "🎹 KN2000 ● connecté", kn_off: "🎹 KN2000 ○", kn_ko: "🎹 KN2000 ⚠ pas de réponse", dir_none: "dossier non défini", lang: "🇫🇷 FR", conn: "🔌 Connexion KN2000", dirlbl: "📁 Dossier de travail", midi: "🛰️ Fonctions MIDI à distance", misc: "🔎 Moniteur · 🌐 Langue · Aide" },
+ en: { kn_on: "🎹 KN2000 ● connected", kn_off: "🎹 KN2000 ○", kn_ko: "🎹 KN2000 ⚠ no reply", dir_none: "no working folder", lang: "🇬🇧 EN", conn: "🔌 KN2000 link", dirlbl: "📁 Working folder", midi: "🛰️ Remote MIDI functions", misc: "🔎 Monitor · 🌐 Language · Help" } };
 let LANG = "fr"; try { LANG = localStorage.getItem("kn2000_pc_lang") || "fr"; } catch (e) { }
 function T(k) { return (STR[LANG] && STR[LANG][k]) || STR.fr[k] || k; }
 function badgeSync() { // badges discrets — reflètent stMidi / dossier de travail sans toucher aux flux existants
@@ -949,5 +1155,6 @@ function cfgHide() { cfgOpen = false; $("cfgPanel").style.display = "none"; }
   if (!(($("stMidi").textContent || "").includes("●"))) { cfgOpen = true; $("cfgPanel").style.display = ""; }
 })();
 </script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="XXDAhE2MXAKm4YPtLYFdyQ==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
