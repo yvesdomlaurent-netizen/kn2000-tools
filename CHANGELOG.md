@@ -14,6 +14,11 @@ Outils :
 
 ## 2026-10-26
 
+### Sauvegarde / Catalogue v0.2.2 — SOUND MEMORY validée terrain ✅ ; blocs multiples à même adresse conservés
+- **Retour terrain (essai SOUND MEMORY)** : dump complet — handshake OK, **2 BTR pour le bloc 30** (SIZ 80 = entête Sound Memory, puis SIZ 5184 = les 36 sons × 144 octets), CDD jusqu'à **5184/5184 exact**, EOK, END. La trame DRQ « 30 00 00 » avec la constante 42 fonctionne telle quelle — deuxième aire validée.
+- **Correctif catalogue (v0.2.1 → v0.2.2)** : la v0.2.1 indexait les blocs par adresse seule — le second BTR du bloc 30 écrasait l'entête de 80 octets (perdue du catalogue). Désormais chaque BTR crée une **occurrence distincte** (clé adresse + n° d'ordre, champ « seq » dans le JSON) : l'entête ET les sons sont conservés, dans l'ordre d'arrivée. Le journal affiche « 30 » puis « 30#2 »…
+- **Validation hors clavier** : dump SOUND MEMORY synthétique (2 BTR même adresse) → blocs 30#1 et 30#2 conservés avec données distinctes, exactement 1 ACK par paquet (6 pour 6), END → finished ; rejeu de la capture panel 18/10 inchangé (aucune régression).
+
 ### Sauvegarde / Catalogue v0.2.1 — retour terrain v0.2 : dump PANEL complet ✅, bouton Vider déplacé à la charte
 - **Retour terrain v0.2 (essai 1, PANEL)** : connexion charte OK (ping → réponse → ● connecté → enables 3× ON automatiques), dump PANEL COMPLET — BTR 40 + 8 CDD (1056/1088), BTR 41 + 64 CDD (8064/8064 exact), EOK, END, 9120 octets — identique à la Panel Console v1.0.9. L'avertissement « Bloc 40 clôt INCOMPLET : 1056/1088 (écart 32) » est le mystère documenté (écart 32 systématique, sans conséquence), pas une erreur.
 - **Bouton « 🧹 Vider » déplacé dans l'en-tête du Journal MIDI** (charte console : logHead), hors de la rangée Connexion où il passait inaperçu.

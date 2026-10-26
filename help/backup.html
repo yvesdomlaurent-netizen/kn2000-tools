@@ -66,7 +66,7 @@
 <pre>{
   "tool": "KN2000 Sauvegarde / Catalogue",
   "format": "kn2000-catalog-v1",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "date": "2026-10-26T…ISO…",
   "keyboard": "Technics SX-KN2000",
   "enables": { "20 04 00": "01", … },
@@ -92,11 +92,13 @@
 <ul>
   <li><code>data</code> contient les <b>octets originaux dénibblisés</b> (sur le fil MIDI ils voyagent nibblisés ×2 — Reference Guide p.22) ; <code>siz_annonce</code> compte les octets originaux.</li>
   <li>Un octet manquant (paquet perdu ou bloc clôt avant SIZ) est noté <code>--</code> : la chaîne garde toujours <code>2 × siz_annonce</code> caractères, index calculable par <code>index_octet × 2</code>.</li>
+  <li><b>Blocs multiples à même adresse</b> : une aire peut contenir plusieurs blocs de même <code>adr</code> (ex. Sound Memory : entête de 80 octets puis les sons 5184, tous deux <code>adr: "30"</code>) — le champ <code>seq</code> (1, 2, …) donne l'ordre d'arrivée.</li>
   <li>Exemple décodage Android : <code>int b = Integer.parseInt(data.substring(i*2, i*2+2), 16);</code> — <code>"--"</code> ⇒ octet inconnu.</li>
 </ul>
 <div class="tip">💡 Le bloc 40 du panel s'arrête systématiquement à 1056/1088 octets (écart 32 constant observé sur toutes les captures et le terrain, sans conséquence) : les 32 octets manquants apparaissent en <code>--</code> dans le JSON — c'est normal.</div>
 
 <h2>📜 Historique</h2>
+<div class="ver"><b>v0.2.2</b><span class="date">2026-10-26</span><br/>SOUND MEMORY validée terrain (5184/5184, END) — le clavier envoie deux BTR pour le bloc 30 (entête 80 octets puis les sons 5184) : chaque BTR crée désormais une occurrence distincte (champ <code>seq</code> dans le JSON), l'entête n'est plus écrasée.</div>
 <div class="ver"><b>v0.2.1</b><span class="date">2026-10-26</span><br/>Retour terrain : dump PANEL complet (8064/8064, END — l'écart 32 du bloc 40 est le mystère documenté, pas une erreur). Bouton 🧹 Vider déplacé dans l'en-tête du Journal MIDI (charte console).</div>
 <div class="ver"><b>v0.2</b><span class="date">2026-10-26</span><br/>Connexion à la charte des pages : bouton 🔌 Connecter avec ping KN2000 (DRQ 20 00 02), pastille ● connecté, ports mémorisés id+nom avec connexion automatique, statut Web MIDI explicite, lecture auto des enables après connexion.</div>
 <div class="ver"><b>v0.1</b><span class="date">2026-10-26</span><br/>Première version : dump générique des 4 aires (protocole handshake v1.0.9), lecture seule des enables, export JSON unique auto-documenté (kn2000-catalog-v1). Panel validé terrain ; aires SOUND MEMORY / COMPOSER / SEQUENCER à valider une à une.</div>
@@ -134,11 +136,13 @@
 <ul>
   <li><code>data</code> holds the <b>original de-nibbilized bytes</b> (they travel nibbilized ×2 on the wire — Reference Guide p.22); <code>siz_annonce</code> counts original bytes.</li>
   <li>A missing byte (lost packet or block closed before SIZ) is written <code>--</code>: the string always keeps <code>2 × siz_annonce</code> characters, byte index = <code>char_index / 2</code>.</li>
+  <li><b>Multiple blocks at the same address</b>: an area may contain several blocks with the same <code>adr</code> (e.g. Sound Memory: 80-byte header then the 5184 sounds, both <code>adr: "30"</code>) — the <code>seq</code> field (1, 2, …) gives the arrival order.</li>
   <li>Android decoding example: <code>int b = Integer.parseInt(data.substring(i*2, i*2+2), 16);</code> — <code>"--"</code> ⇒ unknown byte.</li>
 </ul>
 <div class="tip">💡 The panel's block 40 always stops at 1056/1088 bytes (constant 32-byte gap seen on every capture and in the field, harmless): the 32 missing bytes appear as <code>--</code> in the JSON — this is normal.</div>
 
 <h2>📜 History</h2>
+<div class="ver"><b>v0.2.2</b><span class="date">2026-10-26</span><br/>SOUND MEMORY field-validated (5184/5184, END) — the keyboard sends two BTRs for block 30 (80-byte header then the 5184 sounds): each BTR now creates a distinct occurrence (<code>seq</code> field in the JSON), the header is no longer overwritten.</div>
 <div class="ver"><b>v0.2.1</b><span class="date">2026-10-26</span><br/>Field feedback: PANEL dump complete (8064/8064, END — block 40's 32-byte gap is the documented mystery, not an error). 🧹 Vider button moved into the MIDI log header (console charte).</div>
 <div class="ver"><b>v0.2</b><span class="date">2026-10-26</span><br/>Connection brought to the pages charte: 🔌 Connect button with KN2000 ping (DRQ 20 00 02), ● connecté badge, id+name memorized ports with auto-connect, explicit Web MIDI status, automatic enables read after connect.</div>
 <div class="ver"><b>v0.1</b><span class="date">2026-10-26</span><br/>First release: generic dump of the 4 areas (v1.0.9 handshake protocol), read-only enables, single self-documented JSON export (kn2000-catalog-v1). Panel field-validated; SOUND MEMORY / COMPOSER / SEQUENCER to be validated one by one.</div>

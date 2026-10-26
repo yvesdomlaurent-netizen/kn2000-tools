@@ -26,7 +26,7 @@
 </style>
 </head>
 <body>
-<h1>💾 KN2000 Sauvegarde / Catalogue <span style="font-size:.6em;color:#8fd0ff">v0.2.1</span></h1>
+<h1>💾 KN2000 Sauvegarde / Catalogue <span style="font-size:.6em;color:#8fd0ff">v0.2.2</span></h1>
 <div class="tip">💡 Catalogue l'état complet du clavier par dump handshake (protocole validé v1.0.9 : un ACK après chaque paquet).
 <strong>Mode d'emploi</strong> : au clavier, afficher la page <strong>SYSEX BULK DUMP</strong> et sélectionner le <strong>type correspondant</strong> à l'aire demandée, puis cliquer l'aire ci-dessous.
 Chaque aire se valide une à une ; l'export produit un <strong>JSON unique horodaté</strong>, auto-documenté (décodable par une future appli Android de repli terrain).</div>
@@ -231,7 +231,7 @@ function dumpRequest(adr) {
 }
 function dumpStart(area) {
   if (dump.on) { log("Un dump est déjà en cours.", "ko"); return; }
-  dump.on = true; dump.area = area; dump.blocks = {}; dump.cur = null; dump.hrqSeen = false; dump.btrSeen = false;
+  dump.on = true; dump.area = area; dump.blocks = {}; dump.cnt = {}; dump.cur = null; dump.hrqSeen = false; dump.btrSeen = false;
   log("=== DUMP " + area.name + " (ADR " + area.adr.map(A2).join(" ") + ") — au clavier : page SYSEX BULK DUMP, type " + area.kb + " sélectionné ===", "info");
   setTimeout(async () => {
     if (!Object.keys(enableState).length) {   // enables pas encore lus → lecture seule rapide avant
@@ -251,12 +251,13 @@ function dumpIdle() {
   else if (!dump.cur) log("⚠️ Timeout — handshake établi mais pas de bloc reçu : type " + dump.area.kb + " sélectionné au clavier ?", "ko");
   dumpEnd(false);
 }
-function closeBlock(adr, why) {
-  const b = dump.blocks[adr];
+function bLbl(b) { return A2(b.adr) + (b.seq > 1 ? "#" + b.seq : ""); }
+function closeBlock(key, why) {
+  const b = dump.blocks[key];
   if (!b || b.closed) return;
   b.closed = true;
-  log("[RX] fin du bloc " + A2(adr) + " (" + why + ") — " + b.got + "/" + b.siz + " octets reçus", "ok");
-  if (b.got < b.siz) log("⚠️ Bloc " + A2(adr) + " clôt INCOMPLET : " + b.got + "/" + b.siz + " (écart " + (b.siz - b.got) + ") — documenté pour le catalogue", "ko");
+  log("[RX] fin du bloc " + bLbl(b) + " (" + why + ") — " + b.got + "/" + b.siz + " octets reçus", "ok");
+  if (b.got < b.siz) log("⚠️ Bloc " + bLbl(b) + " clôt INCOMPLET : " + b.got + "/" + b.siz + " (écart " + (b.siz - b.got) + ") — documenté pour le catalogue", "ko");
 }
 function dumpMsg(d) {
   if (dump.timer) { clearTimeout(dump.timer); dump.timer = setTimeout(dumpIdle, 9000); }
@@ -269,11 +270,14 @@ function dumpMsg(d) {
     if (calc !== ck && (calc ^ cn) !== ck) { log("[RX] BTR checksum KO — ignoré : " + hex(d.slice(0, 12)), "ko"); return; }
     const adr = d[6], siz = d[9] << 14 | d[10] << 7 | d[11];
     dump.btrSeen = true;
-    if (dump.cur !== null && dump.cur !== adr) closeBlock(dump.cur, "nouveau bloc " + A2(adr) + " reçu");
-    dump.cur = adr; dump.blocks[adr] = { siz, data: new Array(siz).fill(null), got: 0, closed: false };
-    store(adr, 0, denibble(d.slice(12, d.length - 3)));
+    if (dump.cur !== null) closeBlock(dump.cur, "nouveau BTR " + A2(adr) + " reçu");
+    const seq = (dump.cnt[adr] = (dump.cnt[adr] || 0) + 1);
+    const key = adr + "-" + seq;
+    dump.cur = key;
+    dump.blocks[key] = { adr, seq, siz, data: new Array(siz).fill(null), got: 0, closed: false };
+    store(key, 0, denibble(d.slice(12, d.length - 3)));
     send(PM_ACK);
-    log("[RX] BTR bloc " + A2(adr) + " — SIZ " + siz + " octets, checksum OK → [TX] ACK (23)", "ok");
+    log("[RX] BTR bloc " + A2(adr) + (seq > 1 ? " occurrence #" + seq : "") + " — SIZ " + siz + " octets, checksum OK → [TX] ACK (23)", "ok");
     areaUI(dump.area);
     return;
   }
@@ -285,7 +289,7 @@ function dumpMsg(d) {
     if (calc !== ck && (calc ^ cn) !== ck) { log("[RX] paquet checksum KO — ignoré : " + hex(d.slice(0, 8)), "ko"); return; }
     store(dump.cur, b.got, denibble(d.slice(3, d.length - 3)));
     send(PM_ACK);
-    log("[RX] CDD — bloc " + A2(dump.cur) + " : " + b.got + "/" + b.siz + " octets reçus → [TX] ACK (23)", "info");
+    log("[RX] CDD — bloc " + bLbl(b) + " : " + b.got + "/" + b.siz + " octets reçus → [TX] ACK (23)", "info");
     if (b.got >= b.siz) { closeBlock(dump.cur, "SIZ atteint"); dump.cur = null; }
     areaUI(dump.area);
     return;
@@ -307,9 +311,9 @@ function dumpEnd(finished) {
   dump.on = false;
   if (dump.timer) { clearTimeout(dump.timer); dump.timer = null; }
   const area = dump.area;
-  const blocks = Object.keys(dump.blocks).map(Number).map(a => {
-    const b = dump.blocks[a];
-    return { adr: a, siz: b.siz, got: b.got, closed: b.closed, data: b.data.map(x => x === null ? null : x) };
+  const blocks = Object.keys(dump.blocks).map(k => {
+    const b = dump.blocks[k];
+    return { adr: b.adr, seq: b.seq, siz: b.siz, got: b.got, closed: b.closed, data: b.data.map(x => x === null ? null : x) };
   });
   results[area.id] = { date: new Date().toISOString(), adr: area.adr.map(A2).join(" "), finished, blocks };
   const tot = blocks.reduce((s, b) => s + b.got, 0);
@@ -321,8 +325,7 @@ function areaUI(area) {
   const r = results[area.id];
   let live = null;
   if (dump.on && dump.area === area) {
-    const bs = Object.keys(dump.blocks).map(Number);
-    live = bs.map(a => "bloc " + A2(a) + " : " + dump.blocks[a].got + "/" + dump.blocks[a].siz).join(" · ") || "handshake…";
+    live = Object.keys(dump.blocks).map(k => { const b = dump.blocks[k]; return "bloc " + bLbl(b) + " : " + b.got + "/" + b.siz; }).join(" · ") || "handshake…";
   }
   if (live) { el.textContent = "⏳ " + live; el.className = "pill warn"; return; }
   if (!r) { el.textContent = "—"; el.className = "pill off"; return; }
@@ -373,12 +376,13 @@ $("btnExport").onclick = () => {
         adr: A2(b.adr), siz_annonce: b.siz, octets_recus: b.got,
         // data : octets originaux dénibblisés (SIZ = octets originaux ; sur le fil MIDI ils voyagent nibblisés ×2)
         // null = octet manquant (paquet perdu/incomplet) ; hex minuscule sans séparateur, MSB en premier
+        seq: b.seq || 1,
         data: b.data.map(x => x === null ? "--" : A2(x)).join("")
       }))
     };
   }
   const cat = {
-    tool: "KN2000 Sauvegarde / Catalogue", format: "kn2000-catalog-v1", version: "0.2.1",
+    tool: "KN2000 Sauvegarde / Catalogue", format: "kn2000-catalog-v1", version: "0.2.2",
     date: new Date().toISOString(), keyboard: "Technics SX-KN2000",
     encodage: "chaque bloc : 'data' = octets originaux en hex (2 chiffres/octet, MSB d'abord), '--' = octet manquant ; nibblisation/dénibblisation selon Reference Guide p.22 (SIZ = octets originaux)",
     enables: { ...enableState, note: "DRQ lecture seule 20 04 00/01/02 (SIZ 1) — 00=OFF, 01=ON" },
