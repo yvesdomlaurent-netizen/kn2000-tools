@@ -11,6 +11,16 @@ Outils :
 
 ## [Non publié] / Unreleased
 
+## 2026-10-26
+
+### Panel Console v1.0.7 — dump doc-compliant (protocole Reference Guide p.25-26 joué par le livre)
+- **Handshake complet lors du dump panel** : sur HRQ (21) du clavier → envoi de la HRT (22) ; sur HRT (22) du clavier → envoi de l'ACK (23) ; fin de chaque bloc (Body of data complet) → ACK ; EOK (27) → ACK ; END (28) → ACK (séquence de confirmation p.25 + pattern p.26). Objectif : mode rapide et sans perte du protocole — l'ACK post-HRT n'avait jamais été testé proprement (la v1.0.5 avait été contaminée par un re-DRQ parasite, suspect n°1 de l'erreur 42).
+- **Zéro re-DRQ automatique** (essai unique) : en cas d'échec, message explicite « OFF/ON du clavier ou re-afficher la page SYSEX BULK DUMP, puis Re-dump complet » — relance manuelle, cache-fusion conservé (un bloc 41 complet de 8064 octets fusionne ses 24 banques).
+- **Fix message timeout** (bug v1.0.6 « dump muet ») : le timeout distingue désormais « pas de HRQ » (liaison/page BULK DUMP ?), « HRQ reçus mais dump pas parti » (erreur 42 ? écran clavier ?) et « handshake établi mais pas de bloc reçu ».
+- **Fix doublons du journal** : le sysex Technics (ID 50) n'est plus re-logué en brut par le moniteur (les trames protocolaires sont déjà loguées par le moteur de dump).
+- **Docs** : Firefox 108+ supporte le sysex Web MIDI — les mentions « Chrome/Edge uniquement » sont retirées (erreur de connexion et accueil).
+- Évolutions internes depuis v1.0.1 (développement local 25-26/10, jamais publiées) : gestion des 6 fonctions MIDI (lecture/activation/rétablissement, v1.0.2), moteur de dump panel avec cache 24 PM (v1.0.3), filtre « ne traiter que les 2C » — les notes/CC n'étaient plus rejetées en « 2C checksum KO » (v1.0.5-1.0.6).
+
 ## 2026-10-25
 
 ### Panel Console v1.0.1 — corrections terrain v1.0
@@ -152,3 +162,4 @@ Outils :
 1. Toute nouvelle version d'un outil incrémente : PATCH (correction), MINOR (fonction), MAJOR (rupture).
 2. Ajouter une entrée ici **en même temps** que le push, et mettre à jour la section « Historique des versions » de la page d'aide de l'outil concerné.
 3. Mise à jour de la carte de l'outil sur `index.html` (numéro de version).
+
