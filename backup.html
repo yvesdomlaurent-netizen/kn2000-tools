@@ -46,7 +46,7 @@
 </style>
 </head>
 <body>
-<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.4.2</span>
+<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.5.0</span>
   <span class="pill warn" title="Page en construction : la restauration est validée terrain pour la Sound Memory uniquement ; Panel/Composer/Sequencer restent à valider (page outils)">🔨 en construction</span></h1>
 <div class="tip">💡 Sauvegarder et restaurer l'état du clavier : <strong>Dumps</strong> (KN2000 → page) puis <strong>Catalogue</strong> (patches versionnés, croisement KN2000 ↔ catalogue, restauration complète ou différentielle).
 <strong>Aucune préparation au clavier n'est nécessaire</strong> (validé terrain 26/10/2026). Mémoires volatiles : le KN2000 ne conserve ses mémoires que ~80 min hors tension.</div>
@@ -65,6 +65,7 @@
 <div class="tabs">
   <button class="tabbtn on" id="tabDumps">📡 Dumps</button>
   <button class="tabbtn" id="tabCat">📚 Catalogue</button>
+  <button class="tabbtn" id="tabLib">🗂️ Bibliothèque</button>
   <a class="tlink" href="tools.html" style="align-self:center;margin-left:auto" title="Page privée : panneau technique (enables, adresses, trames, comparaison)">🛠️ Outils techniques</a>
 </div>
 
@@ -120,6 +121,57 @@
 </div>
 </div>
 
+<!-- ================= ONGLET BIBLIOTHÈQUE ================= -->
+<div class="tabpan" id="panLib">
+<h2>🗂️ Bibliothèque — conteneur master unique, vues et échanges croisés</h2>
+<div class="ast">Principe : la vérité binaire est unique (le master), chaque outil n'est qu'une vue. Fichiers autonomes, auto-documentés, pensés pour une future appli Android (aucun contexte navigateur requis pour décoder).</div>
+
+<div class="cardc">
+  <div class="row"><span class="glbl">Dossier</span>
+    <button class="sec" id="btnDir" title="Choisir le dossier de travail (File System Access) : le master et les exports y sont écrits directement">📁 Dossier de travail : non défini</button>
+    <button class="sec" id="btnDirForget" style="display:none" title="Oublier le dossier mémorisé">✖</button>
+    <span class="pill off" id="dirSt">repli : téléchargements</span>
+  </div>
+  <div class="ast">Dossier mémorisé par le navigateur (IndexedDB) — <strong>partagé avec le Sound Editor</strong> (même base) : un seul choix de dossier pour les deux outils. Sans dossier, repli téléchargement / sélecteur classique.</div>
+</div>
+
+<div class="cardc">
+  <div class="row"><span class="glbl">Master</span>
+    <button id="btnMasterSave" title="Écrit kn2000-instrument.json dans le dossier : les 4 aires (derniers dumps persistés) + les 36 sons (si Sound dumpé)">💾 Écrire le master (kn2000-instrument.json)</button>
+    <button class="sec" id="btnMasterLoad" title="Lit kn2000-instrument.json : les aires deviennent des patches (dédupliqués), les sons rejoignent la bibliothèque">📖 Lire le master</button>
+    <span class="pill off" id="masterSt">—</span>
+  </div>
+  <div class="ast">Le master <code>kn2000-master-v1</code> = la vérité binaire : <code>areas</code> (blocs bruts hex, octets originaux, '--' = manquant) + <code>sons</code> (36 slots nommés, 144 o). Toutes les sections sont optionnelles pour un décodeur externe.</div>
+</div>
+
+<div class="cardc">
+  <div class="row"><span class="glbl">Importer</span>
+    <input type="file" id="crossFile" accept=".json,application/json" style="display:none">
+    <button class="sec" id="btnCross" title="Détecte automatiquement le format : package Sound Editor, export banque, catalogue de sonorités, catalogue d'aires kn2000-catalog-v1, master">📂 Importer (formats détectés auto)</button>
+    <span class="pill off" id="crossSt">—</span>
+  </div>
+  <div class="ast">Package <code>kn2000_package_*.json</code> (raw_hex 5184 o) → patch Sound (⚠ sans l'entête 80 o : restauration complète impossible depuis un package seul, le différentiel fonctionne) · Export banque → patch + 36 noms · Catalogue de sonorités → sons nommés · Catalogue/Master → patches par aire.</div>
+</div>
+
+<div class="cardc">
+  <div class="row"><span class="glbl">Sons nommés</span>
+    <select id="sonSel" title="Bibliothèque user : sons isolés (144 o), dédupliqués par contenu"></select>
+    <label>→ slot <select id="slotSel" title="Slot de destination vers le clavier"></select></label>
+    <button id="btnSonSend" title="Envoie ce son (144 o) vers le slot choisi du KN2000 — 2 trames ITW, écriture réelle avec confirmation">✉️ Envoyer vers le clavier</button>
+    <button class="sec" id="btnSonsExport" title="Exporte la bibliothèque de sons au format catalogue du Sound Editor (kn2000_sound_catalog.json)">⬇️ Exporter (catalogue Sound Editor)</button>
+  </div>
+  <div class="row"><span class="glbl">Liste</span><div id="sonsList" style="flex:1"></div></div>
+  <div class="ast">Même politique de déduplication que les patches : contenu identique → date mise à jour ; différent → nouvelle entrée.</div>
+</div>
+
+<div class="cardc">
+  <div class="row"><span class="glbl">Exports croisés</span>
+    <button id="btnPkgExport" title="Exporte le patch Sound courant au format package du Sound Editor (kn2000_package_<nom>.json, raw_hex 5184 o)">📦 Exporter le patch Sound → package (Sound Editor)</button>
+  </div>
+  <div class="ast">Le package Sound Editor = exactement le bloc des 36 sons du catalogue (5184 o), sans l'entête de 80 o. La boucle backup ↔ éditeur est fermée sans ressaisie.</div>
+</div>
+</div>
+
 <div id="logHead" style="margin:16px 0 4px"><b style="color:#8fd0ff;font-size:1rem">📜 Journal MIDI</b> <button class="sec" id="btnClear" style="font-size:12px;padding:3px 10px;margin:0;vertical-align:middle" title="Vide le journal de la session">🧹 Vider</button></div>
 <div id="log"></div>
 
@@ -137,8 +189,9 @@ function fmtDate(iso) { if (!iso) return "—"; const d = new Date(iso); return 
 // ===== onglets =====
 $("tabDumps").onclick = () => setTab("panDumps");
 $("tabCat").onclick = () => setTab("panCat");
+$("tabLib").onclick = () => setTab("panLib");
 function setTab(pan) {
-  for (const [b, p] of [["tabDumps", "panDumps"], ["tabCat", "panCat"]]) {
+  for (const [b, p] of [["tabDumps", "panDumps"], ["tabCat", "panCat"], ["tabLib", "panLib"]]) {
     $(b).className = "tabbtn" + (p === pan ? " on" : "");
     $(p).className = "tabpan" + (p === pan ? " on" : "");
   }
@@ -443,7 +496,7 @@ $("btnExport").onclick = () => {
     };
   }
   const cat = {
-    tool: "KN2000 Sauvegarde / Catalogue", format: "kn2000-catalog-v1", version: "0.4.2",
+    tool: "KN2000 Sauvegarde / Catalogue", format: "kn2000-catalog-v1", version: "0.5.0",
     name: $("expName").value.trim() || "",
     date: new Date().toISOString(), keyboard: "Technics SX-KN2000",
     encodage: "chaque bloc : 'data' = octets originaux en hex (2 chiffres/octet, MSB d'abord), '--' = octet manquant ; nibblisation/dénibblisation selon Reference Guide p.22 (SIZ = octets originaux)",
@@ -734,13 +787,223 @@ $("btnRestore").onclick = async () => {
   sending = false; catUI();
 };
 
+// ===== 🗂️ Bibliothèque : dossier de travail partagé (IndexedDB kn2000_se, comme le Sound Editor) =====
+let catDir = null;
+function idbOpen() { return new Promise((res, rej) => { const r = indexedDB.open("kn2000_se", 1);
+  r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains("h")) r.result.createObjectStore("h"); };
+  r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function idbGet(k) { if (typeof indexedDB === "undefined") return null; try { const db = await idbOpen();
+  return await new Promise((res, rej) => { const t = db.transaction("h", "readonly").objectStore("h").get(k); t.onsuccess = () => res(t.result); t.onerror = () => rej(t.error); }); } catch (e) { return null; } }
+async function idbSet(k, v) { if (typeof indexedDB === "undefined") return false; try { const db = await idbOpen();
+  return await new Promise((res, rej) => { const t = db.transaction("h", "readwrite").objectStore("h").put(v, k); t.onsuccess = () => res(true); t.onerror = () => rej(t.error); }); } catch (e) { return false; } }
+async function dirPerm(d, ro) {
+  if (!d) return false;
+  const q = d.queryPermission ? d.queryPermission({ mode: ro ? "read" : "readwrite" }) : "granted";
+  if ((await q) === "granted") return true;
+  const r = d.requestPermission ? d.requestPermission({ mode: ro ? "read" : "readwrite" }) : "granted";
+  return (await r) === "granted";
+}
+function dirUI() {
+  $("btnDir").textContent = catDir ? "📁 " + catDir.name : "📁 Dossier de travail : non défini";
+  $("btnDirForget").style.display = catDir ? "" : "none";
+  const stEl = $("dirSt");
+  stEl.textContent = catDir ? "dossier : " + catDir.name : "repli : téléchargements";
+  stEl.className = "pill " + (catDir ? "on" : "off");
+}
+$("btnDir").onclick = async () => {
+  if (!window.showDirectoryPicker) { log("📁 File System Access indisponible dans ce navigateur — repli téléchargements/sélecteur.", "ko"); return; }
+  try { catDir = await window.showDirectoryPicker({ mode: "readwrite" }); await idbSet("catDir", catDir); dirUI(); log("📁 Dossier de travail : " + catDir.name + " (partagé avec le Sound Editor) — mémorisé.", "ok"); }
+  catch (e) { if (e && e.name !== "AbortError") log("📁 Choix du dossier échoué : " + e.message, "ko"); }
+};
+$("btnDirForget").onclick = async () => { await idbSet("catDir", null); catDir = null; dirUI(); log("📁 Dossier oublié — repli téléchargements/sélecteur.", "info"); };
+async function saveJson(name, txt, label) {
+  if (catDir && (await dirPerm(catDir))) {
+    try { const fh = await catDir.getFileHandle(name, { create: true }); const w = await fh.createWritable(); await w.write(txt); await w.close();
+      log("💾 " + (label || name) + " écrit dans « " + catDir.name + " /" + name + " ».", "ok"); return true; } catch (e) { log("Écriture dossier échouée : " + e.message + " — repli téléchargement.", "ko"); }
+  }
+  const blob = new Blob([txt], { type: "application/json" }); const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  log("💾 " + (label || name) + " exporté (téléchargement).", "ok");
+}
+async function readJsonInDir(name) {
+  if (!catDir || !(await dirPerm(catDir, true))) return null;
+  try { const fh = await catDir.getFileHandle(name); const f = await fh.getFile(); return await f.text(); } catch (e) { return null; }
+}
+function dlFallbackJson(cb) { const inp = document.createElement("input"); inp.type = "file"; inp.accept = ".json,application/json"; inp.onchange = () => { const f = inp.files && inp.files[0]; if (f) cb(f); }; inp.click(); }
+
+// ===== master kn2000-master-v1 =====
+function soundSlotList(ser) {   // 36 {slot, name, raw_hex} depuis l'aire sound
+  const pp = ser ? soundParts(ser) : null;
+  if (!pp || !pp.sons) return null;
+  const out = [];
+  for (let n = 0; n < 36; n++) {
+    let nm = "";
+    for (let i = 0; i < 16; i++) { const c = pp.sons[n * 144 + i]; if (c === null || c === undefined || c === 0) break; nm += (c >= 32 && c < 127) ? String.fromCharCode(c) : "·"; }
+    out.push({ slot: n < 18 ? "A-" + (n + 1) : "B-" + (n - 17), name: nm.replace(/\s+$/, "") || "?", raw_hex: pp.sons.slice(n * 144, n * 144 + 144).map(x => A2(x)).join("") });
+  }
+  return out;
+}
+function buildMaster() {
+  return {
+    format: "kn2000-master-v1", version: 1, keyboard: "Technics SX-KN2000",
+    meta: { name: "KN2000 instrument", date: new Date().toISOString(), source: "backup.html v0.5.0" },
+    doc: "Vérité binaire unique. Toutes les sections sont optionnelles. areas.<id>.blocks[] : adr (hex bloc), seq (occurrence), siz (octets originaux annoncés), got (reçus), data = hex minuscule 2 chiffres/octet MSB d'abord, '--' = octet manquant. sons[] : slot A-1..B-18, name (16 premiers octets), raw_hex = 144 octets du son.",
+    areas: st.lastDump,
+    sons: soundSlotList(st.lastDump.sound) || undefined
+  };
+}
+$("btnMasterSave").onclick = async () => {
+  const n = Object.keys(st.lastDump).length;
+  if (!n) { log("Aucun dump persisté — dumper d'abord (onglet Dumps).", "ko"); return; }
+  const m = buildMaster();
+  const sons = m.sons ? m.sons.length : 0;
+  await saveJson("kn2000-instrument.json", JSON.stringify(m, null, 2), "Master instrument (" + n + " aire(s)" + (sons ? ", " + sons + " sons" : "") + ")");
+  const stEl = $("masterSt"); stEl.textContent = n + " aire(s) écrites" + (sons ? " + " + sons + " sons" : ""); stEl.className = "pill on";
+};
+$("btnMasterLoad").onclick = async () => {
+  const txt = await readJsonInDir("kn2000-instrument.json");
+  if (txt) importAnyJson(JSON.parse(txt), "kn2000-instrument.json");
+  else { log("📖 kn2000-instrument.json introuvable dans le dossier — sélecteur de fichier.", "info"); dlFallbackJson(f => { const rd = new FileReader(); rd.onload = () => { try { importAnyJson(JSON.parse(rd.result), f.name); } catch (e) { log("Master illisible : " + e.message, "ko"); } }; rd.readAsText(f); }); }
+};
+
+// ===== imports croisés (détection de format) =====
+function importAnyJson(j, fname) {
+  if (j && (j.format === "kn2000-master-v1")) {   // master : aires (format store) + sons
+    let n = 0;
+    for (const id of Object.keys(j.areas || {})) {
+      const ser = j.areas[id];
+      if (ser && ser.blocks && ser.blocks.length && savePatch(id, ser, (j.meta && j.meta.name ? j.meta.name + " · " : "") + areaName(id))) n++;
+    }
+    let ns = 0;
+    if (Array.isArray(j.sons)) { for (const s of j.sons) if (addUserSound(s.name, s.raw_hex, s.slot)) ns++; }
+    log("📖 Master « " + fname + " » : " + n + " aire(s), " + ns + " son(s) — patches et bibliothèque mis à jour (dédupliqués).", "ok");
+    crossStSet("master : " + n + " aire(s) · " + ns + " son(s)", true);
+    return true;
+  }
+  if (j && j.format === "kn2000-catalog-v1") {   // catalogue d'aires (v0.3/v0.4)
+    const ids = Object.keys(j.areas || {});
+    let n = 0, tot = 0;
+    for (const id of ids) {
+      const a = j.areas[id];
+      const ser = { date: a.date || j.date || new Date().toISOString(), finished: a.finished !== false, blocks: a.blocks.map(b => ({ adr: parseInt(b.adr, 16), seq: b.seq || 1, siz: b.siz_annonce, got: b.octets_recus, data: b.data })) };
+      tot += a.blocks.reduce((t, b) => t + (b.octets_recus || 0), 0);
+      if (savePatch(id, ser, ((j.name || fname.split(".")[0]) + " · " + areaName(id)))) n++;
+    }
+    log("📂 Catalogue « " + (j.name || fname) + " » : " + n + " aire(s), " + tot + " o — patches dédupliqués.", "ok");
+    crossStSet("catalogue : " + n + " aire(s)", true);
+    return true;
+  }
+  if (j && j.raw_hex && /^[0-9a-f]+$/i.test(j.raw_hex) && j.raw_hex.length === 10368) {   // package ou export banque Sound Editor : 5184 o
+    const ser = { date: j.ts || new Date().toISOString(), finished: true,
+      blocks: [{ adr: "30", seq: 2, siz: 5184, got: 5184, data: j.raw_hex.toLowerCase() }] };
+    const nm = j.name || fname.replace(/^kn2000_package_/, "").replace(/\.json$/i, "");
+    const p = savePatch("sound", ser, "PKG · " + nm);
+    if (p) {
+      log("📦 Package « " + nm + " » (5184 o) → patch Sound." + (Array.isArray(j.slots) ? " " + j.slots.length + " slots nommés dans l'export d'origine." : "") + " ⚠ Sans l'entête 80 o : restauration différentielle OK, complète impossible depuis un package seul (dump l'entête à part).", "ok");
+      crossStSet("package : " + nm, true);
+    } else crossStSet("package refusé", false);
+    return true;
+  }
+  if (j && Array.isArray(j.sounds)) {   // catalogue de sonorités Sound Editor
+    let n = 0;
+    for (const s of j.sounds) if (addUserSound(s.name, s.raw_hex, s.slot)) n++;
+    log("📚 Catalogue de sonorités « " + fname + " » : " + n + " son(s) ajouté(s) à la bibliothèque (dédupliqués).", "ok");
+    crossStSet("sons : " + n + " ajouté(s)", true);
+    return true;
+  }
+  log("📂 Format non reconnu dans « " + fname + " » — attendus : master, catalogue, package/banque, sons.", "ko");
+  crossStSet("format inconnu", false);
+  return false;
+}
+function crossStSet(txt, ok) { const el = $("crossSt"); el.textContent = txt; el.className = "pill " + (ok ? "on" : "warn"); }
+$("btnCross").onclick = () => $("crossFile").click();
+$("crossFile").addEventListener("change", ev => {
+  const f = ev.target.files && ev.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => { try { importAnyJson(JSON.parse(rd.result), f.name); } catch (e) { log("📂 Import échoué : " + e.message, "ko"); crossStSet("erreur", false); } };
+  rd.readAsText(f);
+});
+
+// ===== sons nommés (bibliothèque user, dédupliqués par contenu) =====
+if (!st.userSounds) st.userSounds = [];
+function addUserSound(name, rawHex, slot) {
+  if (!rawHex || !/^[0-9a-f]+$/i.test(rawHex) || rawHex.length !== 288) { log("Son ignoré (144 o = 288 chiffres hex attendus) : " + (name || "?"), "ko"); return false; }
+  const h = rawHex.toLowerCase();
+  const prev = st.userSounds.find(s => s.raw_hex === h);
+  if (prev) { prev.date = new Date().toISOString(); prev.name = name || prev.name; storeSave(); sonsUI(); return false; }
+  st.userSounds.push({ id: "son-" + Date.now() + "-" + st.userSounds.length, name: name || "?", slot: slot || "—", date: new Date().toISOString(), raw_hex: h });
+  storeSave(); sonsUI();
+  return true;
+}
+function sonsUI() {
+  const sel = $("sonSel"); sel.innerHTML = "";
+  if (!st.userSounds.length) sel.add(new Option("(aucun son nommé — importer un catalogue)", ""));
+  st.userSounds.forEach((s, i) => sel.add(new Option(s.name + (s.slot && s.slot !== "—" ? " (" + s.slot + ")" : ""), String(i))));
+  const lst = $("sonsList");
+  lst.innerHTML = st.userSounds.length
+    ? st.userSounds.map((s, i) => "<span class='pill " + (String(i) === sel.value ? "on" : "off") + "' style='margin:2px'>" + s.name + " · " + fmtDate(s.date) + " <button class='sec' data-sondel='" + s.id + "' style='padding:2px 8px;margin:0 0 0 4px' title='Supprimer ce son (explicite)'>🗑</button></span>").join(" ")
+    : "<span class='ast'>Aucun son nommé — importer un catalogue de sonorités (Sound Editor) ou un master.</span>";
+  document.querySelectorAll("[data-sondel]").forEach(b => b.onclick = () => {
+    if (!confirm("Supprimer ce son de la bibliothèque ?")) return;
+    st.userSounds = st.userSounds.filter(x => x.id !== b.dataset.sondel);
+    storeSave(); sonsUI(); log("🗑 Son supprimé de la bibliothèque.", "info");
+  });
+  const slotSel = $("slotSel");
+  if (!slotSel.options.length) for (let n = 0; n < 36; n++) slotSel.add(new Option(n < 18 ? "A-" + (n + 1) : "B-" + (n - 17), String(n)));
+}
+$("sonSel").onchange = sonsUI;
+function sonFrames(bytes, slot) {   // 2 trames ITW d'un son (144 o) vers un slot A/B
+  return [[0, 120], [120, 144]].map(seg => {
+    const t = 0x50 + slot * 0x90 + seg[0];
+    return { adr: [0x30, (t >> 7) & 0x7f, t & 0x7f], bytes: bytes.slice(seg[0], seg[1]) };
+  });
+}
+$("btnSonSend").onclick = async () => {
+  const i = +$("sonSel").value;
+  if (isNaN(i) || !st.userSounds[i]) { log("Choisir un son dans la bibliothèque.", "ko"); return; }
+  if (!output) { log("Choisir la sortie MIDI.", "ko"); return; }
+  if (dump.on || sending) { log("Opération MIDI déjà en cours.", "ko"); return; }
+  const s = st.userSounds[i], slot = +$("slotSel").value;
+  const bytes = [];
+  for (let k = 0; k + 1 < s.raw_hex.length; k += 2) bytes.push(parseInt(s.raw_hex.substr(k, 2), 16));
+  if (!confirm("⚠️ Écriture réelle — envoyer « " + s.name + " » (144 o) vers le slot " + (slot < 18 ? "A-" + (slot + 1) : "B-" + (slot - 17)) + " ?\nLe clavier n'accuse pas réception : l'écran et le re-dump seront les juges.")) return;
+  sending = true; $("btnSonSend").disabled = true;
+  const frames = sonFrames(bytes, slot);
+  log("=== ENVOI son « " + s.name + " » → slot " + (slot < 18 ? "A-" + (slot + 1) : "B-" + (slot - 17)) + " : 2 trames ITW ===", "info");
+  try {
+    await sendITWframes(frames, "son « " + s.name + " »");
+    st.lastSend.sound = new Date().toISOString(); storeSave();
+    log("✅ Son envoyé. Vérifier à l'écran/oreille, re-dumper pour voir 🟢.", "ok");
+  } catch (e) { log("Envoi interrompu : " + e.message, "ko"); }
+  sending = false; $("btnSonSend").disabled = false; catUI();
+};
+$("btnSonsExport").onclick = async () => {
+  if (!st.userSounds.length) { log("Bibliothèque vide — rien à exporter.", "ko"); return; }
+  const txt = JSON.stringify({ ts: new Date().toISOString(),
+    sounds: st.userSounds.map(s => ({ name: s.name, slot: s.slot || "—", ts: s.date, raw_hex: s.raw_hex })) }, null, 1);
+  await saveJson("kn2000_sound_catalog.json", txt, "Catalogue de sonorités (" + st.userSounds.length + " son(s))");
+};
+$("btnPkgExport").onclick = async () => {
+  const cp = curPatch("sound");
+  if (!cp) { log("Aucun patch Sound dans le catalogue — dumper/importer d'abord.", "ko"); return; }
+  const pp = soundParts(cp.area);
+  if (!pp.sons) { log("Le patch Sound courant ne contient pas les 36 sons (5184 o).", "ko"); return; }
+  const nm = cp.name.replace(/[^\w\- éèêàçûôîï&.]/g, "_").trim() || "banque";
+  const txt = JSON.stringify({ name: cp.name, ts: new Date().toISOString(), partial: null,
+    raw_hex: pp.sons.map(x => A2(x)).join("") }, null, 1);
+  await saveJson("kn2000_package_" + nm + ".json", txt, "Package Sound Editor (5184 o)");
+  log("📦 Package exporté — importable tel quel dans le Sound Editor (📂 Charger un package). Sans l'entête 80 o (jamais dans les packages).", "ok");
+};
+
 // ===== init =====
 // recharge les derniers dumps persistés dans la session (affichage + différentiel)
 for (const id of Object.keys(st.lastDump)) {
   const ser = st.lastDump[id];
   results[id] = { date: ser.date, adr: (AREAS.find(a => a.id === id) || { adr: [] }).adr.map(A2).join(" "), finished: ser.finished, blocks: ser.blocks.map(b => ({ adr: parseInt(b.adr, 16), seq: b.seq, siz: b.siz, got: b.got, data: (b.data || "").match(/../g)?.map(h => h === "--" ? null : parseInt(h, 16)) || [] })) };
 }
-catUI(); exportUI(); refreshPorts();
+catUI(); exportUI(); sonsUI(); dirUI();
+idbGet("catDir").then(h => { if (h) { catDir = h; dirUI(); log("📁 Dossier de travail restauré : " + h.name + " (permission à revalider au premier accès si demandé).", "info"); } });
+refreshPorts();
 </script>
 </body>
 </html>

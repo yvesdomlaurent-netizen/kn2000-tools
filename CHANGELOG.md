@@ -14,6 +14,13 @@ Outils :
 
 ## 2026-10-26
 
+### Sauvegarde / Catalogue v0.5.0 — onglet 🗂️ Bibliothèque : master unique, imports/exports croisés, sons nommés
+- **Conteneur master unique `kn2000-master-v1`** : « 💾 Écrire le master » exporte la vérité binaire complète — toutes les aires dumpées (format store, octets bruts) + les 36 sons de la Sound Memory (slot, nom 16 o, `raw_hex` 144 o) + meta (nom, date, source). Pensé Android : **aucun localStorage nécessaire pour décoder** le fichier. « 📖 Relire » recharge un master (patches par aire + sons, dédupliqués).
+- **Dossier de travail partagé** (File System Access API, IndexedDB pour le handle) : la page retient un dossier local où écrire/relire `kn2000-instrument.json` et tous les exports — **le même dossier que le Sound Editor** (`kn2000_se`), donc une seule arborescence pour tous les outils. Fallback téléchargement/import classique si l'API est absente.
+- **Imports croisés auto-détectés** : un seul bouton 📖 importe et reconnaît — master v1 ; catalogue kn2000-catalog-v1 (v0.3/v0.4) ; **package/banque Sound Editor** (`raw_hex` 5184 o → patch Sound « PKG · nom », restauration différentielle OK, complète impossible sans l'entête 80 o — log explicite) ; **catalogue de sonorités Sound Editor** (`{sounds:[…]}` → bibliothèque de sons nommés).
+- **Sons nommés (bibliothèque user)** : entrées validées (288 chiffres hex = 144 o), **dédupliquées par contenu** (identique = date màj ; différent = nouvelle entrée jamais écrasée). « ✉️ Envoyer vers le clavier » : 2 trames ITW (120+24 o) vers **le slot choisi** (A-1…B-18), confirmation explicite, adresses `30 00 50 + slot×90` et `+120`. Export vers le Sound Editor (`kn2000_sound_catalog.json`) et export package (`kn2000_package_<nom>.json`, 5184 o) → **la boucle backup ↔ éditeur est fermée sans ressaisie**.
+- **Validation hors clavier** : 16 tests logiques v0.4.x inchangés + 16 tests ciblés v0.5.0 verts (soundSlotList 36 slots/noms, master round-trip build→import→patch identique, import package sans entête, import sons + dédup + refus hex invalide, adresses sonFrames A-8 et B-18 exactes).
+
 ### Sauvegarde / Catalogue v0.4.2 — restauration : SOUND MEMORY par défaut dans le sélecteur (retour terrain v0.4.1)
 - **Retour terrain v0.4.1** : Yves ne trouvait pas la restauration — le sélecteur d'aire s'ouvrait sur **PANEL** (barré « à valider ») → le bouton ↩️ Restaurer apparaissait désactivé et la fonction semblait absente.
 - **Correctif** : le sélecteur d'aire de la carte Restauration s'ouvre par défaut sur **SOUND MEMORY** (la seule aire restaurable à ce jour), libellée « ✅ restaurable » ; les autres affichent « — à valider » avec tooltip explicite. Le bouton reste actif dès qu'un patch Sound existe et que la connexion est établie.
