@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>KN2000 Sauvegarde</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #101418; color: #e8e8e8; max-width: 1000px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 1.25rem; }
+  select { background: #1b222a; color: #e8e8e8; border: 1px solid #345; padding: 6px 10px; border-radius: 6px; max-width: 360px; }
+  button { background: #2a6; color: #fff; border: 0; padding: 8px 14px; border-radius: 6px; cursor: pointer; margin: 4px; }
+  button.sec { background: #345; }
+  button:disabled { background: #233; color: #667; cursor: not-allowed; }
+  .row { display: flex; gap: 10px; align-items: center; margin: 8px 0; flex-wrap: wrap; }
+  .cardc { background: #161c23; border: 1px solid #2a3540; border-radius: 10px; padding: 10px 14px; margin: 10px 0; }
+  .glbl { color: #8fd0ff; font-weight: 600; min-width: 150px; display: inline-block; }
+  #log { background: #0b0f13; border: 1px solid #234; border-radius: 8px; padding: 10px; height: 220px; overflow-y: auto; font-family: ui-monospace, monospace; font-size: 12px; }
+  .info { color: #9ab; } .ok { color: #7fdba0; } .ko { color: #ff8a80; }
+  h2 { font-size: 1rem; color: #8fd0ff; margin-top: 20px; }
+  input[type=text] { background: #1b222a; color: #e8e8e8; border: 1px solid #345; padding: 7px 10px; border-radius: 6px; }
+  .pill { padding: 2px 10px; border-radius: 999px; font-size: 12px; font-family: ui-monospace, monospace; border: 1px solid #345; color: #9ab; white-space: nowrap; }
+  .pill.on { color: #7fdba0; border-color: #2a6; } .pill.warn { color: #ffd080; border-color: #c80; } .pill.off { color: #9ab; }
+  .area { border: 1px solid #2a3540; border-radius: 10px; padding: 10px 14px; margin: 8px 0; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .area b { color: #ffd080; min-width: 140px; display: inline-block; }
+  .ast { font-size: 12px; color: #9ab; }
+  .tip { background: #0b2745; border: 1px solid #1e3a5f; color: #bae6fd; border-radius: 10px; padding: 10px 14px; margin: 12px 0; font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>💾 KN2000 Sauvegarde / Catalogue <span style="font-size:.6em;color:#8fd0ff">v0.1</span></h1>
+<div class="tip">💡 Catalogue l'état complet du clavier par dump handshake (protocole validé v1.0.9 : un ACK après chaque paquet).
+<strong>Mode d'emploi</strong> : au clavier, afficher la page <strong>SYSEX BULK DUMP</strong> et sélectionner le <strong>type correspondant</strong> à l'aire demandée, puis cliquer l'aire ci-dessous.
+Chaque aire se valide une à une ; l'export produit un <strong>JSON unique horodaté</strong>, auto-documenté (décodable par une future appli Android de repli terrain).</div>
+
+<div class="cardc">
+  <div class="row"><span class="glbl">Connexion</span>
+    <button class="sec" id="btnRefreshPorts" title="Recherche les ports MIDI disponibles">🔄 Ports</button>
+    <label title="Entrée MIDI venant du KN2000">In <select id="inSel"></select></label>
+    <label title="Sortie MIDI vers le KN2000">Out <select id="outSel"></select></label>
+    <span class="pill off" id="stMidi">non connecté</span>
+    <span style="flex:1"></span>
+    <button class="sec" id="btnClear" title="Vide le journal">🧹 Vider</button>
+  </div>
+  <div class="row"><span class="glbl">Fonctions MIDI</span>
+    <span class="pill off" id="enSt">enables non lus</span>
+    <button class="sec" id="btnEnables" title="Lecture seule de l'état des enables sysex (20 04 00/01/02) — rien n'est écrit">📡 Lire les enables</button>
+  </div>
+</div>
+
+<h2>1 — Dumps par aire (valider une à une)</h2>
+<div id="areas"></div>
+<div class="row">
+  <button id="btnAllSeq" title="Enchaîne les aires non encore validées, dans l'ordre (le clavier doit être prêt à chaque fois — type sélectionné au fur et à mesure)">▶ Enchaîner les aires restantes</button>
+  <span class="ast">Le type « ALL » du clavier sera testé en dernier, une fois les 4 aires validées.</span>
+</div>
+
+<h2>2 — Export du catalogue</h2>
+<div class="row">
+  <button id="btnExport" disabled>💾 Exporter le catalogue (JSON)</button>
+  <input type="text" id="expName" placeholder="nom du catalogue (optionnel)" size="24">
+  <span class="pill off" id="expSt">aucune aire dumpée</span>
+</div>
+<div class="ast">Le JSON contient : métadonnées (date, outil, version), état des enables, et pour chaque aire dumpée la liste des blocs (adresse, SIZ annoncé, octets reçus, checksum) avec les <strong>données brutes en hex</strong> — dénibblisées, telles que stockées dans le KN2000. Format documenté dans la page d'aide.</div>
+
+<h2>Journal MIDI</h2>
+<div id="log"></div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const logEl = $("log");
+function log(m, c) { const d = document.createElement("div"); d.className = c || "info"; d.textContent = m; logEl.appendChild(d); logEl.scrollTop = logEl.scrollHeight; }
+const A2 = x => x.toString(16).padStart(2, "0");
+const hex = a => [...a].map(x => A2(x)).join(" ");
+function denibble(arr) { const o = []; for (let i = 0; i + 1 < arr.length; i += 2) o.push(arr[i] << 4 | arr[i + 1]); return o; }
+function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ===== Web MIDI =====
+let midi = null, input = null, output = null, monitor = true;
+function send(bytes) { if (!output) { log("Pas de sortie MIDI sélectionnée.", "ko"); return false; } try { output.send(bytes); return true; } catch (e) { log("Erreur d'envoi : " + e.message, "ko"); return false; } }
+function logRaw(d) {
+  let txt;
+  const st = d[0] & 0xf0, ch = (d[0] & 0xf) + 1;
+  if (st === 0xb0) txt = "CC" + d[1] + " ch" + ch + " = " + d[2];
+  else if (st === 0xc0) txt = "PC ch" + ch + " = " + d[1];
+  else if (d[0] === 0xf0) txt = "SYSEX " + hex([...d].slice(0, 16)) + (d.length > 18 ? "…" : "");
+  else txt = hex([...d].slice(0, 8));
+  log("📥 RX " + txt, "info");
+}
+function onMsg(ev) {
+  const d = ev.data; if (!d) return;
+  if (monitor && d[0] !== 0xfe && !(d[0] === 0xf0 && d[1] === 0x50)) logRaw(d);
+  if (d[0] === 0xf0 && d[1] === 0x50 && d[2] === 0x29) {   // ERR — pendant un dump : arrêt immédiat
+    const code = d[3];
+    const msg = code === 0x7e ? "ERR 7E — adresse inexistante ou demande refusée" : "ERR code " + A2(code);
+    log("[RX] ⚠️ Réponse d'erreur du KN2000 : " + msg + " — trame " + hex([...d]), "ko");
+    if (dump.on) { log("Erreur pendant le dump — arrêt de l'aire. Type sélectionné au clavier correspond-il à l'aire demandée ?", "ko"); dumpEnd(false); }
+    return;
+  }
+  if (d[0] === 0xf0 && d[1] === 0x50) {
+    const c2 = d[2];
+    if (dump.on && (c2 === 0x21 || c2 === 0x22 || c2 === 0x2d || c2 === 0x7e || c2 === 0x27 || c2 === 0x28)) { dumpMsg([...d]); return; }
+    if (!dump.on && (c2 === 0x2d || c2 === 0x7e)) { log("[RX] trame dump " + A2(c2) + " reçue hors dump — ignorée", "info"); return; }
+    if (c2 === 0x2c) {   // ITR : réponse aux lectures d'enables
+      const ck = d[d.length - 2], cn = d[d.length - 3];
+      const calc = d.slice(1, d.length - 3).reduce((a, x) => a ^ x, 0);
+      if (calc !== ck && (calc ^ cn) !== ck) { log("[RX] 2C checksum KO — ignoré", "ko"); return; }
+      const adr = [d[6], d[7], d[8]], key = A2(adr[0]) + " " + A2(adr[1]) + " " + A2(adr[2]);
+      const siz = d[9] << 14 | d[10] << 7 | d[11];
+      const dt = denibble(d.slice(12, 12 + siz * 2));
+      if (EN_BY_KEY[key]) { enableState[key] = hex(dt); log("  ✓ " + EN_BY_KEY[key] + " (" + key + ") = " + (dt[0] !== 0 ? "ON (" + hex(dt) + ")" : "OFF"), "ok"); enableUI(); }
+    }
+  }
+}
+function fillPorts() {
+  const keepIn = localStorage.getItem("kn2000_bk_in"), keepOut = localStorage.getItem("kn2000_bk_out");
+  const ins = [...midi.inputs.values()], outs = [...midi.outputs.values()];
+  $("inSel").innerHTML = ins.map(p => `<option ${p.name === keepIn ? "selected" : ""}>${p.name}</option>`).join("");
+  $("outSel").innerHTML = outs.map(p => `<option ${p.name === keepOut ? "selected" : ""}>${p.name}</option>`).join("");
+  return { inName: $("inSel").value, outName: $("outSel").value };
+}
+$("btnRefreshPorts").onclick = async () => { if (!midi) await initMidi(); fillPorts(); log("Ports MIDI actualisés."); };
+function attachInput() { if (input) { try { input.onmidimessage = onMsg; } catch (e) { } } }
+function initMidi() {
+  return navigator.requestMIDIAccess({ sysex: true }).then(m => {
+    midi = m; m.onstatechange = () => { fillPorts(); attachInput(); };
+    fillPorts(); attachInput();
+    log("Web MIDI initialisé (" + m.inputs.size + " entrée(s), " + m.outputs.size + " sortie(s)).", "ok");
+  }).catch(e => { log("Accès Web MIDI refusé/indisponible : " + e.message + " — Chrome, Edge ou Firefox 108+ desktop, sysex autorisé.", "ko"); });
+}
+function selectPorts() {
+  input = [...midi.inputs.values()].find(p => p.name === $("inSel").value) || null;
+  output = [...midi.outputs.values()].find(p => p.name === $("outSel").value) || null;
+  if (input) { localStorage.setItem("kn2000_bk_in", input.name); localStorage.setItem("kn2000_bk_out", output ? output.name : ""); }
+  attachInput();
+  $("stMidi").textContent = (input && output) ? "● ports prêts" : "in/out à choisir";
+  $("stMidi").className = "pill " + (input && output ? "on" : "warn");
+}
+$("inSel").onchange = selectPorts; $("outSel").onchange = selectPorts;
+$("btnClear").onclick = () => { logEl.innerHTML = ""; log("Journal vidé.", "info"); };
+
+// ===== enables (lecture seule) =====
+const ENABLES = [
+  { adr: [0x20, 0x04, 0x00], name: "Non-Real Time Sysex Enable" },
+  { adr: [0x20, 0x04, 0x01], name: "Real Time Sysex Enable" },
+  { adr: [0x20, 0x04, 0x02], name: "Real Time Command Enable" }
+];
+const EN_BY_KEY = {}; ENABLES.forEach(e => EN_BY_KEY[A2(e.adr[0]) + " " + A2(e.adr[1]) + " " + A2(e.adr[2])] = e.name);
+const enableState = {};
+function sysex2B(adr, siz) {
+  const b = [0xf0, 0x50, 0x2b, 0x01, 0x18, 0x10, ...adr, (siz >> 14) & 0x7f, (siz >> 7) & 0x7f, siz & 0x7f];
+  let x = 0; for (let i = 1; i < b.length; i++) x ^= b[i];
+  return [...b, 0x00, x, 0xf7];   // CN=00 (STP), SM=XOR IDC..CN — même construction que la console
+}
+function enableUI() {
+  const got = Object.keys(enableState).length;
+  $("enSt").textContent = got ? ("enables : " + got + "/3 lus") : "enables non lus";
+  $("enSt").className = "pill " + (got ? "on" : "off");
+}
+$("btnEnables").onclick = async () => {
+  if (!output) { log("Choisir la sortie MIDI.", "ko"); return; }
+  log("Lecture des enables sysex (DRQ 20 04 00/01/02, SIZ 1 — lecture seule)…", "info");
+  for (const e of ENABLES) { send(sysex2B(e.adr, 1)); await wait(180); }
+  await wait(350);
+  const got = Object.keys(enableState).length;
+  if (!got) log("⚠️ Aucune réponse — liaison OK ? clavier allumé ?", "ko");
+};
+
+// ===== moteur de dump générique (protocole v1.0.9 : un ACK par paquet reçu) =====
+const PM_HRT = [0xf0, 0x50, 0x22, 0x01, 0x18, 0x10, 0xf7];
+const PM_ACK = [0xf0, 0x50, 0x23, 0x7e, 0xf7];
+const AREAS = [
+  { id: "panel",   name: "PANEL",        adr: [0x40, 0x00, 0x00], kb: "PANEL",        info: "Données panel + Panel Memory (blocs 40/41) — validé (console v1.0.9)" },
+  { id: "sound",   name: "SOUND MEMORY", adr: [0x30, 0x00, 0x00], kb: "SOUND MEMORY", info: "Header + 36 paramètres de sons Memory A/B" },
+  { id: "composer",name: "COMPOSER",     adr: [0x50, 0x00, 0x00], kb: "COMPOSER",     info: "Location + Header + Performance" },
+  { id: "sequencer",name: "SEQUENCER",   adr: [0x60, 0x00, 0x00], kb: "SEQUENCER",   info: "Location + Header + Performance" }
+];
+const results = {};   // areaId -> { date, adr, blocks: [{adr,siz,got,data:[bytes]}], finished }
+const dump = { on: false, area: null, blocks: {}, cur: null, timer: null, hrqSeen: false, btrSeen: false };
+function dumpRequest(adr) {
+  // Forme validée sur le panel (CtrlrX, terrain) : ADR + SIZ 00 00 42 + CN 00 + SM (XOR) — même constante pour toutes les aires, à valider par le terrain
+  const b = [0xf0, 0x50, 0x2b, 0x01, 0x18, 0x10, ...adr, 0x00, 0x00, 0x42, 0x00];
+  let x = 0; for (let i = 1; i < b.length; i++) x ^= b[i];
+  return [...b, x, 0xf7];
+}
+function dumpStart(area) {
+  if (dump.on) { log("Un dump est déjà en cours.", "ko"); return; }
+  dump.on = true; dump.area = area; dump.blocks = {}; dump.cur = null; dump.hrqSeen = false; dump.btrSeen = false;
+  log("=== DUMP " + area.name + " (ADR " + area.adr.map(A2).join(" ") + ") — au clavier : page SYSEX BULK DUMP, type " + area.kb + " sélectionné ===", "info");
+  setTimeout(async () => {
+    if (!Object.keys(enableState).length) {   // enables pas encore lus → lecture seule rapide avant
+      for (const e of ENABLES) { send(sysex2B(e.adr, 1)); await wait(160); }
+      await wait(300);
+    }
+    send(dumpRequest(area.adr));
+    log("[TX] Dump request " + area.name + " — essai unique (pas de re-DRQ auto)", "info");
+  }, 120);
+  if (dump.timer) clearTimeout(dump.timer);
+  dump.timer = setTimeout(dumpIdle, 9000);
+}
+function dumpIdle() {
+  if (!dump.on) return;
+  if (!dump.hrqSeen) log("⚠️ Timeout — pas de HRQ reçu : liaison ? page SYSEX BULK DUMP affichée ? type " + dump.area.kb + " sélectionné au clavier ?", "ko");
+  else if (dump.btrSeen) log("⚠️ Timeout — bloc(s) reçus mais pas de fin de dump (EOK/END) : le clavier attendait-il un ACK ? erreur affichée au clavier ?", "ko");
+  else if (!dump.cur) log("⚠️ Timeout — handshake établi mais pas de bloc reçu : type " + dump.area.kb + " sélectionné au clavier ?", "ko");
+  dumpEnd(false);
+}
+function closeBlock(adr, why) {
+  const b = dump.blocks[adr];
+  if (!b || b.closed) return;
+  b.closed = true;
+  log("[RX] fin du bloc " + A2(adr) + " (" + why + ") — " + b.got + "/" + b.siz + " octets reçus", "ok");
+  if (b.got < b.siz) log("⚠️ Bloc " + A2(adr) + " clôt INCOMPLET : " + b.got + "/" + b.siz + " (écart " + (b.siz - b.got) + ") — documenté pour le catalogue", "ko");
+}
+function dumpMsg(d) {
+  if (dump.timer) { clearTimeout(dump.timer); dump.timer = setTimeout(dumpIdle, 9000); }
+  const cmd = d[2];
+  if (cmd === 0x21) { dump.hrqSeen = true; send(PM_HRT); log("[RX] HRQ (21) → [TX] HRT (22) — séquence p.25", "info"); return; }
+  if (cmd === 0x22) { send(PM_ACK); log("[RX] HRT (22) → [TX] ACK (23) — handshake établi, le dump doit partir", "info"); return; }
+  if (cmd === 0x2d) {
+    const ck = d[d.length - 2], cn = d[d.length - 3];
+    const calc = d.slice(1, d.length - 3).reduce((a, x) => a ^ x, 0);
+    if (calc !== ck && (calc ^ cn) !== ck) { log("[RX] BTR checksum KO — ignoré : " + hex(d.slice(0, 12)), "ko"); return; }
+    const adr = d[6], siz = d[9] << 14 | d[10] << 7 | d[11];
+    dump.btrSeen = true;
+    if (dump.cur !== null && dump.cur !== adr) closeBlock(dump.cur, "nouveau bloc " + A2(adr) + " reçu");
+    dump.cur = adr; dump.blocks[adr] = { siz, data: new Array(siz).fill(null), got: 0, closed: false };
+    store(adr, 0, denibble(d.slice(12, d.length - 3)));
+    send(PM_ACK);
+    log("[RX] BTR bloc " + A2(adr) + " — SIZ " + siz + " octets, checksum OK → [TX] ACK (23)", "ok");
+    areaUI(dump.area);
+    return;
+  }
+  if (cmd === 0x7e) {
+    const b = dump.cur !== null ? dump.blocks[dump.cur] : null;
+    if (!b) { log("[RX] paquet CDD sans bloc courant — ignoré", "ko"); return; }
+    const ck = d[d.length - 2], cn = d[d.length - 3];
+    const calc = d.slice(1, d.length - 3).reduce((a, x) => a ^ x, 0);
+    if (calc !== ck && (calc ^ cn) !== ck) { log("[RX] paquet checksum KO — ignoré : " + hex(d.slice(0, 8)), "ko"); return; }
+    store(dump.cur, b.got, denibble(d.slice(3, d.length - 3)));
+    send(PM_ACK);
+    log("[RX] CDD — bloc " + A2(dump.cur) + " : " + b.got + "/" + b.siz + " octets reçus → [TX] ACK (23)", "info");
+    if (b.got >= b.siz) { closeBlock(dump.cur, "SIZ atteint"); dump.cur = null; }
+    areaUI(dump.area);
+    return;
+  }
+  if (cmd === 0x27 || cmd === 0x28) {
+    if (dump.cur !== null) { closeBlock(dump.cur, cmd === 0x27 ? "EOK reçu" : "END reçu"); dump.cur = null; }
+    send(PM_ACK);
+    log("[RX] " + (cmd === 0x27 ? "EOK (27)" : "END (28)") + " → [TX] ACK (23)", "ok");
+    if (cmd === 0x28) dumpEnd(true);
+  }
+}
+function store(adr, off, bytes) {
+  const b = dump.blocks[adr]; if (!b) return;
+  for (let i = 0; i < bytes.length && off + i < b.data.length; i++)
+    if (b.data[off + i] === null) { b.data[off + i] = bytes[i]; b.got++; }
+}
+function dumpEnd(finished) {
+  if (!dump.on) return;
+  dump.on = false;
+  if (dump.timer) { clearTimeout(dump.timer); dump.timer = null; }
+  const area = dump.area;
+  const blocks = Object.keys(dump.blocks).map(Number).map(a => {
+    const b = dump.blocks[a];
+    return { adr: a, siz: b.siz, got: b.got, closed: b.closed, data: b.data.map(x => x === null ? null : x) };
+  });
+  results[area.id] = { date: new Date().toISOString(), adr: area.adr.map(A2).join(" "), finished, blocks };
+  const tot = blocks.reduce((s, b) => s + b.got, 0);
+  log("Dump " + area.name + " " + (finished ? "TERMINÉ (END)" : "interrompu") + " — " + blocks.length + " bloc(s), " + tot + " octets au total.", finished ? "ok" : "info");
+  areaUI(area); exportUI();
+}
+function areaUI(area) {
+  const el = $("st_" + area.id); if (!el) return;
+  const r = results[area.id];
+  let live = null;
+  if (dump.on && dump.area === area) {
+    const bs = Object.keys(dump.blocks).map(Number);
+    live = bs.map(a => "bloc " + A2(a) + " : " + dump.blocks[a].got + "/" + dump.blocks[a].siz).join(" · ") || "handshake…";
+  }
+  if (live) { el.textContent = "⏳ " + live; el.className = "pill warn"; return; }
+  if (!r) { el.textContent = "—"; el.className = "pill off"; return; }
+  const tot = r.blocks.reduce((s, b) => s + b.got, 0);
+  el.textContent = (r.finished ? "✓ " : "⚠ ") + r.blocks.length + " bloc(s), " + tot + " octets" + (r.finished ? "" : " (interrompu)");
+  el.className = "pill " + (r.finished ? "on" : "warn");
+}
+function exportUI() {
+  const n = Object.keys(results).filter(id => results[id].blocks.length).length;
+  $("btnExport").disabled = n === 0;
+  $("expSt").textContent = n ? (n + " aire(s) catalogue(s)") : "aucune aire dumpée";
+  $("expSt").className = "pill " + (n ? "on" : "off");
+}
+// UI des aires
+$("areas").innerHTML = AREAS.map(a =>
+  `<div class="area"><b>${a.name}</b>
+   <button class="sec" data-dump="${a.id}" title="Envoie le dump request ${a.adr.map(A2).join(" ")} — sélectionner le type ${a.kb} sur la page SYSEX BULK DUMP du clavier avant de cliquer">🔄 Dumper</button>
+   <span class="pill off" id="st_${a.id}">—</span>
+   <span class="ast">${a.info} · clavier : type <b>${a.kb}</b></span></div>`).join("");
+document.querySelectorAll("[data-dump]").forEach(btn => btn.onclick = () => {
+  if (!output) { log("Choisir la sortie MIDI.", "ko"); return; }
+  const a = AREAS.find(x => x.id === btn.dataset.dump);
+  dumpStart(a);
+});
+$("btnAllSeq").onclick = async () => {
+  if (!output) { log("Choisir la sortie MIDI.", "ko"); return; }
+  for (const a of AREAS) {
+    const r = results[a.id];
+    if (r && r.finished) continue;
+    log("▶ Enchaînement : aire " + a.name + " — sélectionner le type " + a.kb + " au clavier, puis valider dans 5 s…", "info");
+    await wait(5000);
+    dumpStart(a);
+    while (dump.on) await wait(500);
+    const done = results[a.id] && results[a.id].finished;
+    if (!done) { log("Aire " + a.name + " non terminée — enchaînement stoppé (relancer après contrôle au clavier).", "ko"); return; }
+  }
+  log("✅ Aires enchaînées. Penser au type ALL en fin de validation.", "ok");
+};
+
+// ===== export JSON (auto-documenté, décodable appli Android) =====
+$("btnExport").onclick = () => {
+  const areas = {};
+  for (const a of AREAS) {
+    const r = results[a.id]; if (!r || !r.blocks.length) continue;
+    areas[a.id] = {
+      name: a.name, adr: r.adr, dump_request_adr: a.adr.map(A2).join(" "), date: r.date, finished: r.finished,
+      blocks: r.blocks.map(b => ({
+        adr: A2(b.adr), siz_annonce: b.siz, octets_recus: b.got,
+        // data : octets originaux dénibblisés (SIZ = octets originaux ; sur le fil MIDI ils voyagent nibblisés ×2)
+        // null = octet manquant (paquet perdu/incomplet) ; hex minuscule sans séparateur, MSB en premier
+        data: b.data.map(x => x === null ? "--" : A2(x)).join("")
+      }))
+    };
+  }
+  const cat = {
+    tool: "KN2000 Sauvegarde / Catalogue", format: "kn2000-catalog-v1", version: "0.1",
+    date: new Date().toISOString(), keyboard: "Technics SX-KN2000",
+    encodage: "chaque bloc : 'data' = octets originaux en hex (2 chiffres/octet, MSB d'abord), '--' = octet manquant ; nibblisation/dénibblisation selon Reference Guide p.22 (SIZ = octets originaux)",
+    enables: { ...enableState, note: "DRQ lecture seule 20 04 00/01/02 (SIZ 1) — 00=OFF, 01=ON" },
+    aires_attendues: AREAS.map(a => ({ id: a.id, name: a.name, adr: a.adr.map(A2).join(" ") })),
+    notes_terrain: "Protocole handshake (validé 26/10, console v1.0.9) : un ACK (f0 50 23 7e f7) après chaque paquet reçu (BTR/CDD/EOK/END). Panel : bloc 40 s'arrête à 1056/1088 (écart 32 systématique).",
+    areas
+  };
+  const name = ($("expName").value.trim() || "kn2000-catalogue") + "-" + new Date().toISOString().slice(0, 16).replace("T", "_").replace(":", "h") + ".json";
+  const blob = new Blob([JSON.stringify(cat, null, 2)], { type: "application/json" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  log("💾 Catalogue exporté : " + name + " (" + Object.keys(areas).length + " aire(s)).", "ok");
+};
+
+initMidi();
+</script>
+</body>
+</html>

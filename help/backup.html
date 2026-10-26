@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Aide — Sauvegarde / Catalogue KN2000</title>
+<style>
+  :root { font-family: system-ui, sans-serif; background:#0b1220; color:#e2e8f0; }
+  * { box-sizing:border-box; }
+  body { margin:0 auto; padding:20px; max-width:880px; line-height:1.5; }
+  header { background:#131c30; border-radius:12px; padding:16px 18px; margin-bottom:16px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  h1 { margin:0; font-size:1.2rem; color:#bae6fd; flex:1; }
+  .lang { display:flex; gap:4px; }
+  .lang button { background:#1e3a5f; color:#bae6fd; border:0; border-radius:8px; padding:6px 14px; cursor:pointer; font-weight:600; }
+  .lang button.on { background:#38bdf8; color:#0b1220; }
+  h2 { color:#7dd3fc; font-size:1.05rem; margin:26px 0 8px; border-bottom:1px solid #1e3a5f; padding-bottom:4px; }
+  h3 { color:#bae6fd; font-size:.92rem; margin:16px 0 4px; }
+  p, li { font-size:.92rem; color:#cbd5e1; }
+  a { color:#38bdf8; }
+  code { background:#1e293b; border-radius:5px; padding:1px 5px; font-size:.85em; }
+  .warn { background:#3b2109; border:1px solid #b45309; color:#fdba74; border-radius:10px; padding:10px 14px; margin:12px 0; font-size:.9rem; }
+  .tip { background:#0b2745; border:1px solid #1e3a5f; color:#bae6fd; border-radius:10px; padding:10px 14px; margin:12px 0; font-size:.9rem; }
+  pre { background:#0b1220; border:1px solid #1e293b; border-radius:10px; padding:12px; overflow-x:auto; font-size:.8rem; color:#a5f3fc; }
+  ol, ul { padding-left:22px; }
+  .ver { background:#131c30; border:1px solid #1e293b; border-radius:10px; padding:10px 14px; margin:8px 0; }
+  .ver b { color:#7dd3fc; }
+  .ver .date { color:#64748b; font-size:.8rem; margin-left:8px; }
+  .back { display:inline-block; margin-top:24px; }
+  .en-block { display:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>💾 Sauvegarde / Catalogue — Aide / Help</h1>
+  <div class="lang"><button id="frBtn" class="on" onclick="setLang('fr')">FR</button><button id="enBtn" onclick="setLang('en')">EN</button></div>
+</header>
+
+<!-- ============ FR ============ -->
+<div class="fr-block" lang="fr">
+<div class="tip">💡 Cet outil catalogie l'état complet du clavier par dump handshake (protocole validé le 26/10/2026 avec la Panel Console v1.0.9 : exactement un ACK après chaque paquet reçu), puis exporte une <b>sauvegarde JSON unique horodatée</b>, décodable par une future appli Android de repli terrain.</div>
+
+<h2>🚀 Démarrage rapide</h2>
+<ol>
+  <li>Ouvrir la page dans <b>Chrome, Edge ou Firefox 108+ desktop</b> (Web MIDI avec sysex requis).</li>
+  <li>Brancher l'interface MIDI USB du KN2000, cliquer <b>🔄 Ports</b> et choisir In/Out.</li>
+  <li>Éventuellement <b>📡 Lire les enables</b> (lecture seule, 20 04 00/01/02 — rien n'est écrit sur le clavier). C'est fait automatiquement avant un dump si nécessaire.</li>
+  <li>Au clavier, afficher la page <b>SYSEX BULK DUMP</b> et sélectionner le <b>type correspondant à l'aire à dumper</b>, puis cliquer <b>🔄 Dumper</b> sur l'aire voulue.</li>
+  <li>Une fois les aires voulues cataloguées, cliquer <b>💾 Exporter le catalogue (JSON)</b>.</li>
+</ol>
+
+<h2>🗺️ Aires et types (Reference Guide p.24-27)</h2>
+<ul>
+  <li><b>PANEL</b> — ADR <code>40 00 00</code> — validé terrain (console v1.0.9). Type clavier : <b>PANEL</b>.</li>
+  <li><b>SOUND MEMORY</b> — ADR <code>30 00 00</code> — à valider terrain. Type clavier : <b>SOUND MEMORY</b>.</li>
+  <li><b>COMPOSER</b> — ADR <code>50 00 00</code> — à valider terrain. Type clavier : <b>COMPOSER</b>.</li>
+  <li><b>SEQUENCER</b> — ADR <code>60 00 00</code> — à valider terrain. Type clavier : <b>SEQUENCER</b>.</li>
+</ul>
+<div class="tip">💡 Valider les aires <b>une à une</b> (le type doit être changé au clavier entre chaque aire). Le bouton « ▶ Enchaîner les aires restantes » propose 5 s entre chaque aire pour changer le type. Le type « ALL » du clavier sera testé en dernier, une fois les 4 aires validées.</div>
+<div class="warn">⚠️ Le dump request utilise la forme validée sur le panel (ADR + SIZ <code>00 00 42</code>) pour toutes les aires : si une aire répond ERR 7E / erreur 42, vérifier d'abord que le bon type est sélectionné au clavier, puis consigner le comportement — la trame exacte de cette aire restera à ajuster.</div>
+
+<h2>🤝 Protocole utilisé</h2>
+<p>Identique à la Panel Console v1.0.9 (validé terrain) : DRQ → le clavier envoie HRQ (21) → nous répondons HRT (22) → le clavier envoie HRT (22) → nous acquittons, puis <b>exactement un ACK</b> (<code>f0 50 23 7e f7</code>) <b>après chaque paquet reçu</b> : BTR (2D), chaque paquet CDD (7E) à checksum OK, EOK (27), END (28). Aucun re-DRQ automatique — un re-DRQ parasite relance la page BULK DUMP et contamine le handshake.</p>
+
+<h2>📄 Format du JSON exporté (kn2000-catalog-v1)</h2>
+<p>Le fichier <code>kn2000-catalogue-AAAA-MM-JJ_HHhMM.json</code> est auto-documenté (champ <code>encodage</code>) et pensé pour être décodé par une appli Android :</p>
+<pre>{
+  "tool": "KN2000 Sauvegarde / Catalogue",
+  "format": "kn2000-catalog-v1",
+  "version": "0.1",
+  "date": "2026-10-26T…ISO…",
+  "keyboard": "Technics SX-KN2000",
+  "enables": { "20 04 00": "01", … },
+  "areas": {
+    "panel": {
+      "name": "PANEL",
+      "adr": "40 00 00",            // aire demandée
+      "dump_request_adr": "40 00 00",
+      "date": "…ISO…",
+      "finished": true,             // END reçu
+      "blocks": [
+        {
+          "adr": "40",              // adresse du bloc (2D)
+          "siz_annonce": 1088,      // SIZ du BTR (octets originaux)
+          "octets_recus": 1056,
+          "data": "0a0a0106…"       // hex minuscule, 2 chiffres/octet,
+                                    // MSB d'abord ; "--" = octet manquant
+        }
+      ]
+    }
+  }
+}</pre>
+<ul>
+  <li><code>data</code> contient les <b>octets originaux dénibblisés</b> (sur le fil MIDI ils voyagent nibblisés ×2 — Reference Guide p.22) ; <code>siz_annonce</code> compte les octets originaux.</li>
+  <li>Un octet manquant (paquet perdu ou bloc clôt avant SIZ) est noté <code>--</code> : la chaîne garde toujours <code>2 × siz_annonce</code> caractères, index calculable par <code>index_octet × 2</code>.</li>
+  <li>Exemple décodage Android : <code>int b = Integer.parseInt(data.substring(i*2, i*2+2), 16);</code> — <code>"--"</code> ⇒ octet inconnu.</li>
+</ul>
+<div class="tip">💡 Le bloc 40 du panel s'arrête systématiquement à 1056/1088 octets (écart 32 constant observé sur toutes les captures et le terrain, sans conséquence) : les 32 octets manquants apparaissent en <code>--</code> dans le JSON — c'est normal.</div>
+
+<h2>📜 Historique</h2>
+<div class="ver"><b>v0.1</b><span class="date">2026-10-26</span><br/>Première version : dump générique des 4 aires (protocole handshake v1.0.9), lecture seule des enables, export JSON unique auto-documenté (kn2000-catalog-v1). Panel validé terrain ; aires SOUND MEMORY / COMPOSER / SEQUENCER à valider une à une.</div>
+<p class="back"><a href="../index.html">← Retour / Back</a></p>
+</div>
+
+<!-- ============ EN ============ -->
+<div class="en-block" lang="en">
+<div class="tip">💡 This tool catalogs the keyboard's complete state through handshake bulk dumps (protocol validated on 2026-10-26 with Panel Console v1.0.9: exactly one ACK after every received packet), then exports a <b>single timestamped JSON backup</b>, decodable by a future offline Android app.</div>
+
+<h2>🚀 Quick start</h2>
+<ol>
+  <li>Open the page in <b>Chrome, Edge or Firefox 108+ desktop</b> (Web MIDI with sysex required).</li>
+  <li>Plug the KN2000's USB MIDI interface, click <b>🔄 Ports</b> and pick In/Out.</li>
+  <li>Optionally <b>📡 read the enables</b> (read-only, 20 04 00/01/02 — nothing is written to the keyboard). Done automatically before a dump if needed.</li>
+  <li>On the keyboard, open the <b>SYSEX BULK DUMP</b> page and select the <b>type matching the area to dump</b>, then click <b>🔄 Dumper</b> on that area.</li>
+  <li>Once the wanted areas are cataloged, click <b>💾 Export the catalog (JSON)</b>.</li>
+</ol>
+
+<h2>🗺️ Areas and types (Reference Guide p.24-27)</h2>
+<ul>
+  <li><b>PANEL</b> — ADR <code>40 00 00</code> — field-validated (console v1.0.9). Keyboard type: <b>PANEL</b>.</li>
+  <li><b>SOUND MEMORY</b> — ADR <code>30 00 00</code> — to be field-validated. Keyboard type: <b>SOUND MEMORY</b>.</li>
+  <li><b>COMPOSER</b> — ADR <code>50 00 00</code> — to be field-validated. Keyboard type: <b>COMPOSER</b>.</li>
+  <li><b>SEQUENCER</b> — ADR <code>60 00 00</code> — to be field-validated. Keyboard type: <b>SEQUENCER</b>.</li>
+</ul>
+<div class="tip">💡 Validate areas <b>one by one</b> (the type must be changed on the keyboard between areas). "▶ Chain remaining areas" allows 5 s per area to change the type. The keyboard's "ALL" type will be tested last, once the 4 areas are validated.</div>
+<div class="warn">⚠️ The dump request uses the panel-validated form (ADR + SIZ <code>00 00 42</code>) for all areas: if an area answers ERR 7E / error 42, first check the correct type is selected on the keyboard, then report it — that area's exact frame may need adjusting.</div>
+
+<h2>🤝 Protocol</h2>
+<p>Same as Panel Console v1.0.9 (field-validated): DRQ → keyboard sends HRQ (21) → we answer HRT (22) → keyboard sends HRT (22) → we ACK, then <b>exactly one ACK</b> (<code>f0 50 23 7e f7</code>) <b>after every received packet</b>: BTR (2D), each checksum-OK CDD packet (7E), EOK (27), END (28). No automatic re-DRQ — a stray re-DRQ restarts the BULK DUMP page and breaks the handshake.</p>
+
+<h2>📄 Exported JSON format (kn2000-catalog-v1)</h2>
+<p>The file <code>kn2000-catalogue-YYYY-MM-DD_HHhMM.json</code> is self-documented (<code>encodage</code> field) and designed for an Android app:</p>
+<ul>
+  <li><code>data</code> holds the <b>original de-nibbilized bytes</b> (they travel nibbilized ×2 on the wire — Reference Guide p.22); <code>siz_annonce</code> counts original bytes.</li>
+  <li>A missing byte (lost packet or block closed before SIZ) is written <code>--</code>: the string always keeps <code>2 × siz_annonce</code> characters, byte index = <code>char_index / 2</code>.</li>
+  <li>Android decoding example: <code>int b = Integer.parseInt(data.substring(i*2, i*2+2), 16);</code> — <code>"--"</code> ⇒ unknown byte.</li>
+</ul>
+<div class="tip">💡 The panel's block 40 always stops at 1056/1088 bytes (constant 32-byte gap seen on every capture and in the field, harmless): the 32 missing bytes appear as <code>--</code> in the JSON — this is normal.</div>
+
+<h2>📜 History</h2>
+<div class="ver"><b>v0.1</b><span class="date">2026-10-26</span><br/>First release: generic dump of the 4 areas (v1.0.9 handshake protocol), read-only enables, single self-documented JSON export (kn2000-catalog-v1). Panel field-validated; SOUND MEMORY / COMPOSER / SEQUENCER to be validated one by one.</div>
+<p class="back"><a href="../index.html">← Back</a></p>
+</div>
+
+<script>
+function setLang(l) {
+  document.querySelectorAll(".fr-block,.en-block").forEach(el => el.style.display = "none");
+  document.querySelector("." + l + "-block").style.display = "block";
+  document.getElementById("frBtn").className = l === "fr" ? "on" : "";
+  document.getElementById("enBtn").className = l === "en" ? "on" : "";
+}
+</script>
+</body>
+</html>

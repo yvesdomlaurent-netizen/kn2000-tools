@@ -6,12 +6,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/) — versions 
 Outils :
 - **Sound Editor** — `sound-editor.html` — éditeur de sons Sound Memory (144 octets)
 - **Panel Console** — `panel-console.html` — console de pilotage du clavier
+- **Sauvegarde / Catalogue** — `backup.html` — dump et catalogue de l'état complet du clavier
 
 ---
 
 ## [Non publié] / Unreleased
 
 ## 2026-10-26
+
+### Sauvegarde / Catalogue v0.1 — nouvel outil : dump de toutes les aires, export JSON unique
+- **Nouvelle page dédiée** `backup.html` (demande d'Yves après la validation terrain du dump panel v1.0.9) : cataloguer l'état complet du clavier comme une sauvegarde, en étendant le dump à toutes les aires du Reference Guide (p.24-27).
+- **Moteur de dump générique** reprenant le protocole handshake validé par le terrain (v1.0.9 : exactement un ACK `f0 50 23 7e f7` après chaque paquet reçu — BTR, chaque CDD, EOK, END — jamais de re-DRQ) : réutilise la forme de DRQ validée sur le panel (ADR + SIZ `00 00 42` + CN 00 + SM XOR).
+- **Quatre aires** (doc p.24-27), à valider une à une par le terrain : PANEL `40 00 00` (validé), SOUND MEMORY `30 00 00`, COMPOSER `50 00 00`, SEQUENCER `60 00 00`. Le type correspondant doit être sélectionné sur la page SYSEX BULK DUMP du clavier avant chaque dump ; le bouton « Enchaîner les aires restantes » les parcourt dans l'ordre (5 s pour changer le type au clavier). Le type « ALL » du clavier sera testé en dernier, une fois les 4 aires validées.
+- **Lecture seule des enables sysex** (20 04 00/01/02, SIZ 1) comme la console — lancée automatiquement avant chaque dump si elle n'a pas encore été faite.
+- **Export JSON unique horodaté** (`kn2000-catalogue-YYYY-MM-DD_HHhMM.json`), auto-documenté (format `kn2000-catalog-v1`) : métadonnées, état des enables, et pour chaque aire dumpée la liste des blocs (adresse, SIZ annoncé, octets reçus, données brutes dénibblisées en hex minuscule, `--` = octet manquant). Format pensé pour être décodé par une future appli Android de repli terrain — documenté dans la page d'aide.
+- **Mystère documenté** : le bloc 40 du panel s'arrête systématiquement à 1056/1088 octets (écart 32 constant, sans conséquence) — l'écart est consigné dans le JSON.
+- **Validation hors clavier** : le moteur a été rejoué sur la capture terrain validée du 18/10 (dump panel CtrlrX) — un ACK par paquet (70 ACK pour 70 paquets), fin sur END, bloc 40 à 1056/1088 conforme au terrain, structure d'export vérifiée. Les aires 30/50/60 restent à valider par le terrain.
 
 ### Panel Console v1.0.9 — ACK après chaque paquet (protocole handshake complet par le terrain)
 - **Retour terrain v1.0.8** : lecture des enables OK (tout ON), handshake complet OK, et l'ACK-BTR a **débloqué le dump** — les paquets CDD ont coulé pour la première fois (245 puis 370/1088 octets). Mais le KN2000 s'est arrêté après le 2ᵉ paquet et a répondu ERR 7E + erreur 42 : il attendait l'ACK **du paquet**.
