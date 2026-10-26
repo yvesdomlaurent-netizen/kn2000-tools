@@ -46,7 +46,7 @@
 </style>
 </head>
 <body>
-<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.4.1</span>
+<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.4.2</span>
   <span class="pill warn" title="Page en construction : la restauration est validée terrain pour la Sound Memory uniquement ; Panel/Composer/Sequencer restent à valider (page outils)">🔨 en construction</span></h1>
 <div class="tip">💡 Sauvegarder et restaurer l'état du clavier : <strong>Dumps</strong> (KN2000 → page) puis <strong>Catalogue</strong> (patches versionnés, croisement KN2000 ↔ catalogue, restauration complète ou différentielle).
 <strong>Aucune préparation au clavier n'est nécessaire</strong> (validé terrain 26/10/2026). Mémoires volatiles : le KN2000 ne conserve ses mémoires que ~80 min hors tension.</div>
@@ -106,7 +106,7 @@
 <h2>Restauration (page → KN2000)</h2>
 <div class="cardc">
   <div class="row"><span class="glbl">Aire</span>
-    <label>Restaurer <select id="resArea"></select></label>
+    <label>Restaurer <select id="resArea" title="SOUND MEMORY est la seule aire restaurable aujourd'hui (validée terrain) — les autres restent barrées jusqu'à preuve d'écriture"></select></label>
     <label title="Restaure tout le contenu du patch courant de l'aire (Sound : entête 80 o + 36 sons, 73 trames)">Mode
       <select id="resMode">
         <option value="full">Complet</option>
@@ -443,7 +443,7 @@ $("btnExport").onclick = () => {
     };
   }
   const cat = {
-    tool: "KN2000 Sauvegarde / Catalogue", format: "kn2000-catalog-v1", version: "0.4.1",
+    tool: "KN2000 Sauvegarde / Catalogue", format: "kn2000-catalog-v1", version: "0.4.2",
     name: $("expName").value.trim() || "",
     date: new Date().toISOString(), keyboard: "Technics SX-KN2000",
     encodage: "chaque bloc : 'data' = octets originaux en hex (2 chiffres/octet, MSB d'abord), '--' = octet manquant ; nibblisation/dénibblisation selon Reference Guide p.22 (SIZ = octets originaux)",
@@ -634,8 +634,8 @@ function catUI() {
   const sa = $("resArea");
   const prev = sa.value;
   sa.innerHTML = "";
-  for (const a of AREAS) sa.add(new Option(a.name + (a.id === "sound" ? " ✅" : " (à valider)"), a.id));
-  if (prev) sa.value = prev;
+  for (const a of AREAS) sa.add(new Option(a.name + (a.id === "sound" ? " ✅ restaurable" : " — à valider"), a.id));
+  sa.value = prev || "sound";   // défaut : SOUND MEMORY (seule aire restaurable aujourd'hui)
   resUI();
 }
 

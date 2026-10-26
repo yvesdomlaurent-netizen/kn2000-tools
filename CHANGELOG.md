@@ -14,6 +14,10 @@ Outils :
 
 ## 2026-10-26
 
+### Sauvegarde / Catalogue v0.4.2 — restauration : SOUND MEMORY par défaut dans le sélecteur (retour terrain v0.4.1)
+- **Retour terrain v0.4.1** : Yves ne trouvait pas la restauration — le sélecteur d'aire s'ouvrait sur **PANEL** (barré « à valider ») → le bouton ↩️ Restaurer apparaissait désactivé et la fonction semblait absente.
+- **Correctif** : le sélecteur d'aire de la carte Restauration s'ouvre par défaut sur **SOUND MEMORY** (la seule aire restaurable à ce jour), libellée « ✅ restaurable » ; les autres affichent « — à valider » avec tooltip explicite. Le bouton reste actif dès qu'un patch Sound existe et que la connexion est établie.
+
 ### Sauvegarde / Catalogue v0.4.1 — écart 32 du bloc 40 PANEL normalisé (retour terrain v0.4.0)
 - **Retour terrain v0.4.0** : premiers tests OK (aires enchaînées, export nommé `KN2000_YL-….json`, patches Sound/Composer/Sequencer, import dédupliqué) — mais le patch PANEL était **refusé à tort** : « 32 octets manquants ». C'est l'**écart 32 documenté du bloc 40** (s'arrête systématiquement à 1056/1088, jamais émis par le clavier — constat terrain 18-26/10), pas une perte.
 - **Normalisation** : le garde-fou « octets manquants » accepte désormais l'écart 32 du bloc 40 du PANEL (patch catalogué avec les octets connus, badge « écart 32 documenté » sur la ligne du patch, log explicite). Toute autre perte réelle reste **refusée** (bloc, aire ou Sound incomplet).
