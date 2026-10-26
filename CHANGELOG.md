@@ -86,6 +86,12 @@ Outils :
 - **Mystère documenté** : le bloc 40 du panel s'arrête systématiquement à 1056/1088 octets (écart 32 constant, sans conséquence) — l'écart est consigné dans le JSON.
 - **Validation hors clavier** : le moteur a été rejoué sur la capture terrain validée du 18/10 (dump panel CtrlrX) — un ACK par paquet (70 ACK pour 70 paquets), fin sur END, bloc 40 à 1056/1088 conforme au terrain, structure d'export vérifiée. Les aires 30/50/60 restent à valider par le terrain.
 
+### Panel Console v1.0.11 — un dump réussi alimente automatiquement la bibliothèque (24 ensembles « PM A1…C8 »)
+- **Cadrage Yves** : « lorsque je demande le dump je voudrais que le résultat alimente l'onglet bibliothèque automatiquement » — les 24 PM d'un dump = l'image de l'état du clavier, donc l'onglet doit les montrer d'après le dump.
+- **Pont dump → bibliothèque** : à la fin d'un dump (bloc 41 fusionné au cache), `libSyncFromDump()` crée/remplace **24 ensembles « PM A1 » … « PM C8 »** décodés sémantiquement (`pmSnapFromBytes` : sons R1/R2/LEFT via KN, rythme, vols, drums, Digital/DSP par part, APC, conductor, DSP, tempo/split en survol). ▶ Charger les rejoue en temps réel ; **ensembles personnels intacts** (seules les entrées « PM A1…C8 » sont remplacées) ; PM non décodable signalée sans entrée.
+- **Sécurité chargement** : TC non décodé dans une PM → `libLoad` n'envoie plus rien sur le TC quand `tc` est absent (null-safe, mention « TC : non décodé » dans le survol) ; reverb/transpose/apc-vols absents d'une PM = ignorés (déjà null-safe).
+- **Validation hors clavier** : syntaxe OK + 8 tests ciblés verts sur `pmSnapFromBytes` (parts KN labels/values, rythme, vols, tc null, conductor, APC type/mem, tempo/split, signature absente → null).
+
 ### Panel Console v1.0.10 — dump conforme à la séquence validée (DRQ direct, page SYSEX BULK DUMP retirée)
 - **Cadrage Yves** : avant de valider la chaîne Panel → écriture sur le KN2000, aligner la séquence de dump complet de la Console sur celle validée dans backup.html le 26/10.
 - **DRQ direct** : la lecture préalable des enables sysex (20 04 00/01/02) avant chaque bulk est **supprimée** — le DRQ `40 00 00` part directement depuis la page (3 échanges MIDI en moins, comportement identique à backup.html). La séquence handshake validée est inchangée : HRQ → HRT ; HRT → ACK ; **un ACK par paquet** (BTR, chaque CDD, EOK, END) ; **jamais de re-DRQ**.

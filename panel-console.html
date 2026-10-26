@@ -70,7 +70,7 @@
   <span class="bdg" id="bdgKn" title="Connexion KN2000 — clique pour ouvrir les réglages (section connexion)">🎹 KN2000 ○</span>
   <span class="bdg" id="bdgDir" title="Dossier de travail (exports/imports de la bibliothèque) — clique pour ouvrir les réglages (section dossier)">📁 —</span>
   <span style="flex:1"></span>
-  <h1>🎹 KN2000 Console <span style="font-size:.6em;color:#8fd0ff">v1.0.10</span></h1>
+  <h1>🎹 KN2000 Console <span style="font-size:.6em;color:#8fd0ff">v1.0.11</span></h1>
   <span style="flex:1"></span>
   <label class="ghost" title="Afficher/masquer le journal MIDI (sysex)"><input type="checkbox" id="logBtn" style="width:15px;height:15px;vertical-align:middle;transform:translateY(-1px)"> 📜 Log MIDI</label>
   <button class="ghost" id="btnCfg" title="Réglages & Aide : connexion, dossier de travail, moniteur, langue">⚙️ Réglages</button>
@@ -964,6 +964,7 @@ function pmDumpEnd(finished) {
   }
   cache.date = new Date().toISOString();
   pmCacheSave(cache); pmCacheUI();
+  libSyncFromDump(cache);   // v1.0.11 : le dump alimente la bibliothèque (24 ensembles PM)
   const ok41 = blk ? blk.got : 0, siz41 = blk ? blk.siz : 8064;
   const okTotal = cache.banks.filter(b => b && b.ok).length;
   const blkList = Object.keys(pmDump.blocks).map(a => "bloc " + A2(Number(a)) + " : " + pmDump.blocks[a].got + "/" + pmDump.blocks[a].siz).join(" · ");   // v1.0.8 : récap de TOUS les blocs reçus (le bloc 40 était invisible au test v1.0.7)
@@ -1009,6 +1010,42 @@ $("pmWrite").onclick = () => {
   const a = pmAddr(idx);
   setTimeout(() => { send(sysex2C(a, pmRec)); log("[TX] 2C → écriture PM " + PM_NAMES[idx] + " (336 octets, ADR 41 " + A2(a[1]) + " " + A2(a[2]) + ")", "ok"); }, 120);
 };
+// ===== v1.0.11 : un dump reussi alimente la bibliothèque (24 ensembles « PM A1…C8 ») =====
+function pmSnapFromBytes(rec) {   // PM 336 o -> snapshot sémantique au format de la bibliothèque
+  if (!rec || rec.length < 328) return null;
+  const g = i => (rec[i] === null || rec[i] === undefined) ? 0 : rec[i];
+  if (g(1) !== 0x0a || g(13) !== 0x0a) return null;
+  const partSnap = (off, id) => { const snd = KN.sounds.find(x => x[4] === g(off + 2) && x[5] === g(off + 6) * 16);
+    return { id, value: snd ? (snd[0] + "/" + snd[1]) : null, label: snd ? snd[2] : ("PC " + g(off + 2) + " ?") }; };
+  const rhy = KN.rhythms.find(x => x[4] === g(278) && x[5] === g(288) * 16);
+  const dsp = []; for (let k = 309; k < 318; k++) dsp.push(g(k));
+  return { parts: [partSnap(0, "p1"), partSnap(12, "p2"), partSnap(24, "p3")],
+    rhythm: { value: rhy ? (rhy[0] + "/" + rhy[1]) : null, label: rhy ? rhy[2] : ("PC " + g(278) + " ?") },
+    tc: null,
+    vols: { r1: g(3), r2: g(15), l: g(27), drums: g(243), apc: null },
+    fx: [0, 1, 2].map(n => { const b = g(n * 12 + 4); return { de: (b & 0x40) ? "ON" : "OFF", dsp: (b & 0x20) ? "ON" : "OFF" }; }),
+    reverb: null,
+    conductor: g(297) === 2 ? 2 : ((g(296) & 3) || 0),
+    dsp: dspSummary(dsp), dspRaw: dsp,
+    apc: { type: g(280) & 3, mem: (g(280) & 4) ? 1 : 0 },
+    transpose: null,
+    pm: { tempo: g(290) * 2, split: g(319) } };
+}
+function libSyncFromDump(cache) {   // dump reussi -> 24 ensembles « PM A1…C8 » remplacés par l'état machine
+  let n = 0;
+  const list = libGet(), out = [];
+  for (const it of list) { if (/^PM [ABC][1-8]$/.test(it.name)) continue; out.push(it); }   // ensembles personnels intacts, PM auto remplacés
+  for (let i = 0; i < 24; i++) {
+    if (!(cache.banks[i] && cache.banks[i].ok)) continue;
+    const snap = pmSnapFromBytes(cache.banks[i].data);
+    if (!snap) { log("📚 PM " + PM_NAMES[i] + " non décodable — entrée bibliothèque non créée.", "ko"); continue; }
+    out.push({ name: "PM " + PM_NAMES[i], date: new Date().toISOString().slice(0, 16).replace("T", " "), snap });
+    n++;
+  }
+  libSet(out); libRender();
+  log("📚 Bibliothèque : " + n + "/24 ensembles « PM A1…C8 » mis à jour depuis le dump (▶ Charger les rejoue en temps réel ; ensembles personnels intacts).", n ? "ok" : "info");
+}
+
 // ===== bibliothèque d'ensembles (localStorage) =====
 const LIBKEY = "kn2000-lib";
 const libGet = () => { try { return JSON.parse(localStorage.getItem(LIBKEY)) || []; } catch (e) { return []; } };
@@ -1049,7 +1086,7 @@ function libRender() {
     const v = it.snap.vols;
     const vs = v ? [v.r1, v.r2, v.l].map(x => x == null ? "?" : x).join("/") : "?/?/?";
     const tr = document.createElement("tr");
-    const tdN = document.createElement("td"); tdN.textContent = it.name; tdN.title = (it.date || "") + (it.snap.dsp ? " · " + it.snap.dsp : "") + (it.snap.transpose != null && it.snap.transpose >= 0 ? " · Tr " + TR[it.snap.transpose] : ""); tr.appendChild(tdN);
+    const tdN = document.createElement("td"); tdN.textContent = it.name; tdN.title = (it.date || "") + (it.snap.dsp ? " · " + it.snap.dsp : "") + (it.snap.transpose != null && it.snap.transpose >= 0 ? " · Tr " + TR[it.snap.transpose] : "") + (it.snap.pm && it.snap.pm.tempo != null ? " · tempo " + it.snap.pm.tempo + " · split " + it.snap.pm.split : "") + (it.snap.tc === null ? " · TC : non décodé (dump PM)" : ""); tr.appendChild(tdN);
     for (const lbl of [p(0), p(1), p(2), it.snap.rhythm.label || "?", it.snap.tc ? "ON" : "—", vs]) { const td = document.createElement("td"); td.textContent = lbl; td.title = lbl; tr.appendChild(td); }
     const tdA = document.createElement("td");
     const bLoad = document.createElement("button"); bLoad.textContent = "▶ Charger";
@@ -1079,13 +1116,13 @@ async function libLoad(name) {
   for (const p of s.parts) { $(p.id).value = p.value; $(p.id + "v").textContent = p.label; }
   $("rhySel").value = s.rhythm.value;
   const tcOn = s.tc === 1;
-  $("tcBtn").textContent = tcOn ? "ON" : "OFF"; $("tcBtn").className = tcOn ? "on" : "sec";
+  if (s.tc !== null && s.tc !== undefined) { $("tcBtn").textContent = tcOn ? "ON" : "OFF"; $("tcBtn").className = tcOn ? "on" : "sec"; }
   log("Chargement de \"" + name + "\" vers le clavier\u2026", "info");
   send(sysex2C([0x20, 0x04, 0x00], [0x01])); await wait(120);   // enables requis (méthodes validées)
   send(sysex2C([0x20, 0x04, 0x01], [0x01])); await wait(120);
   for (const pt of PARTS) { await sendPartSound(pt); await wait(120); }
   await sendRhythm(); await wait(150);
-  send(sysex2C([0x20, 0x08, 0x08], [tcOn ? 1 : 0])); await wait(100);
+  if (s.tc !== null && s.tc !== undefined) { send(sysex2C([0x20, 0x08, 0x08], [tcOn ? 1 : 0])); await wait(100); }   // v1.0.11 : PM sans TC décode -> pas d envoi TC
   if (s.vols) {
     const pv = [[0, s.vols.r1], [1, s.vols.r2], [2, s.vols.l]];
     for (const [n, v] of pv) if (v !== null && v !== undefined) { send(sysex2C([0x20, 0x10 + n, 0x02], [v & 0x7f])); await wait(80); }
