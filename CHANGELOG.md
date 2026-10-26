@@ -14,6 +14,12 @@ Outils :
 
 ## 2026-10-26
 
+### Sauvegarde / Catalogue v0.4.1 — écart 32 du bloc 40 PANEL normalisé (retour terrain v0.4.0)
+- **Retour terrain v0.4.0** : premiers tests OK (aires enchaînées, export nommé `KN2000_YL-….json`, patches Sound/Composer/Sequencer, import dédupliqué) — mais le patch PANEL était **refusé à tort** : « 32 octets manquants ». C'est l'**écart 32 documenté du bloc 40** (s'arrête systématiquement à 1056/1088, jamais émis par le clavier — constat terrain 18-26/10), pas une perte.
+- **Normalisation** : le garde-fou « octets manquants » accepte désormais l'écart 32 du bloc 40 du PANEL (patch catalogué avec les octets connus, badge « écart 32 documenté » sur la ligne du patch, log explicite). Toute autre perte réelle reste **refusée** (bloc, aire ou Sound incomplet).
+- **Diff aligné** : dans le croisement du tableau de bord, un octet manquant **des deux côtés** (dump et patch, ex. l'écart 32) compte comme identique — un dump PANEL re-importé comparé à lui-même affiche 🟢 conforme.
+- Validation hors clavier : 6 tests ciblés (écart accepté, dédup panel, vraie perte refusée, Sound incomplet toujours refusé, diff null=null, store final) + les 16 tests v0.4.0 inchangés.
+
 ### Sauvegarde / Catalogue v0.4.0 — finalisation usage : onglets Dumps/Catalogue, patches dédupliqués, restauration complète ou différentielle
 - **Deux onglets** : 📡 **Dumps** (dump par aire + « Sauvegarder tout », export JSON unique désormais nommé) et 📚 **Catalogue** — la page devient l'outil de sauvegarde/restauration courant, socle d'une future appli Android. Le panneau technique (enables 📡, adresses de base, N o/trame, pace, envoi manuel bloc par bloc, 🔍 Comparer) déménage dans la **page privée `tools.html`** (moteur v0.3.1 inchangé), liée depuis la page principale — lien retirable quand la page sera complète.
 - **Patches versionnés dédupliqués par contenu** : « 💾 Cataloguer » sauvegarde le dernier dump d'une aire comme patch (nom auto + date). Contenu identique au patch précédent → **seule la date est mise à jour** ; contenu différent → nouvelle version. Les anciennes versions ne sont **jamais écrasées** (suppression 🗑 explicite uniquement). L'import d'un JSON kn2000-catalog-v1 crée les patches par aire avec la même déduplication ; les dumps incomplets (octets `--`) sont refusés.

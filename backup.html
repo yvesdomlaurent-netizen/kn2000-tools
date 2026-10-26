@@ -46,7 +46,7 @@
 </style>
 </head>
 <body>
-<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.4.0</span>
+<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.4.1</span>
   <span class="pill warn" title="Page en construction : la restauration est validée terrain pour la Sound Memory uniquement ; Panel/Composer/Sequencer restent à valider (page outils)">🔨 en construction</span></h1>
 <div class="tip">💡 Sauvegarder et restaurer l'état du clavier : <strong>Dumps</strong> (KN2000 → page) puis <strong>Catalogue</strong> (patches versionnés, croisement KN2000 ↔ catalogue, restauration complète ou différentielle).
 <strong>Aucune préparation au clavier n'est nécessaire</strong> (validé terrain 26/10/2026). Mémoires volatiles : le KN2000 ne conserve ses mémoires que ~80 min hors tension.</div>
@@ -443,7 +443,7 @@ $("btnExport").onclick = () => {
     };
   }
   const cat = {
-    tool: "KN2000 Sauvegarde / Catalogue", format: "kn2000-catalog-v1", version: "0.4.0",
+    tool: "KN2000 Sauvegarde / Catalogue", format: "kn2000-catalog-v1", version: "0.4.1",
     name: $("expName").value.trim() || "",
     date: new Date().toISOString(), keyboard: "Technics SX-KN2000",
     encodage: "chaque bloc : 'data' = octets originaux en hex (2 chiffres/octet, MSB d'abord), '--' = octet manquant ; nibblisation/dénibblisation selon Reference Guide p.22 (SIZ = octets originaux)",
@@ -484,12 +484,19 @@ function hashBlocks(blocks) {   // empreinte de contenu (déduplication)
 }
 function patchCount(id) { return (st.patches[id] || []).length; }
 function curPatch(id) { const l = st.patches[id] || []; return l.length ? l[l.length - 1] : null; }
+// écart documenté : bloc 40 du PANEL s'arrête systématiquement à 1056/1088 (32 o jamais émis — terrain 18-26/10) → normalisé
+function docGap(areaId, b) { const a = typeof b.adr === "string" ? parseInt(b.adr, 16) : b.adr; return areaId === "panel" && a === 0x40 && b.siz === 1088 && b.got >= 1056; }
 function savePatch(id, ser, srcName) {
   if (!ser || !ser.blocks || !ser.blocks.length) { log("Rien à cataloguer pour " + areaName(id) + ".", "ko"); return null; }
   if (!st.patches[id]) st.patches[id] = [];
   const h = hashBlocks(ser.blocks);
-  const miss = blocksBytes(ser.blocks).filter(x => x === null).length;
-  if (miss) { log("Patch " + areaName(id) + " refusé : " + miss + " octet(s) manquant(s) dans le dump — re-dumper l'aire.", "ko"); return null; }
+  const bytes = blocksBytes(ser.blocks);
+  const miss = bytes.filter(x => x === null).length;
+  if (miss) {
+    const bad = ser.blocks.filter(b => b.data && b.data.indexOf("--") >= 0 && !docGap(id, b));
+    if (bad.length) { log("Patch " + areaName(id) + " refusé : " + miss + " octet(s) manquant(s) hors écart documenté (bloc " + bad.map(b => A2(b.adr)).join(", ") + ") — re-dumper l'aire.", "ko"); return null; }
+    log("ℹ️ " + areaName(id) + " : écart 32 documenté du bloc 40 accepté (jamais émis par le clavier) — patch catalogué avec les octets connus.", "info");
+  }
   const prev = curPatch(id);
   const nm = srcName || (areaName(id) + " v" + (patchCount(id) + 1));
   if (prev && prev.hash === h) {
@@ -555,12 +562,13 @@ function soundSlots(ser) {   // 36 noms de sons depuis le bloc 5184 o
 }
 
 // ===== tableau de bord : croisement dernier dump ↔ patch courant =====
-function diffBytes(pa, pb) {   // pa/pb : flux d'octets alignés
+function diffBytes(pa, pb) {   // pa/pb : flux d'octets alignés — manquant des deux côtés = identique (écart 32 normalisé)
   const n = Math.max(pa.length, pb.length);
   let same = 0, diff = 0, miss = 0;
   for (let i = 0; i < n; i++) {
     const a = pa[i], b = pb[i];
-    if (a === null || b === null || a === undefined || b === undefined) miss++;
+    if (a === null && b === null) same++;
+    else if (a === null || b === null || a === undefined || b === undefined) miss++;
     else if (a === b) same++; else diff++;
   }
   return { same, diff, miss };
@@ -595,7 +603,8 @@ function patchesUIhtml() {
     for (let i = l.length - 1; i >= 0; i--) {
       const p = l[i];
       out += "<div class='ptline" + (i === l.length - 1 ? " cur" : "") + "'><span>" + (i === l.length - 1 ? "▶ " : "") + "<b>" + p.name + "</b></span>"
-        + "<span class='ast'>" + fmtDate(p.date) + " · " + p.area.blocks.length + " bloc(s) · " + blocksBytes(p.area.blocks).length + " o</span>"
+        + "<span class='ast'>" + fmtDate(p.date) + " · " + p.area.blocks.length + " bloc(s) · " + blocksBytes(p.area.blocks).filter(x => x !== null).length + " o"
+        + (p.area.blocks.some(b => b.data && b.data.indexOf("--") >= 0) ? " · écart 32 documenté (bloc 40)" : "") + "</span>"
         + (a.id === "sound" ? "" : "<span class='ast'>restauration à valider</span>")
         + "<button class='sec' data-del=\"" + p.id + "\" title='Supprimer explicitement ce patch (jamais automatique)'>🗑</button></div>";
       if (a.id === "sound") {
