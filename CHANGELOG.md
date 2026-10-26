@@ -14,6 +14,13 @@ Outils :
 
 ## 2026-10-26
 
+### Sauvegarde / Catalogue v0.2 — connexion à la charte des pages (bouton Connecter + ping KN2000)
+- **Retour terrain v0.1** : la page affichait « non connecté » sans bouton de connexion — seule la sélection In/Out existait, sans test de réponse du clavier.
+- **Connexion identique à la Panel Console (charte des pages)** : bouton **🔌 Connecter** avec test de liaison (ping DRQ 20 00 02 Transpose, SIZ 1) AVANT toute action — pastille **● connecté** seulement si le KN2000 répond, sinon **⚠ pas de réponse** avec vérifications conseillées ; lecture automatique des enables après une connexion réussie.
+- **Ports mémorisés par id + nom** (clé dédiée `kn2000_bk_io`), restauration par id puis par nom (les ids Web MIDI peuvent changer entre sessions), **tentative de connexion automatique** au chargement si les deux ports mémorisés sont retrouvés — comme la console.
+- **Statut Web MIDI explicite** (ligne sous la connexion) : aucun port détecté, accès refusé (popup Chrome), sysex bloqué (page servie en file://), avec la procédure http://localhost — messages repris de la console.
+- Moteur de dump inchangé (protocole v1.0.9) — revalidé par rejeu de la capture terrain 18/10 : ping → réponse → connecté, 70 ACK pour 70 paquets, 1 DRQ panel exact, bloc 40 à 1056/1088, export kn2000-catalog-v1 conforme.
+
 ### Sauvegarde / Catalogue v0.1 — nouvel outil : dump de toutes les aires, export JSON unique
 - **Nouvelle page dédiée** `backup.html` (demande d'Yves après la validation terrain du dump panel v1.0.9) : cataloguer l'état complet du clavier comme une sauvegarde, en étendant le dump à toutes les aires du Reference Guide (p.24-27).
 - **Moteur de dump générique** reprenant le protocole handshake validé par le terrain (v1.0.9 : exactement un ACK `f0 50 23 7e f7` après chaque paquet reçu — BTR, chaque CDD, EOK, END — jamais de re-DRQ) : réutilise la forme de DRQ validée sur le panel (ADR + SIZ `00 00 42` + CN 00 + SM XOR).

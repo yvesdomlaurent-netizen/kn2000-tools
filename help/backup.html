@@ -43,8 +43,8 @@
 <ol>
   <li>Ouvrir la page dans <b>Chrome, Edge ou Firefox 108+ desktop</b> (Web MIDI avec sysex requis).</li>
   <li>Brancher l'interface MIDI USB du KN2000, cliquer <b>🔄 Ports</b> et choisir In/Out.</li>
-  <li>Éventuellement <b>📡 Lire les enables</b> (lecture seule, 20 04 00/01/02 — rien n'est écrit sur le clavier). C'est fait automatiquement avant un dump si nécessaire.</li>
-  <li>Au clavier, afficher la page <b>SYSEX BULK DUMP</b> et sélectionner le <b>type correspondant à l'aire à dumper</b>, puis cliquer <b>🔄 Dumper</b> sur l'aire voulue.</li>
+  <li>Brancher l'interface, la page tente la connexion automatique avec les ports mémorisés ; sinon choisir In/Out puis <b>🔌 Connecter</b> — le KN2000 est testé par un ping (DRQ 20 00 02) et les enables sont lus automatiquement une fois connecté (lecture seule, rien n'est écrit).</li>
+  <li>Une fois la pastille <b>● connecté</b> affichée : au clavier, afficher la page <b>SYSEX BULK DUMP</b> et sélectionner le <b>type correspondant à l'aire à dumper</b>, puis cliquer <b>🔄 Dumper</b> sur l'aire voulue.</li>
   <li>Une fois les aires voulues cataloguées, cliquer <b>💾 Exporter le catalogue (JSON)</b>.</li>
 </ol>
 
@@ -66,7 +66,7 @@
 <pre>{
   "tool": "KN2000 Sauvegarde / Catalogue",
   "format": "kn2000-catalog-v1",
-  "version": "0.1",
+  "version": "0.2",
   "date": "2026-10-26T…ISO…",
   "keyboard": "Technics SX-KN2000",
   "enables": { "20 04 00": "01", … },
@@ -97,6 +97,7 @@
 <div class="tip">💡 Le bloc 40 du panel s'arrête systématiquement à 1056/1088 octets (écart 32 constant observé sur toutes les captures et le terrain, sans conséquence) : les 32 octets manquants apparaissent en <code>--</code> dans le JSON — c'est normal.</div>
 
 <h2>📜 Historique</h2>
+<div class="ver"><b>v0.2</b><span class="date">2026-10-26</span><br/>Connexion à la charte des pages : bouton 🔌 Connecter avec ping KN2000 (DRQ 20 00 02), pastille ● connecté, ports mémorisés id+nom avec connexion automatique, statut Web MIDI explicite, lecture auto des enables après connexion.</div>
 <div class="ver"><b>v0.1</b><span class="date">2026-10-26</span><br/>Première version : dump générique des 4 aires (protocole handshake v1.0.9), lecture seule des enables, export JSON unique auto-documenté (kn2000-catalog-v1). Panel validé terrain ; aires SOUND MEMORY / COMPOSER / SEQUENCER à valider une à une.</div>
 <p class="back"><a href="../index.html">← Retour / Back</a></p>
 </div>
@@ -109,8 +110,8 @@
 <ol>
   <li>Open the page in <b>Chrome, Edge or Firefox 108+ desktop</b> (Web MIDI with sysex required).</li>
   <li>Plug the KN2000's USB MIDI interface, click <b>🔄 Ports</b> and pick In/Out.</li>
-  <li>Optionally <b>📡 read the enables</b> (read-only, 20 04 00/01/02 — nothing is written to the keyboard). Done automatically before a dump if needed.</li>
-  <li>On the keyboard, open the <b>SYSEX BULK DUMP</b> page and select the <b>type matching the area to dump</b>, then click <b>🔄 Dumper</b> on that area.</li>
+  <li>Plug the interface: the page tries to auto-connect with the memorized ports; otherwise pick In/Out then <b>🔌 Connect</b> — the KN2000 is tested by a ping (DRQ 20 00 02) and the enables are read automatically once connected (read-only, nothing is written).</li>
+  <li>Once the <b>● connecté</b> badge shows: on the keyboard, open the <b>SYSEX BULK DUMP</b> page and select the <b>type matching the area to dump</b>, then click <b>🔄 Dumper</b> on that area.</li>
   <li>Once the wanted areas are cataloged, click <b>💾 Export the catalog (JSON)</b>.</li>
 </ol>
 
@@ -137,6 +138,7 @@
 <div class="tip">💡 The panel's block 40 always stops at 1056/1088 bytes (constant 32-byte gap seen on every capture and in the field, harmless): the 32 missing bytes appear as <code>--</code> in the JSON — this is normal.</div>
 
 <h2>📜 History</h2>
+<div class="ver"><b>v0.2</b><span class="date">2026-10-26</span><br/>Connection brought to the pages charte: 🔌 Connect button with KN2000 ping (DRQ 20 00 02), ● connecté badge, id+name memorized ports with auto-connect, explicit Web MIDI status, automatic enables read after connect.</div>
 <div class="ver"><b>v0.1</b><span class="date">2026-10-26</span><br/>First release: generic dump of the 4 areas (v1.0.9 handshake protocol), read-only enables, single self-documented JSON export (kn2000-catalog-v1). Panel field-validated; SOUND MEMORY / COMPOSER / SEQUENCER to be validated one by one.</div>
 <p class="back"><a href="../index.html">← Back</a></p>
 </div>

@@ -26,7 +26,7 @@
 </style>
 </head>
 <body>
-<h1>💾 KN2000 Sauvegarde / Catalogue <span style="font-size:.6em;color:#8fd0ff">v0.1</span></h1>
+<h1>💾 KN2000 Sauvegarde / Catalogue <span style="font-size:.6em;color:#8fd0ff">v0.2</span></h1>
 <div class="tip">💡 Catalogue l'état complet du clavier par dump handshake (protocole validé v1.0.9 : un ACK après chaque paquet).
 <strong>Mode d'emploi</strong> : au clavier, afficher la page <strong>SYSEX BULK DUMP</strong> et sélectionner le <strong>type correspondant</strong> à l'aire demandée, puis cliquer l'aire ci-dessous.
 Chaque aire se valide une à une ; l'export produit un <strong>JSON unique horodaté</strong>, auto-documenté (décodable par une future appli Android de repli terrain).</div>
@@ -36,10 +36,12 @@ Chaque aire se valide une à une ; l'export produit un <strong>JSON unique horod
     <button class="sec" id="btnRefreshPorts" title="Recherche les ports MIDI disponibles">🔄 Ports</button>
     <label title="Entrée MIDI venant du KN2000">In <select id="inSel"></select></label>
     <label title="Sortie MIDI vers le KN2000">Out <select id="outSel"></select></label>
+    <button id="btnConnect" title="Connecte la page au KN2000 (test de réponse, puis lecture des enables si OK)">🔌 Connecter</button>
     <span class="pill off" id="stMidi">non connecté</span>
     <span style="flex:1"></span>
     <button class="sec" id="btnClear" title="Vide le journal">🧹 Vider</button>
   </div>
+  <div class="ast" id="stWeb">Web MIDI…</div>
   <div class="row"><span class="glbl">Fonctions MIDI</span>
     <span class="pill off" id="enSt">enables non lus</span>
     <button class="sec" id="btnEnables" title="Lecture seule de l'état des enables sysex (20 04 00/01/02) — rien n'est écrit">📡 Lire les enables</button>
@@ -75,7 +77,7 @@ function denibble(arr) { const o = []; for (let i = 0; i + 1 < arr.length; i += 
 function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // ===== Web MIDI =====
-let midi = null, input = null, output = null, monitor = true;
+let access = null, input = null, output = null, monitor = true, connOk = false;
 function send(bytes) { if (!output) { log("Pas de sortie MIDI sélectionnée.", "ko"); return false; } try { output.send(bytes); return true; } catch (e) { log("Erreur d'envoi : " + e.message, "ko"); return false; } }
 function logRaw(d) {
   let txt;
@@ -92,6 +94,7 @@ function onMsg(ev) {
   if (d[0] === 0xf0 && d[1] === 0x50 && d[2] === 0x29) {   // ERR — pendant un dump : arrêt immédiat
     const code = d[3];
     const msg = code === 0x7e ? "ERR 7E — adresse inexistante ou demande refusée" : "ERR code " + A2(code);
+    connOk = true; // la machine répond (même d'erreur) → liaison validée
     log("[RX] ⚠️ Réponse d'erreur du KN2000 : " + msg + " — trame " + hex([...d]), "ko");
     if (dump.on) { log("Erreur pendant le dump — arrêt de l'aire. Type sélectionné au clavier correspond-il à l'aire demandée ?", "ko"); dumpEnd(false); }
     return;
@@ -101,6 +104,7 @@ function onMsg(ev) {
     if (dump.on && (c2 === 0x21 || c2 === 0x22 || c2 === 0x2d || c2 === 0x7e || c2 === 0x27 || c2 === 0x28)) { dumpMsg([...d]); return; }
     if (!dump.on && (c2 === 0x2d || c2 === 0x7e)) { log("[RX] trame dump " + A2(c2) + " reçue hors dump — ignorée", "info"); return; }
     if (c2 === 0x2c) {   // ITR : réponse aux lectures d'enables
+      connOk = true; // le KN2000 a répondu → liaison validée
       const ck = d[d.length - 2], cn = d[d.length - 3];
       const calc = d.slice(1, d.length - 3).reduce((a, x) => a ^ x, 0);
       if (calc !== ck && (calc ^ cn) !== ck) { log("[RX] 2C checksum KO — ignoré", "ko"); return; }
@@ -111,31 +115,76 @@ function onMsg(ev) {
     }
   }
 }
+// ===== connexion (même charte que la Panel Console v1.0.9) : ports mémorisés id+nom, restauration, connexion explicite + ping, auto-connexion =====
+function ioLoad() { try { return JSON.parse(localStorage.getItem("kn2000_bk_io") || "{}") || {}; } catch (e) { return {}; } }
+function ioSave() { try { const si = $("inSel").selectedOptions[0], so = $("outSel").selectedOptions[0];
+    localStorage.setItem("kn2000_bk_io", JSON.stringify({ inId: $("inSel").value || null, inName: si ? si.textContent : null, outId: $("outSel").value || null, outName: so ? so.textContent : null })); } catch (e) { } }
+function stMidiSet(txt, cls) { const el = $("stMidi"); el.textContent = txt; el.className = "pill " + (cls || "off"); }
+function pick() {
+  output = ($("outSel").value && access.outputs.get($("outSel").value)) || null;
+  input = ($("inSel").value && access.inputs.get($("inSel").value)) || null;
+  if (input) { try { input.onmidimessage = onMsg; } catch (e) { } }
+}
 function fillPorts() {
-  const keepIn = localStorage.getItem("kn2000_bk_in"), keepOut = localStorage.getItem("kn2000_bk_out");
-  const ins = [...midi.inputs.values()], outs = [...midi.outputs.values()];
-  $("inSel").innerHTML = ins.map(p => `<option ${p.name === keepIn ? "selected" : ""}>${p.name}</option>`).join("");
-  $("outSel").innerHTML = outs.map(p => `<option ${p.name === keepOut ? "selected" : ""}>${p.name}</option>`).join("");
-  return { inName: $("inSel").value, outName: $("outSel").value };
+  for (const sel of [$("outSel"), $("inSel")]) { sel.innerHTML = ""; sel.add(new Option("— choisir —", "")); }
+  access.outputs.forEach(p => $("outSel").add(new Option(p.name, p.id)));
+  access.inputs.forEach(p => $("inSel").add(new Option(p.name, p.id)));
+  const io = ioLoad();
+  const restore = (sel, id, nm) => { if (id && [...sel.options].some(o => o.value === id)) { sel.value = id; return true; }
+    if (nm) { const o = [...sel.options].find(x => x.textContent === nm); if (o) { sel.value = o.value; return true; } } return false; };
+  const rIn = restore($("inSel"), io.inId, io.inName), rOut = restore($("outSel"), io.outId, io.outName);
+  if (!rIn && access.inputs.size) $("inSel").selectedIndex = 1;
+  if (!rOut && access.outputs.size) $("outSel").selectedIndex = 1;
+  pick();
+  return { rIn, rOut };
 }
-$("btnRefreshPorts").onclick = async () => { if (!midi) await initMidi(); fillPorts(); log("Ports MIDI actualisés."); };
-function attachInput() { if (input) { try { input.onmidimessage = onMsg; } catch (e) { } } }
-function initMidi() {
-  return navigator.requestMIDIAccess({ sysex: true }).then(m => {
-    midi = m; m.onstatechange = () => { fillPorts(); attachInput(); };
-    fillPorts(); attachInput();
-    log("Web MIDI initialisé (" + m.inputs.size + " entrée(s), " + m.outputs.size + " sortie(s)).", "ok");
-  }).catch(e => { log("Accès Web MIDI refusé/indisponible : " + e.message + " — Chrome, Edge ou Firefox 108+ desktop, sysex autorisé.", "ko"); });
+function refreshPorts() {
+  if (!navigator.requestMIDIAccess) { $("stWeb").textContent = "Web MIDI indisponible — servir la page via http://localhost (file:// refuse le sysex)."; return; }
+  navigator.requestMIDIAccess({ sysex: true }).then(acc => {
+    access = acc;
+    acc.addEventListener("statechange", () => { const r = fillPorts(); if (r.rIn && r.rOut) log("Ports MIDI modifiés (rebranchement ?) — ports mémorisés restaurés.", "info"); });
+    if (!acc.outputs.size && !acc.inputs.size) {
+      $("stWeb").textContent = "Web MIDI OK mais AUCUN port détecté — vérifier l'interface MIDI (alimentée ? câble USB ?).";
+      stMidiSet("non connecté"); return;
+    }
+    $("stWeb").textContent = "Web MIDI prêt (" + acc.inputs.size + " entrée(s), " + acc.outputs.size + " sortie(s)).";
+    const { rIn, rOut } = fillPorts();
+    if (rIn && rOut) {
+      log("🔌 Ports mémorisés : In = " + $("inSel").selectedOptions[0].textContent + " · Out = " + $("outSel").selectedOptions[0].textContent + " — tentative de connexion automatique (test de la réponse du KN2000)…", "info");
+      connect();
+    } else {
+      stMidiSet("non connecté");
+      log("ℹ️ Aucun port mémorisé (ou introuvable) — choisir In/Out puis « 🔌 Connecter » pour les mémoriser.", "ko");
+    }
+  }).catch(err => {
+    const cause = err && err.name === "NotAllowedError" ? "ACCÈS REFUSÉ — valider la popup d'autorisation système MIDI (Chrome)" : err && err.name === "SecurityError" ? "SYSEX BLOQUÉ — page non servie en http(s):// (file:// interdit pour le sysex)" : (err && err.name ? err.name : "erreur inconnue");
+    $("stWeb").textContent = "Web MIDI ÉCHEC : " + cause + " — procédure : dossier + python -m http.server 8000 + http://localhost:8000/backup.html (Chrome, Edge ou Firefox 108+)";
+    stMidiSet("non connecté", "warn");
+    log("Web MIDI refusé : " + (err && err.message ? err.message : err), "ko");
+  });
 }
-function selectPorts() {
-  input = [...midi.inputs.values()].find(p => p.name === $("inSel").value) || null;
-  output = [...midi.outputs.values()].find(p => p.name === $("outSel").value) || null;
-  if (input) { localStorage.setItem("kn2000_bk_in", input.name); localStorage.setItem("kn2000_bk_out", output ? output.name : ""); }
-  attachInput();
-  $("stMidi").textContent = (input && output) ? "● ports prêts" : "in/out à choisir";
-  $("stMidi").className = "pill " + (input && output ? "on" : "warn");
+function readEnables() {
+  log("Lecture des enables sysex (DRQ 20 04 00/01/02, SIZ 1 — lecture seule)…", "info");
+  for (const e of ENABLES) { send(sysex2B(e.adr, 1)); }
 }
-$("inSel").onchange = selectPorts; $("outSel").onchange = selectPorts;
+// connexion explicite : test de liaison (ping DRQ 20 00 02, SIZ 1) AVANT tout dump
+function connect() {
+  if (!access) { log("Cliquer d'abord sur « 🔄 Ports ».", "ko"); return; }
+  pick();
+  if (!output || !input) { stMidiSet("choisir ports", "warn"); log("Choisir les ports In/Out puis « Connecter ».", "ko"); return; }
+  ioSave();
+  connOk = false;
+  stMidiSet("⏳ test KN2000…");
+  log("Test de liaison : ping KN2000 (DRQ 20 00 02, SIZ 1)…", "info");
+  send(sysex2B([0x20, 0x00, 0x02], 1)); // Transpose : réponse attendue → connOk dans onMsg
+  setTimeout(() => {
+    if (connOk) { stMidiSet("● connecté", "on"); log("Connexion vérifiée (le KN2000 répond) — lecture des enables puis prêt à dumper.", "ok"); readEnables(); }
+    else { stMidiSet("⚠ pas de réponse", "warn"); log("⚠️ Ports choisis mais le KN2000 ne répond pas — vérifier In/Out, le câble MIDI et le branchement USB.", "ko"); }
+  }, 900);
+}
+$("btnConnect").onclick = connect;
+$("btnRefreshPorts").onclick = refreshPorts;
+$("outSel").onchange = $("inSel").onchange = () => { pick(); connOk = false; stMidiSet("non connecté"); };
 $("btnClear").onclick = () => { logEl.innerHTML = ""; log("Journal vidé.", "info"); };
 
 // ===== enables (lecture seule) =====
@@ -331,7 +380,7 @@ $("btnExport").onclick = () => {
     };
   }
   const cat = {
-    tool: "KN2000 Sauvegarde / Catalogue", format: "kn2000-catalog-v1", version: "0.1",
+    tool: "KN2000 Sauvegarde / Catalogue", format: "kn2000-catalog-v1", version: "0.2",
     date: new Date().toISOString(), keyboard: "Technics SX-KN2000",
     encodage: "chaque bloc : 'data' = octets originaux en hex (2 chiffres/octet, MSB d'abord), '--' = octet manquant ; nibblisation/dénibblisation selon Reference Guide p.22 (SIZ = octets originaux)",
     enables: { ...enableState, note: "DRQ lecture seule 20 04 00/01/02 (SIZ 1) — 00=OFF, 01=ON" },
@@ -345,7 +394,7 @@ $("btnExport").onclick = () => {
   log("💾 Catalogue exporté : " + name + " (" + Object.keys(areas).length + " aire(s)).", "ok");
 };
 
-initMidi();
+refreshPorts();
 </script>
 </body>
 </html>
