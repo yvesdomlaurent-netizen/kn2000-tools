@@ -14,6 +14,13 @@ Outils :
 
 ## 2026-10-26
 
+### Sauvegarde / Catalogue v0.3 — import JSON + envoi vers le KN2000 (ITW 2C, expérimental) ; dumps sans page BULK DUMP
+- **Import catalogue** : la nouvelle section « 3 — Import catalogue & envoi » charge un JSON kn2000-catalog-v1 (📂 Importer), liste les aires/blocs (avec comptage des octets manquants `--`) et refuse l'envoi d'un bloc incomplet.
+- **Envoi vers le KN2000 (première écriture bulk, expérimental)** : trames **ITW (2C)** — miroir des ITR, format du Sound Editor (`f0 50 2c 01 18 10 ADR 00 Sh Sl <nibbles> 00 CK f7`) — en deux modes : **36 sons × 144 octets** (36 trames aux adresses `30 00 50 + n×90`) ou **trames de N octets** à adresse de base incrémentée (défaut `30 00 50`, N=144, pause 300 ms). L'inconnue du test terrain : la réaction du clavier aux trames multi-octets (le Sound Editor écrivait octet par octet).
+- **Vérification 🔍 Comparer** : diff octet par octet entre le bloc importé et le bloc de même position du re-dump de l'aire en session — rapport identiques/différents/manquants + premières différences. Procédure : Envoyer → observer le clavier → ~5 s → re-dumper → Comparer.
+- **Découverte terrain : pas besoin de la page SYSEX BULK DUMP du clavier** — les dumps se lancent directement depuis la page (validé 26/10). Tous les textes, titres et messages y faisant référence ont été retirés (tip d'en-tête, boutons d'aire, enchaînement, timeouts). Les 4 aires + leurs comportements sont documentés comme validés terrain dans l'aide.
+- **Validation hors clavier** : rejeu de la capture panel 18/10 sans régression ; import d'un catalogue factice + envoi mode sons → 36 trames ITW exactes (adresses `30 02 70` pour le slot 3 = `0x50+2×0x90`… `30 28 00` pour le 36e), checksums OK, SIZ 144 nibblisé correct.
+
 ### Sauvegarde / Catalogue v0.2.2 — SOUND MEMORY validée terrain ✅ ; blocs multiples à même adresse conservés
 - **Retour terrain (essai SOUND MEMORY)** : dump complet — handshake OK, **2 BTR pour le bloc 30** (SIZ 80 = entête Sound Memory, puis SIZ 5184 = les 36 sons × 144 octets), CDD jusqu'à **5184/5184 exact**, EOK, END. La trame DRQ « 30 00 00 » avec la constante 42 fonctionne telle quelle — deuxième aire validée.
 - **Correctif catalogue (v0.2.1 → v0.2.2)** : la v0.2.1 indexait les blocs par adresse seule — le second BTR du bloc 30 écrasait l'entête de 80 octets (perdue du catalogue). Désormais chaque BTR crée une **occurrence distincte** (clé adresse + n° d'ordre, champ « seq » dans le JSON) : l'entête ET les sons sont conservés, dans l'ordre d'arrivée. Le journal affiche « 30 » puis « 30#2 »…

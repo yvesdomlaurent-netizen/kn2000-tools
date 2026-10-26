@@ -26,9 +26,9 @@
 </style>
 </head>
 <body>
-<h1>💾 KN2000 Sauvegarde / Catalogue <span style="font-size:.6em;color:#8fd0ff">v0.2.2</span></h1>
+<h1>💾 KN2000 Sauvegarde / Catalogue <span style="font-size:.6em;color:#8fd0ff">v0.3</span></h1>
 <div class="tip">💡 Catalogue l'état complet du clavier par dump handshake (protocole validé v1.0.9 : un ACK après chaque paquet).
-<strong>Mode d'emploi</strong> : au clavier, afficher la page <strong>SYSEX BULK DUMP</strong> et sélectionner le <strong>type correspondant</strong> à l'aire demandée, puis cliquer l'aire ci-dessous.
+<strong>Mode d'emploi</strong> : le dump se lance directement depuis cette page — <strong>aucune préparation au clavier n'est nécessaire</strong> (validé terrain 26/10/2026).
 Chaque aire se valide une à une ; l'export produit un <strong>JSON unique horodaté</strong>, auto-documenté (décodable par une future appli Android de repli terrain).</div>
 
 <div class="cardc">
@@ -49,8 +49,8 @@ Chaque aire se valide une à une ; l'export produit un <strong>JSON unique horod
 <h2>1 — Dumps par aire (valider une à une)</h2>
 <div id="areas"></div>
 <div class="row">
-  <button id="btnAllSeq" title="Enchaîne les aires non encore validées, dans l'ordre (le clavier doit être prêt à chaque fois — type sélectionné au fur et à mesure)">▶ Enchaîner les aires restantes</button>
-  <span class="ast">Le type « ALL » du clavier sera testé en dernier, une fois les 4 aires validées.</span>
+  <button id="btnAllSeq" title="Enchaîne les aires non encore validées, dans l'ordre (5 s de pause entre aires)">▶ Enchaîner les aires restantes</button>
+  <span class="ast">Les 4 aires sont validées sur le terrain (26/10/2026) — le dump se lance sans préparation au clavier.</span>
 </div>
 
 <h2>2 — Export du catalogue</h2>
@@ -60,6 +60,33 @@ Chaque aire se valide une à une ; l'export produit un <strong>JSON unique horod
   <span class="pill off" id="expSt">aucune aire dumpée</span>
 </div>
 <div class="ast">Le JSON contient : métadonnées (date, outil, version), état des enables, et pour chaque aire dumpée la liste des blocs (adresse, SIZ annoncé, octets reçus, checksum) avec les <strong>données brutes en hex</strong> — dénibblisées, telles que stockées dans le KN2000. Format documenté dans la page d'aide.</div>
+
+<h2>3 — Import catalogue &amp; envoi vers le KN2000 (expérimental)</h2>
+<div class="cardc">
+  <div class="row"><span class="glbl">Catalogue</span>
+    <input type="file" id="impFile" accept=".json,application/json" style="display:none">
+    <button id="btnImport" title="Charge un JSON catalogue exporté par cette page (format kn2000-catalog-v1)">📂 Importer un catalogue</button>
+    <span class="pill off" id="impSt">aucun catalogue importé</span>
+  </div>
+  <div class="row"><span class="glbl">Choix</span>
+    <label title="Aire du catalogue importé">Aire <select id="impArea"></select></label>
+    <label title="Bloc de l'aire sélectionnée">Bloc <select id="impBlock"></select></label>
+    <label title="Mode de découpage de l'envoi">Mode <select id="impMode">
+      <option value="sounds">36 sons × 144 o (mode Sound Editor)</option>
+      <option value="chunks">Trames de N octets à adresse de base</option>
+    </select></label>
+  </div>
+  <div class="row"><span class="glbl">Paramètres</span>
+    <label title="Taille des trames en mode « N octets » (144 = un son par trame)">N o/trame <input type="number" id="impChunk" value="144" min="1" max="1024" size="5"></label>
+    <label title="Adresse de base (3 octets hex, MSB d'abord) en mode « N octets » — incrémentée linéairement">Adresse base <input type="text" id="impBase" value="30 00 50" size="10"></label>
+    <label title="Pause entre deux trames (ms)">Pause ms <input type="number" id="impPace" value="300" min="20" max="5000" size="5"></label>
+  </div>
+  <div class="row"><span class="glbl">Envoi</span>
+    <button id="btnSend" disabled title="Envoie les données du bloc sélectionné vers le KN2000 en trames ITW (2C) — écriture réelle, expérimental">✉️ Envoyer</button>
+    <button id="btnCompare" disabled title="Compare le bloc importé avec le bloc de même position du dernier dump de l'aire en session (faire un re-dump après l'envoi)">🔍 Comparer</button>
+  </div>
+  <div class="ast">Procédure de test : ✉️ Envoyer → observer les réponses du clavier → attendre ~5 s → 🔄 re-dumper l'aire → 🔍 Comparer (diff octet par octet). Mode sons : 36 trames ITW de 144 octets aux adresses 30 00 50 + n×90 — format du Sound Editor, mais trames multi-octets (au lieu d'octet par octet) : comportement du clavier à valider.</div>
+</div>
 
 <div id="logHead" style="margin:16px 0 4px"><b style="color:#8fd0ff;font-size:1rem">📜 Journal MIDI</b> <button class="sec" id="btnClear" style="font-size:12px;padding:3px 10px;margin:0;vertical-align:middle" title="Vide le journal de la session">🧹 Vider</button></div>
 <div id="log"></div>
@@ -94,7 +121,7 @@ function onMsg(ev) {
     const msg = code === 0x7e ? "ERR 7E — adresse inexistante ou demande refusée" : "ERR code " + A2(code);
     connOk = true; // la machine répond (même d'erreur) → liaison validée
     log("[RX] ⚠️ Réponse d'erreur du KN2000 : " + msg + " — trame " + hex([...d]), "ko");
-    if (dump.on) { log("Erreur pendant le dump — arrêt de l'aire. Type sélectionné au clavier correspond-il à l'aire demandée ?", "ko"); dumpEnd(false); }
+    if (dump.on) { log("Erreur pendant le dump — arrêt de l'aire.", "ko"); dumpEnd(false); }
     return;
   }
   if (d[0] === 0xf0 && d[1] === 0x50) {
@@ -216,10 +243,10 @@ $("btnEnables").onclick = async () => {
 const PM_HRT = [0xf0, 0x50, 0x22, 0x01, 0x18, 0x10, 0xf7];
 const PM_ACK = [0xf0, 0x50, 0x23, 0x7e, 0xf7];
 const AREAS = [
-  { id: "panel",   name: "PANEL",        adr: [0x40, 0x00, 0x00], kb: "PANEL",        info: "Données panel + Panel Memory (blocs 40/41) — validé (console v1.0.9)" },
-  { id: "sound",   name: "SOUND MEMORY", adr: [0x30, 0x00, 0x00], kb: "SOUND MEMORY", info: "Header + 36 paramètres de sons Memory A/B" },
-  { id: "composer",name: "COMPOSER",     adr: [0x50, 0x00, 0x00], kb: "COMPOSER",     info: "Location + Header + Performance" },
-  { id: "sequencer",name: "SEQUENCER",   adr: [0x60, 0x00, 0x00], kb: "SEQUENCER",   info: "Location + Header + Performance" }
+  { id: "panel",   name: "PANEL",        adr: [0x40, 0x00, 0x00],        info: "Données panel + Panel Memory (blocs 40/41) — validé (console v1.0.9)" },
+  { id: "sound",   name: "SOUND MEMORY", adr: [0x30, 0x00, 0x00], info: "Header + 36 paramètres de sons Memory A/B" },
+  { id: "composer",name: "COMPOSER",     adr: [0x50, 0x00, 0x00],     info: "Location + Header + Performance" },
+  { id: "sequencer",name: "SEQUENCER",   adr: [0x60, 0x00, 0x00],   info: "Location + Header + Performance" }
 ];
 const results = {};   // areaId -> { date, adr, blocks: [{adr,siz,got,data:[bytes]}], finished }
 const dump = { on: false, area: null, blocks: {}, cur: null, timer: null, hrqSeen: false, btrSeen: false };
@@ -232,7 +259,7 @@ function dumpRequest(adr) {
 function dumpStart(area) {
   if (dump.on) { log("Un dump est déjà en cours.", "ko"); return; }
   dump.on = true; dump.area = area; dump.blocks = {}; dump.cnt = {}; dump.cur = null; dump.hrqSeen = false; dump.btrSeen = false;
-  log("=== DUMP " + area.name + " (ADR " + area.adr.map(A2).join(" ") + ") — au clavier : page SYSEX BULK DUMP, type " + area.kb + " sélectionné ===", "info");
+  log("=== DUMP " + area.name + " (ADR " + area.adr.map(A2).join(" ") + ") — le clavier n'a rien à préparer, le dump se lance directement ===", "info");
   setTimeout(async () => {
     if (!Object.keys(enableState).length) {   // enables pas encore lus → lecture seule rapide avant
       for (const e of ENABLES) { send(sysex2B(e.adr, 1)); await wait(160); }
@@ -246,9 +273,9 @@ function dumpStart(area) {
 }
 function dumpIdle() {
   if (!dump.on) return;
-  if (!dump.hrqSeen) log("⚠️ Timeout — pas de HRQ reçu : liaison ? page SYSEX BULK DUMP affichée ? type " + dump.area.kb + " sélectionné au clavier ?", "ko");
+  if (!dump.hrqSeen) log("⚠️ Timeout — pas de HRQ reçu : liaison ? clavier allumé et prêt ?", "ko");
   else if (dump.btrSeen) log("⚠️ Timeout — bloc(s) reçus mais pas de fin de dump (EOK/END) : le clavier attendait-il un ACK ? erreur affichée au clavier ?", "ko");
-  else if (!dump.cur) log("⚠️ Timeout — handshake établi mais pas de bloc reçu : type " + dump.area.kb + " sélectionné au clavier ?", "ko");
+  else if (!dump.cur) log("⚠️ Timeout — handshake établi mais pas de bloc reçu.", "ko");
   dumpEnd(false);
 }
 function bLbl(b) { return A2(b.adr) + (b.seq > 1 ? "#" + b.seq : ""); }
@@ -342,9 +369,9 @@ function exportUI() {
 // UI des aires
 $("areas").innerHTML = AREAS.map(a =>
   `<div class="area"><b>${a.name}</b>
-   <button class="sec" data-dump="${a.id}" title="Envoie le dump request ${a.adr.map(A2).join(" ")} — sélectionner le type ${a.kb} sur la page SYSEX BULK DUMP du clavier avant de cliquer">🔄 Dumper</button>
+   <button class="sec" data-dump="${a.id}" title="Envoie le dump request ${a.adr.map(A2).join(" ")} — le dump se lance directement, aucune préparation au clavier">🔄 Dumper</button>
    <span class="pill off" id="st_${a.id}">—</span>
-   <span class="ast">${a.info} · clavier : type <b>${a.kb}</b></span></div>`).join("");
+   <span class="ast">${a.info}</span></div>`).join("");
 document.querySelectorAll("[data-dump]").forEach(btn => btn.onclick = () => {
   if (!output) { log("Choisir la sortie MIDI.", "ko"); return; }
   const a = AREAS.find(x => x.id === btn.dataset.dump);
@@ -355,14 +382,14 @@ $("btnAllSeq").onclick = async () => {
   for (const a of AREAS) {
     const r = results[a.id];
     if (r && r.finished) continue;
-    log("▶ Enchaînement : aire " + a.name + " — sélectionner le type " + a.kb + " au clavier, puis valider dans 5 s…", "info");
+    log("▶ Enchaînement : aire " + a.name + " dans 5 s…", "info");
     await wait(5000);
     dumpStart(a);
     while (dump.on) await wait(500);
     const done = results[a.id] && results[a.id].finished;
     if (!done) { log("Aire " + a.name + " non terminée — enchaînement stoppé (relancer après contrôle au clavier).", "ko"); return; }
   }
-  log("✅ Aires enchaînées. Penser au type ALL en fin de validation.", "ok");
+  log("✅ Aires enchaînées.", "ok");
 };
 
 // ===== export JSON (auto-documenté, décodable appli Android) =====
@@ -382,18 +409,122 @@ $("btnExport").onclick = () => {
     };
   }
   const cat = {
-    tool: "KN2000 Sauvegarde / Catalogue", format: "kn2000-catalog-v1", version: "0.2.2",
+    tool: "KN2000 Sauvegarde / Catalogue", format: "kn2000-catalog-v1", version: "0.3",
     date: new Date().toISOString(), keyboard: "Technics SX-KN2000",
     encodage: "chaque bloc : 'data' = octets originaux en hex (2 chiffres/octet, MSB d'abord), '--' = octet manquant ; nibblisation/dénibblisation selon Reference Guide p.22 (SIZ = octets originaux)",
     enables: { ...enableState, note: "DRQ lecture seule 20 04 00/01/02 (SIZ 1) — 00=OFF, 01=ON" },
     aires_attendues: AREAS.map(a => ({ id: a.id, name: a.name, adr: a.adr.map(A2).join(" ") })),
-    notes_terrain: "Protocole handshake (validé 26/10, console v1.0.9) : un ACK (f0 50 23 7e f7) après chaque paquet reçu (BTR/CDD/EOK/END). Panel : bloc 40 s'arrête à 1056/1088 (écart 32 systématique).",
+    notes_terrain: "Protocole handshake (validé 26/10, console v1.0.9) : un ACK (f0 50 23 7e f7) après chaque paquet reçu (BTR/CDD/EOK/END). Panel : bloc 40 s'arrête à 1056/1088 (écart 32 systématique). Le dump se lance SANS la page SYSEX BULK DUMP du clavier (validé 26/10). Envoi : trames ITW 2C (format Sound Editor), champ sending_mode dans le JSON d'envoi non requis — c'est la page qui construit les trames.",
     areas
   };
   const name = ($("expName").value.trim() || "kn2000-catalogue") + "-" + new Date().toISOString().slice(0, 16).replace("T", "_").replace(":", "h") + ".json";
   const blob = new Blob([JSON.stringify(cat, null, 2)], { type: "application/json" });
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click();
   log("💾 Catalogue exporté : " + name + " (" + Object.keys(areas).length + " aire(s)).", "ok");
+};
+
+
+// ===== import catalogue & envoi ITW 2C (expérimental — écriture vers le KN2000) =====
+let impCat = null, sending = false;
+function nibblize(vals) { const o = []; vals.forEach(v => o.push((v >> 4) & 0x0f, v & 0x0f)); return o; }
+function msgITW(adr, vals) {   // trame d'écriture 2C — miroir des ITR du clavier, format du Sound Editor
+  const b = [0x50, 0x2c, 0x01, 0x18, 0x10].concat(adr, [0x00, (vals.length >> 7) & 0x7f, vals.length & 0x7f], nibblize(vals), [0x00]);
+  let x = 0; for (let i = 0; i < b.length; i++) x ^= b[i];
+  return [0xf0].concat(b, [x & 0x7f, 0xf7]);
+}
+function impParseBlock(b) { const o = []; for (let i = 0; i + 1 < b.data.length; i += 2) { const h = b.data.substr(i, 2); if (h === "--") return null; o.push(parseInt(h, 16)); } return o; }
+function hexToBytes(t) { const p = t.trim().split(/[\s,]+/).filter(Boolean); if (p.length !== 3) return null; const o = []; for (const x of p) { const v = parseInt(x, 16); if (isNaN(v)) return null; o.push(v); } return o; }
+function fillBlocksSel() {
+  const sb = $("impBlock"); sb.innerHTML = "";
+  const area = impCat && impCat.areas[$("impArea").value];
+  if (!area) { $("btnSend").disabled = $("btnCompare").disabled = true; return; }
+  area.blocks.forEach((b, i) => {
+    const miss = (b.data.match(/--/g) || []).length;
+    sb.add(new Option(A2(b.adr) + (b.seq > 1 ? "#" + b.seq : "") + " — " + b.octets_recus + " o" + (miss ? " (" + miss + " manquants)" : ""), String(i)));
+  });
+  $("btnSend").disabled = $("btnCompare").disabled = sb.options.length === 0;
+}
+function fillImportSel() {
+  const sa = $("impArea"); sa.innerHTML = "";
+  if (!impCat) { $("btnSend").disabled = $("btnCompare").disabled = true; return; }
+  for (const a of AREAS) { if (impCat.areas[a.id]) sa.add(new Option(a.name, a.id)); }
+  fillBlocksSel();
+}
+$("impFile").addEventListener("change", ev => {
+  const f = ev.target.files && ev.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => { try {
+    const j = JSON.parse(rd.result);
+    if (j.format !== "kn2000-catalog-v1") throw new Error("format inconnu : " + j.format);
+    impCat = j;
+    const ids = Object.keys(impCat.areas || {});
+    const tot = ids.reduce((s, k) => s + impCat.areas[k].blocks.reduce((t, b) => t + (b.octets_recus || 0), 0), 0);
+    const st = $("impSt"); st.textContent = "catalogue : " + ids.length + " aire(s), " + tot + " octets"; st.className = "pill on";
+    fillImportSel();
+    log("📂 Catalogue importé : " + f.name + " (version " + (j.version || "?") + ", " + ids.length + " aire(s), " + tot + " octets).", "ok");
+  } catch (e) { log("📂 Import échoué : " + e.message, "ko"); } };
+  rd.readAsText(f);
+});
+$("btnImport").onclick = () => $("impFile").click();
+$("impArea").onchange = fillBlocksSel;
+$("btnSend").onclick = async () => {
+  if (!impCat) { log("Importer d'abord un catalogue.", "ko"); return; }
+  if (!output) { log("Choisir la sortie MIDI.", "ko"); return; }
+  if (dump.on || sending) { log("Opération MIDI déjà en cours.", "ko"); return; }
+  const areaId = $("impArea").value, b = impCat.areas[areaId].blocks[+$("impBlock").value];
+  const bytes = impParseBlock(b);
+  if (bytes === null) { log("Bloc incomplet (" + A2(b.adr) + " : octets manquants '--') — envoi refusé.", "ko"); return; }
+  const pace = Math.min(5000, Math.max(20, +$("impPace").value || 300));
+  const mode = $("impMode").value;
+  let frames = 0;
+  sending = true;
+  log("=== ENVOI bloc " + A2(b.adr) + (b.seq > 1 ? "#" + b.seq : "") + " (" + bytes.length + " octets) — mode " + (mode === "sounds" ? "36 sons × 144 o" : "trames de N octets") + ", pause " + pace + " ms — observer le clavier ===", "info");
+  try {
+    if (mode === "sounds") {
+      if (bytes.length !== 5184) { log("Mode sons : 5184 octets attendus (36 × 144), bloc = " + bytes.length + " — basculer en mode « N octets ».", "ko"); sending = false; return; }
+      for (let sn = 0; sn < 36; sn++) {
+        const t = 0x50 + sn * 0x90, adr = [0x30, (t >> 7) & 0x7f, t & 0x7f];
+        if (!send(msgITW(adr, bytes.slice(sn * 144, (sn + 1) * 144)))) throw new Error("envoi MIDI");
+        frames++;
+        log("[TX] ITW son " + (sn + 1) + "/36 — ADR " + hex(adr) + ", 144 octets", "info");
+        await wait(pace);
+      }
+    } else {
+      const N = Math.min(1024, Math.max(1, +$("impChunk").value || 144));
+      const bb = hexToBytes($("impBase").value);
+      if (!bb) { log("Adresse base invalide (3 octets hex attendus, ex. 30 00 50).", "ko"); sending = false; return; }
+      const baseT = (bb[1] << 7) | bb[2];
+      for (let o = 0; o < bytes.length; o += N) {
+        const t = baseT + o, adr = [bb[0], (t >> 7) & 0x7f, t & 0x7f];
+        const chunk = bytes.slice(o, o + N);
+        if (!send(msgITW(adr, chunk))) throw new Error("envoi MIDI");
+        frames++;
+        log("[TX] ITW " + chunk.length + " octets @ " + hex(adr) + " (" + (o + chunk.length) + "/" + bytes.length + ")", "info");
+        await wait(pace);
+      }
+    }
+    log("✅ Envoi terminé : " + frames + " trame(s) ITW, " + bytes.length + " octets. Observer le clavier, attendre ~5 s, re-dumper l'aire puis 🔍 Comparer.", "ok");
+  } catch (e) { log("Envoi interrompu : " + e.message, "ko"); }
+  sending = false;
+};
+$("btnCompare").onclick = () => {
+  if (!impCat) { log("Importer d'abord un catalogue.", "ko"); return; }
+  const areaId = $("impArea").value, bi = +$("impBlock").value;
+  const bImp = impCat.areas[areaId].blocks[bi];
+  const bytes = impParseBlock(bImp);
+  const r = results[areaId];
+  if (!r || !r.blocks[bi]) { log("Pas de dump de l'aire « " + areaId + " » en session (bloc de même position) — re-dumper l'aire d'abord.", "ko"); return; }
+  const bLive = r.blocks[bi];
+  const n = Math.max(bytes ? bytes.length : 0, bLive.siz);
+  let same = 0, diff = 0, miss = 0; const ex = [];
+  for (let i = 0; i < n; i++) {
+    const a = bytes ? bytes[i] : undefined, l = bLive.data[i];
+    if (l === null || a === undefined) { miss++; if (ex.length < 10) ex.push("+" + i + " : " + (a === undefined ? "—" : A2(a)) + " (import) vs manquant (clavier)"); }
+    else if (a === l) same++;
+    else { diff++; if (ex.length < 10) ex.push("+" + i + " : " + A2(l) + " (clavier) vs " + A2(a) + " (import)"); }
+  }
+  log("🔍 Comparaison bloc " + A2(bImp.adr) + (bImp.seq > 1 ? "#" + bImp.seq : "") + " — " + same + " octets identiques, " + diff + " différents, " + miss + " manquants.", (diff === 0 && miss === 0) ? "ok" : "ko");
+  if (ex.length) log("Premières différences : " + ex.join(" · "), "info");
 };
 
 refreshPorts();

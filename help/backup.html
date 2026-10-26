@@ -44,19 +44,19 @@
   <li>Ouvrir la page dans <b>Chrome, Edge ou Firefox 108+ desktop</b> (Web MIDI avec sysex requis).</li>
   <li>Brancher l'interface MIDI USB du KN2000, cliquer <b>🔄 Ports</b> et choisir In/Out.</li>
   <li>Brancher l'interface, la page tente la connexion automatique avec les ports mémorisés ; sinon choisir In/Out puis <b>🔌 Connecter</b> — le KN2000 est testé par un ping (DRQ 20 00 02) et les enables sont lus automatiquement une fois connecté (lecture seule, rien n'est écrit).</li>
-  <li>Une fois la pastille <b>● connecté</b> affichée : au clavier, afficher la page <b>SYSEX BULK DUMP</b> et sélectionner le <b>type correspondant à l'aire à dumper</b>, puis cliquer <b>🔄 Dumper</b> sur l'aire voulue.</li>
+  <li>Une fois la pastille <b>● connecté</b> affichée : cliquer <b>🔄 Dumper</b> sur l'aire voulue — <b>le dump se lance directement, aucune préparation au clavier n'est nécessaire</b> (découverte terrain du 26/10/2026 : la page SYSEX BULK DUMP du clavier n'a pas besoin d'être affichée).</li>
   <li>Une fois les aires voulues cataloguées, cliquer <b>💾 Exporter le catalogue (JSON)</b>.</li>
 </ol>
 
-<h2>🗺️ Aires et types (Reference Guide p.24-27)</h2>
+<h2>🗺️ Aires (Reference Guide p.24-27) — toutes validées terrain ✅</h2>
 <ul>
-  <li><b>PANEL</b> — ADR <code>40 00 00</code> — validé terrain (console v1.0.9). Type clavier : <b>PANEL</b>.</li>
-  <li><b>SOUND MEMORY</b> — ADR <code>30 00 00</code> — à valider terrain. Type clavier : <b>SOUND MEMORY</b>.</li>
-  <li><b>COMPOSER</b> — ADR <code>50 00 00</code> — à valider terrain. Type clavier : <b>COMPOSER</b>.</li>
-  <li><b>SEQUENCER</b> — ADR <code>60 00 00</code> — à valider terrain. Type clavier : <b>SEQUENCER</b>.</li>
+  <li><b>PANEL</b> — ADR <code>40 00 00</code> — validé terrain : blocs 40 (1056/1088, écart 32 documenté) + 41 (8064/8064 = 24 Panel Memory × 336).</li>
+  <li><b>SOUND MEMORY</b> — ADR <code>30 00 00</code> — validée terrain : entête 80 octets (bloc 30) + 36 sons × 144 octets (bloc 30#2, 5184/5184).</li>
+  <li><b>COMPOSER</b> — ADR <code>50 00 00</code> — validée terrain : 37 920 octets (70 patterns).</li>
+  <li><b>SEQUENCER</b> — ADR <code>60 00 00</code> — validée terrain : 3 blocs (256 + 768 + 2048 octets avec contenu).</li>
 </ul>
-<div class="tip">💡 Valider les aires <b>une à une</b> (le type doit être changé au clavier entre chaque aire). Le bouton « ▶ Enchaîner les aires restantes » propose 5 s entre chaque aire pour changer le type. Le type « ALL » du clavier sera testé en dernier, une fois les 4 aires validées.</div>
-<div class="warn">⚠️ Le dump request utilise la forme validée sur le panel (ADR + SIZ <code>00 00 42</code>) pour toutes les aires : si une aire répond ERR 7E / erreur 42, vérifier d'abord que le bon type est sélectionné au clavier, puis consigner le comportement — la trame exacte de cette aire restera à ajuster.</div>
+<div class="tip">💡 <b>Découverte terrain 26/10/2026</b> : les dumps se lancent <b>directement depuis la page</b> — la page SYSEX BULK DUMP du clavier n'a pas besoin d'être affichée, aucun type à sélectionner. Le bouton « ▶ Enchaîner les aires restantes » propose 5 s de pause entre chaque aire.</div>
+<div class="warn">⚠️ Le dump request utilise la forme validée sur le panel (ADR + SIZ <code>00 00 42</code>) : les 4 aires répondent correctement avec cette constante (validé terrain 26/10/2026).</div>
 
 <h2>🤝 Protocole utilisé</h2>
 <p>Identique à la Panel Console v1.0.9 (validé terrain) : DRQ → le clavier envoie HRQ (21) → nous répondons HRT (22) → le clavier envoie HRT (22) → nous acquittons, puis <b>exactement un ACK</b> (<code>f0 50 23 7e f7</code>) <b>après chaque paquet reçu</b> : BTR (2D), chaque paquet CDD (7E) à checksum OK, EOK (27), END (28). Aucun re-DRQ automatique — un re-DRQ parasite relance la page BULK DUMP et contamine le handshake.</p>
@@ -97,7 +97,20 @@
 </ul>
 <div class="tip">💡 Le bloc 40 du panel s'arrête systématiquement à 1056/1088 octets (écart 32 constant observé sur toutes les captures et le terrain, sans conséquence) : les 32 octets manquants apparaissent en <code>--</code> dans le JSON — c'est normal.</div>
 
+<h2>✉️ Import &amp; envoi vers le KN2000 (expérimental)</h2>
+<p>La section <b>3 — Import catalogue &amp; envoi</b> recharge un JSON exporté par la page (format kn2000-catalog-v1) et <b>écrit</b> un bloc choisi vers le clavier, puis permet de vérifier par diff octet par octet.</p>
+<ol>
+  <li><b>📂 Importer</b> le catalogue (JSON), choisir l'aire et le bloc.</li>
+  <li><b>✉️ Envoyer</b> : deux modes — <b>36 sons × 144 octets</b> (mode Sound Editor : 36 trames ITW de 144 octets aux adresses <code>30 00 50 + n×90</code>) ou <b>trames de N octets</b> à adresse de base incrémentée linéairement (défaut <code>30 00 50</code>, N = 144, pause 300 ms).</li>
+  <li>Observer les réponses du clavier (log) — <b>première écriture bulk réelle, comportement inconnu</b> : ACK ? silence ? ERR ?</li>
+  <li>Attendre ~5 s, <b>🔄 re-dumper l'aire</b>, puis <b>🔍 Comparer</b> (diff octet par octet bloc importé vs re-dump).</li>
+</ol>
+<p>Trame d'écriture <b>ITW (2C)</b> — miroir des ITR du clavier, format du Sound Editor :
+<code>f0 50 2c 01 18 10 A1 A2 A3 00 Sh Sl &lt;nibbles&gt; 00 CK f7</code> — SIZ sur 3 octets 7-bit (octets originaux), données nibblisées ×2 (Reference Guide p.22), CN = 00, CK = XOR du corps &amp; 7f. Le Sound Editor écrivait octet par octet (60 ms) ; l'inconnue du test est la réaction du clavier aux trames <b>multi-octets</b>.</p>
+<div class="warn">⚠️ L'envoi est une <b>écriture réelle</b> dans la mémoire du clavier. Test recommandé sur la Sound Memory (récupérable par la procédure usine). Un bloc contenant des octets manquants (<code>--</code>) est refusé.</div>
+
 <h2>📜 Historique</h2>
+<div class="ver"><b>v0.3</b><span class="date">2026-10-26</span><br/>Import d'un catalogue JSON + <b>envoi vers le KN2000 en trames ITW 2C</b> (mode 36 sons × 144 o du Sound Editor, ou trames de N octets à adresse de base) + <b>🔍 Comparer</b> (diff octet par octet après re-dump). Découverte terrain : les dumps se lancent sans la page SYSEX BULK DUMP du clavier — tous les textes y faisant référence ont été retirés ; les 4 aires sont validées terrain.</div>
 <div class="ver"><b>v0.2.2</b><span class="date">2026-10-26</span><br/>SOUND MEMORY validée terrain (5184/5184, END) — le clavier envoie deux BTR pour le bloc 30 (entête 80 octets puis les sons 5184) : chaque BTR crée désormais une occurrence distincte (champ <code>seq</code> dans le JSON), l'entête n'est plus écrasée.</div>
 <div class="ver"><b>v0.2.1</b><span class="date">2026-10-26</span><br/>Retour terrain : dump PANEL complet (8064/8064, END — l'écart 32 du bloc 40 est le mystère documenté, pas une erreur). Bouton 🧹 Vider déplacé dans l'en-tête du Journal MIDI (charte console).</div>
 <div class="ver"><b>v0.2</b><span class="date">2026-10-26</span><br/>Connexion à la charte des pages : bouton 🔌 Connecter avec ping KN2000 (DRQ 20 00 02), pastille ● connecté, ports mémorisés id+nom avec connexion automatique, statut Web MIDI explicite, lecture auto des enables après connexion.</div>
@@ -114,19 +127,19 @@
   <li>Open the page in <b>Chrome, Edge or Firefox 108+ desktop</b> (Web MIDI with sysex required).</li>
   <li>Plug the KN2000's USB MIDI interface, click <b>🔄 Ports</b> and pick In/Out.</li>
   <li>Plug the interface: the page tries to auto-connect with the memorized ports; otherwise pick In/Out then <b>🔌 Connect</b> — the KN2000 is tested by a ping (DRQ 20 00 02) and the enables are read automatically once connected (read-only, nothing is written).</li>
-  <li>Once the <b>● connecté</b> badge shows: on the keyboard, open the <b>SYSEX BULK DUMP</b> page and select the <b>type matching the area to dump</b>, then click <b>🔄 Dumper</b> on that area.</li>
+  <li>Once the <b>● connecté</b> badge shows: click <b>🔄 Dumper</b> on the wanted area — <b>the dump starts directly, no keyboard preparation needed</b> (field discovery 2026-10-26: the keyboard's SYSEX BULK DUMP page does not need to be displayed).</li>
   <li>Once the wanted areas are cataloged, click <b>💾 Export the catalog (JSON)</b>.</li>
 </ol>
 
-<h2>🗺️ Areas and types (Reference Guide p.24-27)</h2>
+<h2>🗺️ Areas (Reference Guide p.24-27) — all field-validated ✅</h2>
 <ul>
-  <li><b>PANEL</b> — ADR <code>40 00 00</code> — field-validated (console v1.0.9). Keyboard type: <b>PANEL</b>.</li>
-  <li><b>SOUND MEMORY</b> — ADR <code>30 00 00</code> — to be field-validated. Keyboard type: <b>SOUND MEMORY</b>.</li>
-  <li><b>COMPOSER</b> — ADR <code>50 00 00</code> — to be field-validated. Keyboard type: <b>COMPOSER</b>.</li>
-  <li><b>SEQUENCER</b> — ADR <code>60 00 00</code> — to be field-validated. Keyboard type: <b>SEQUENCER</b>.</li>
+  <li><b>PANEL</b> — ADR <code>40 00 00</code> — field-validated: blocks 40 (1056/1088, documented 32-byte gap) + 41 (8064/8064 = 24 Panel Memory × 336).</li>
+  <li><b>SOUND MEMORY</b> — ADR <code>30 00 00</code> — field-validated: 80-byte header (block 30) + 36 sounds × 144 bytes (block 30#2, 5184/5184).</li>
+  <li><b>COMPOSER</b> — ADR <code>50 00 00</code> — field-validated: 37,920 bytes (70 patterns).</li>
+  <li><b>SEQUENCER</b> — ADR <code>60 00 00</code> — field-validated: 3 blocks (256 + 768 + 2048 bytes with content).</li>
 </ul>
-<div class="tip">💡 Validate areas <b>one by one</b> (the type must be changed on the keyboard between areas). "▶ Chain remaining areas" allows 5 s per area to change the type. The keyboard's "ALL" type will be tested last, once the 4 areas are validated.</div>
-<div class="warn">⚠️ The dump request uses the panel-validated form (ADR + SIZ <code>00 00 42</code>) for all areas: if an area answers ERR 7E / error 42, first check the correct type is selected on the keyboard, then report it — that area's exact frame may need adjusting.</div>
+<div class="tip">💡 <b>Field discovery 2026-10-26</b>: dumps start <b>directly from the page</b> — the keyboard's SYSEX BULK DUMP page does not need to be displayed, no type to select. "▶ Chain remaining areas" pauses 5 s between areas.</div>
+<div class="warn">⚠️ The dump request uses the panel-validated form (ADR + SIZ <code>00 00 42</code>): all 4 areas answer correctly with this constant (field-validated 2026-10-26).</div>
 
 <h2>🤝 Protocol</h2>
 <p>Same as Panel Console v1.0.9 (field-validated): DRQ → keyboard sends HRQ (21) → we answer HRT (22) → keyboard sends HRT (22) → we ACK, then <b>exactly one ACK</b> (<code>f0 50 23 7e f7</code>) <b>after every received packet</b>: BTR (2D), each checksum-OK CDD packet (7E), EOK (27), END (28). No automatic re-DRQ — a stray re-DRQ restarts the BULK DUMP page and breaks the handshake.</p>
@@ -141,7 +154,20 @@
 </ul>
 <div class="tip">💡 The panel's block 40 always stops at 1056/1088 bytes (constant 32-byte gap seen on every capture and in the field, harmless): the 32 missing bytes appear as <code>--</code> in the JSON — this is normal.</div>
 
+<h2>✉️ Import &amp; send to the KN2000 (experimental)</h2>
+<p>Section <b>3 — Import catalog &amp; send</b> reloads a JSON exported by the page (kn2000-catalog-v1) and <b>writes</b> a chosen block to the keyboard, then verifies with a byte-per-byte diff.</p>
+<ol>
+  <li><b>📂 Import</b> the catalog (JSON), pick the area and block.</li>
+  <li><b>✉️ Send</b>: two modes — <b>36 sounds × 144 bytes</b> (Sound Editor mode: 36 ITW frames of 144 bytes at addresses <code>30 00 50 + n×90</code>) or <b>N-byte frames</b> at a linearly incremented base address (default <code>30 00 50</code>, N = 144, 300 ms pace).</li>
+  <li>Watch the keyboard's answers (log) — <b>first real bulk write, unknown behaviour</b>: ACK? silence? ERR?</li>
+  <li>Wait ~5 s, <b>🔄 re-dump the area</b>, then <b>🔍 Compare</b> (byte-per-byte diff imported block vs re-dump).</li>
+</ol>
+<p>Write frame <b>ITW (2C)</b> — mirror of the keyboard's ITRs, Sound Editor format:
+<code>f0 50 2c 01 18 10 A1 A2 A3 00 Sh Sl &lt;nibbles&gt; 00 CK f7</code> — 3×7-bit SIZ (original bytes), nibbilized ×2 data (Reference Guide p.22), CN = 00, CK = body XOR &amp; 7f. The Sound Editor wrote byte-per-byte (60 ms); the test's unknown is the keyboard's reaction to <b>multi-byte</b> frames.</p>
+<div class="warn">⚠️ Sending is a <b>real write</b> into the keyboard's memory. Recommended test on Sound Memory (recoverable through the factory procedure). A block containing missing bytes (<code>--</code>) is refused.</div>
+
 <h2>📜 History</h2>
+<div class="ver"><b>v0.3</b><span class="date">2026-10-26</span><br/>JSON catalog import + <b>send to the KN2000 in ITW 2C frames</b> (Sound Editor 36 sounds × 144 B mode, or N-byte frames at a base address) + <b>🔍 Compare</b> (byte-per-byte diff after re-dump). Field discovery: dumps start without the keyboard's SYSEX BULK DUMP page — all related texts removed; the 4 areas are field-validated.</div>
 <div class="ver"><b>v0.2.2</b><span class="date">2026-10-26</span><br/>SOUND MEMORY field-validated (5184/5184, END) — the keyboard sends two BTRs for block 30 (80-byte header then the 5184 sounds): each BTR now creates a distinct occurrence (<code>seq</code> field in the JSON), the header is no longer overwritten.</div>
 <div class="ver"><b>v0.2.1</b><span class="date">2026-10-26</span><br/>Field feedback: PANEL dump complete (8064/8064, END — block 40's 32-byte gap is the documented mystery, not an error). 🧹 Vider button moved into the MIDI log header (console charte).</div>
 <div class="ver"><b>v0.2</b><span class="date">2026-10-26</span><br/>Connection brought to the pages charte: 🔌 Connect button with KN2000 ping (DRQ 20 00 02), ● connecté badge, id+name memorized ports with auto-connect, explicit Web MIDI status, automatic enables read after connect.</div>
