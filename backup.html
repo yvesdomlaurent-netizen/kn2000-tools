@@ -26,7 +26,7 @@
 </style>
 </head>
 <body>
-<h1>💾 KN2000 Sauvegarde / Catalogue <span style="font-size:.6em;color:#8fd0ff">v0.3</span></h1>
+<h1>💾 KN2000 Sauvegarde / Catalogue <span style="font-size:.6em;color:#8fd0ff">v0.3.1</span></h1>
 <div class="tip">💡 Catalogue l'état complet du clavier par dump handshake (protocole validé v1.0.9 : un ACK après chaque paquet).
 <strong>Mode d'emploi</strong> : le dump se lance directement depuis cette page — <strong>aucune préparation au clavier n'est nécessaire</strong> (validé terrain 26/10/2026).
 Chaque aire se valide une à une ; l'export produit un <strong>JSON unique horodaté</strong>, auto-documenté (décodable par une future appli Android de repli terrain).</div>
@@ -72,12 +72,12 @@ Chaque aire se valide une à une ; l'export produit un <strong>JSON unique horod
     <label title="Aire du catalogue importé">Aire <select id="impArea"></select></label>
     <label title="Bloc de l'aire sélectionnée">Bloc <select id="impBlock"></select></label>
     <label title="Mode de découpage de l'envoi">Mode <select id="impMode">
-      <option value="sounds">36 sons × 144 o (mode Sound Editor)</option>
+      <option value="sounds">36 sons — 2 trames par son (120 + 24 o)</option>
       <option value="chunks">Trames de N octets à adresse de base</option>
     </select></label>
   </div>
   <div class="row"><span class="glbl">Paramètres</span>
-    <label title="Taille des trames en mode « N octets » (144 = un son par trame)">N o/trame <input type="number" id="impChunk" value="144" min="1" max="1024" size="5"></label>
+    <label title="Taille des trames en mode « N octets » — limite terrain : 120 octets max par trame">N o/trame <input type="number" id="impChunk" value="120" min="1" max="120" size="5"></label>
     <label title="Adresse de base (3 octets hex, MSB d'abord) en mode « N octets » — incrémentée linéairement">Adresse base <input type="text" id="impBase" value="30 00 50" size="10"></label>
     <label title="Pause entre deux trames (ms)">Pause ms <input type="number" id="impPace" value="300" min="20" max="5000" size="5"></label>
   </div>
@@ -85,7 +85,7 @@ Chaque aire se valide une à une ; l'export produit un <strong>JSON unique horod
     <button id="btnSend" disabled title="Envoie les données du bloc sélectionné vers le KN2000 en trames ITW (2C) — écriture réelle, expérimental">✉️ Envoyer</button>
     <button id="btnCompare" disabled title="Compare le bloc importé avec le bloc de même position du dernier dump de l'aire en session (faire un re-dump après l'envoi)">🔍 Comparer</button>
   </div>
-  <div class="ast">Procédure de test : ✉️ Envoyer → observer les réponses du clavier → attendre ~5 s → 🔄 re-dumper l'aire → 🔍 Comparer (diff octet par octet). Mode sons : 36 trames ITW de 144 octets aux adresses 30 00 50 + n×90 — format du Sound Editor, mais trames multi-octets (au lieu d'octet par octet) : comportement du clavier à valider.</div>
+  <div class="ast">Procédure de test : ✉️ Envoyer → observer les réponses du clavier → attendre ~5 s → 🔄 re-dumper l'aire → 🔍 Comparer (diff octet par octet). Mode sons : chaque son de 144 o part en 2 trames (120 + 24) aux adresses 30 00 50 + n×90 — limite terrain : 120 octets originaux max par trame (255 sur le fil), validée par bissection 26/10. Le clavier n'accuse jamais réception : l'écran et le re-dump sont les seuls juges.</div>
 </div>
 
 <div id="logHead" style="margin:16px 0 4px"><b style="color:#8fd0ff;font-size:1rem">📜 Journal MIDI</b> <button class="sec" id="btnClear" style="font-size:12px;padding:3px 10px;margin:0;vertical-align:middle" title="Vide le journal de la session">🧹 Vider</button></div>
@@ -409,12 +409,12 @@ $("btnExport").onclick = () => {
     };
   }
   const cat = {
-    tool: "KN2000 Sauvegarde / Catalogue", format: "kn2000-catalog-v1", version: "0.3",
+    tool: "KN2000 Sauvegarde / Catalogue", format: "kn2000-catalog-v1", version: "0.3.1",
     date: new Date().toISOString(), keyboard: "Technics SX-KN2000",
     encodage: "chaque bloc : 'data' = octets originaux en hex (2 chiffres/octet, MSB d'abord), '--' = octet manquant ; nibblisation/dénibblisation selon Reference Guide p.22 (SIZ = octets originaux)",
     enables: { ...enableState, note: "DRQ lecture seule 20 04 00/01/02 (SIZ 1) — 00=OFF, 01=ON" },
     aires_attendues: AREAS.map(a => ({ id: a.id, name: a.name, adr: a.adr.map(A2).join(" ") })),
-    notes_terrain: "Protocole handshake (validé 26/10, console v1.0.9) : un ACK (f0 50 23 7e f7) après chaque paquet reçu (BTR/CDD/EOK/END). Panel : bloc 40 s'arrête à 1056/1088 (écart 32 systématique). Le dump se lance SANS la page SYSEX BULK DUMP du clavier (validé 26/10). Envoi : trames ITW 2C (format Sound Editor), champ sending_mode dans le JSON d'envoi non requis — c'est la page qui construit les trames.",
+    notes_terrain: "Protocole handshake (validé 26/10, console v1.0.9) : un ACK (f0 50 23 7e f7) après chaque paquet reçu (BTR/CDD/EOK/END). Panel : bloc 40 s'arrête à 1056/1088 (écart 32 systématique). Le dump se lance SANS la page SYSEX BULK DUMP du clavier (validé 26/10). Envoi : trames ITW 2C — LIMITE TERRAIN : 120 octets originaux max par trame (255 octets sur le fil, buffer 256 du clavier), validée par bissection 26/10 (121 NOK, 120 OK).",
     areas
   };
   const name = ($("expName").value.trim() || "kn2000-catalogue") + "-" + new Date().toISOString().slice(0, 16).replace("T", "_").replace(":", "h") + ".json";
@@ -478,19 +478,21 @@ $("btnSend").onclick = async () => {
   const mode = $("impMode").value;
   let frames = 0;
   sending = true;
-  log("=== ENVOI bloc " + A2(b.adr) + (b.seq > 1 ? "#" + b.seq : "") + " (" + bytes.length + " octets) — mode " + (mode === "sounds" ? "36 sons × 144 o" : "trames de N octets") + ", pause " + pace + " ms — observer le clavier ===", "info");
+  log("=== ENVOI bloc " + A2(b.adr) + (b.seq > 1 ? "#" + b.seq : "") + " (" + bytes.length + " octets) — mode " + (mode === "sounds" ? "36 sons × 2 trames (120+24 o)" : "trames de N octets") + ", pause " + pace + " ms — observer le clavier ===", "info");
   try {
     if (mode === "sounds") {
       if (bytes.length !== 5184) { log("Mode sons : 5184 octets attendus (36 × 144), bloc = " + bytes.length + " — basculer en mode « N octets ».", "ko"); sending = false; return; }
       for (let sn = 0; sn < 36; sn++) {
-        const t = 0x50 + sn * 0x90, adr = [0x30, (t >> 7) & 0x7f, t & 0x7f];
-        if (!send(msgITW(adr, bytes.slice(sn * 144, (sn + 1) * 144)))) throw new Error("envoi MIDI");
-        frames++;
-        log("[TX] ITW son " + (sn + 1) + "/36 — ADR " + hex(adr) + ", 144 octets", "info");
-        await wait(pace);
+        for (const seg of [[0, 120], [120, 144]]) {
+          const t = 0x50 + sn * 0x90 + seg[0], adr = [0x30, (t >> 7) & 0x7f, t & 0x7f];
+          if (!send(msgITW(adr, bytes.slice(sn * 144 + seg[0], sn * 144 + seg[1])))) throw new Error("envoi MIDI");
+          frames++;
+          log("[TX] ITW son " + (sn + 1) + "/36 — ADR " + hex(adr) + ", " + (seg[1] - seg[0]) + " octets", "info");
+          await wait(pace);
+        }
       }
     } else {
-      const N = Math.min(1024, Math.max(1, +$("impChunk").value || 144));
+      const N = Math.min(120, Math.max(1, +$("impChunk").value || 120));
       const bb = hexToBytes($("impBase").value);
       if (!bb) { log("Adresse base invalide (3 octets hex attendus, ex. 30 00 50).", "ko"); sending = false; return; }
       const baseT = (bb[1] << 7) | bb[2];

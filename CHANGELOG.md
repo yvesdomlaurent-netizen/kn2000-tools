@@ -14,6 +14,11 @@ Outils :
 
 ## 2026-10-26
 
+### Sauvegarde / Catalogue v0.3.1 — limite des trames d'écriture établie : 120 octets max (bissection terrain)
+- **Bissection terrain complète** (méthode de la lettre-témoin : son 2 avec 1ᵉʳ octet du nom modifié) : trames ITW 2C acceptées à 1, 16, 64, 96, 120 octets originaux — refusées à 121, 128, 144. **Limite exacte : 120 octets originaux = 255 octets sur le fil** — cohérent avec un buffer de 256 octets côté clavier. Le clavier ne répond jamais aux écritures (ni ACK ni ERR) : il applique en silence, ou jette en silence.
+- **Mode sons v0.3.1** : chaque son de 144 o part en **2 trames (120 + 24)** aux adresses `30 00 50 + n×90` → restauration complète de la Sound Memory (5184 o) en **72 trames ≈ 4 s** à 60 ms. Plafond N = 120 octets en mode « trames de N octets » (défaut 120).
+- **Milestones terrain de la journée** : première écriture sysex validée (Transpose `20 00 02`), écriture Sound Memory validée (nom du son A1 modifié et restauré par trames de 16 o), boucle sauvegarde→JSON→réécriture→vérification fermée. Hypothèses invalidées au passage : le refus initial des trames 144 o était une question de TAILLE (pas d'adresse ni de rythme) ; la piste « octet par octet obligatoire » était fausse (16 et 120 o passent).
+
 ### Sauvegarde / Catalogue v0.3 — import JSON + envoi vers le KN2000 (ITW 2C, expérimental) ; dumps sans page BULK DUMP
 - **Import catalogue** : la nouvelle section « 3 — Import catalogue & envoi » charge un JSON kn2000-catalog-v1 (📂 Importer), liste les aires/blocs (avec comptage des octets manquants `--`) et refuse l'envoi d'un bloc incomplet.
 - **Envoi vers le KN2000 (première écriture bulk, expérimental)** : trames **ITW (2C)** — miroir des ITR, format du Sound Editor (`f0 50 2c 01 18 10 ADR 00 Sh Sl <nibbles> 00 CK f7`) — en deux modes : **36 sons × 144 octets** (36 trames aux adresses `30 00 50 + n×90`) ou **trames de N octets** à adresse de base incrémentée (défaut `30 00 50`, N=144, pause 300 ms). L'inconnue du test terrain : la réaction du clavier aux trames multi-octets (le Sound Editor écrivait octet par octet).
