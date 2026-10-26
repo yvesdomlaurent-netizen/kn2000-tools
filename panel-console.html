@@ -70,7 +70,7 @@
   <span class="bdg" id="bdgKn" title="Connexion KN2000 — clique pour ouvrir les réglages (section connexion)">🎹 KN2000 ○</span>
   <span class="bdg" id="bdgDir" title="Dossier de travail (exports/imports de la bibliothèque) — clique pour ouvrir les réglages (section dossier)">📁 —</span>
   <span style="flex:1"></span>
-  <h1>🎹 KN2000 Console <span style="font-size:.6em;color:#8fd0ff">v1.0.7</span></h1>
+  <h1>🎹 KN2000 Console <span style="font-size:.6em;color:#8fd0ff">v1.0.8</span></h1>
   <span style="flex:1"></span>
   <label class="ghost" title="Afficher/masquer le journal MIDI (sysex)"><input type="checkbox" id="logBtn" style="width:15px;height:15px;vertical-align:middle;transform:translateY(-1px)"> 📜 Log MIDI</label>
   <button class="ghost" id="btnCfg" title="Réglages & Aide : connexion, dossier de travail, moniteur, langue">⚙️ Réglages</button>
@@ -635,6 +635,7 @@ function onMsg(ev) {
     const msg = code === 0x7e ? "ERR 7E — adresse inexistante ou demande refusée (Realtime sysex ON ? bulk non autorisé ?)" : ("code " + A2(code));
     log("[RX] ⚠️ Réponse d'erreur du KN2000 : " + msg + " — trame " + hex([...d]), "ko");
     if (pmWait) { pmWait = false; $("pmDumpSt").textContent = "✗ erreur KN2000 : " + msg; $("pmDumpSt").className = "ko"; }
+    if (pmDump.on) { log("ERR du KN2000 pendant le dump — arrêt immédiat de la session (v1.0.8 : plus d'attente du timeout). Erreur 42 affichée au clavier ?", "ko"); pmDumpEnd(false); }   // v1.0.8 : l'ERR 29 fermait mal la session (timeout fantôme de 9 s au test v1.0.7)
     return;
   }
   // v1.0.3 : protocole dump panel (HRQ/HRT/BTR/CDD/EOK/END) — trames courtes, AVANT le filtre <12 octets
@@ -841,7 +842,7 @@ $("apcScan").onclick = async () => {
 // ===== v1.0.3 : moteur de dump panel (blocs 40+41) → cache 24 PM, fusion entre essais =====
 // La lecture PM individuelle (DRQ 41 00 00 SIZ 336) est REFUSÉE par le KN2000 (ERR 7E) : Panel Memory
 // est une aire dump (doc p.25). On passe donc par le dump panel complet (mécanique éprouvée).
-// v1.0.7 — DOC-COMPLIANT (GO d'Yves 26/10) : la séquence p.25 doit être établie AVANT toute suite.
+// v1.0.8 — suite doc-compliants (tests v1.0.7 du 26/10 : ACK-BTR immédiat, fin de bloc par compte d'octets) : la séquence p.25 doit être établie AVANT toute suite.
 // DRQ 40 00 00 (code 42H) → le KN2000 (Master) annonce par HRQ → NOUS (Slave) répondons HRT (22)
 // → le KN2000 renvoie sa HRT → nous ACKons (23) → dump : chaque fin de bloc (Body) → ACK,
 // EOK (27) → ACK, END (28) → ACK (p.26). AUCUN re-DRQ automatique (le re-DRQ parasite de la v1.0.5
@@ -870,21 +871,39 @@ function pmDumpStore(adr, off, bytes) {
 function pmDumpStart(reqIdx, attempt) {
   // v1.0.7 : doc-compliant — DRQ envoyé UNE fois, puis la séquence p.25 est jouée par pmDumpMsg :
   // HRQ (clavier) → notre HRT ; HRT (clavier) → notre ACK ; fin de bloc/EOK/END → notre ACK.
+  // v1.0.8 : avant le DRQ bulk, LECTURE SEULE de l'état des 3 enables sysex (20 04 00/01/02) —
+  // demandé par Yves ; les réponses 2C sont loguées (midiFnApply), RIEN n'est écrit sur le clavier
+  // (« on verra ensuite ce qu'on fait des réponses »). Puis DRQ envoyé UNE fois, séquence p.25 par pmDumpMsg.
   pmDump.on = true; pmDump.reqIdx = reqIdx; pmDump.attempt = attempt || 1;
   pmDump.blocks = {}; pmDump.cur = null; pmDump.hrqSeen = false; pmDump.hrtSeen = false; pmDump.btrSeen = false;
   if (pmDump.timer) clearTimeout(pmDump.timer);
   pmDump.timer = setTimeout(pmDumpIdle, 9000);
-  setTimeout(() => { send(PM_DUMPREQ); log("[TX] Dump request panel (ADR 40 00 00, code 42H) — page SYSEX BULK DUMP à afficher au clavier ; essai unique (pas de re-DRQ auto)", "info"); }, 120);
+  setTimeout(async () => {
+    log("Lecture de l'état des enables sysex avant le bulk (DRQ 20 04 00/01/02, SIZ 1 — lecture seule, rien n'est écrit sur le clavier)…", "info");
+    for (const mf of MIDI_FN.slice(0, 3)) { send(sysex2B(mf.adr, 1)); await wait(180); }
+    await wait(350);
+    send(PM_DUMPREQ); log("[TX] Dump request panel (ADR 40 00 00, code 42H) — page SYSEX BULK DUMP à afficher au clavier ; essai unique (pas de re-DRQ auto)", "info");
+  }, 120);
 }
 function pmDumpIdle() {  // 9 s d'inactivité → clôture avec ce qu'on a
   if (!pmDump.on) return;
-  if (pmDump.hrqSeen && !pmDump.btrSeen)
-    log("⚠️ Timeout — HRQ reçus mais le dump n'est pas parti : regarder l'écran du KN2000 (erreur 42 ? page SYSEX BULK DUMP affichée ?). Avant tout nouvel essai : OFF/ON du clavier ou re-afficher la page BULK DUMP (fix du message v1.0.6 « dump muet »)", "ko");
-  else if (pmDump.hrqSeen && pmDump.hrtSeen && !pmDump.btrSeen)
+  if (!pmDump.hrqSeen)
+    log("⚠️ Timeout — pas de HRQ reçu : liaison (câble/ports) ? page SYSEX BULK DUMP affichée au clavier ?", "ko");
+  else if (pmDump.btrSeen)   // v1.0.8 : message correct pour le cas observé au test v1.0.7 (BTR reçus mais pas de fin de dump)
+    log("⚠️ Timeout — bloc(s) BTR reçus mais pas de fin de dump (EOK/END) : le KN2000 attendait-il un ACK ? erreur affichée au clavier ?", "ko");
+  else if (pmDump.hrtSeen)
     log("⚠️ Timeout — handshake établi (HRT reçue, ACK envoyé) mais pas de bloc reçu : côté clavier ? OFF/ON puis nouvel essai", "ko");
   else
-    log("⚠️ Timeout — pas de HRQ reçu : liaison (câble/ports) ? page SYSEX BULK DUMP affichée au clavier ?", "ko");
+    log("⚠️ Timeout — HRQ reçus mais le dump n'est pas parti : regarder l'écran du KN2000 (erreur 42 ? page SYSEX BULK DUMP affichée ?). Avant tout nouvel essai : OFF/ON du clavier ou re-afficher la page BULK DUMP (fix du message v1.0.6 « dump muet »)", "ko");
   pmDumpEnd(false);
+}
+function pmAckBlock(adr, why) {  // v1.0.8 : ACK de fin de bloc (Body of data → ACK, p.26-27)
+  const b = pmDump.blocks[adr];
+  if (!b || b.acked) return;
+  b.acked = true;
+  send(PM_ACK);
+  log("[RX] fin du bloc " + A2(adr) + " (" + why + ") — " + b.got + "/" + b.siz + " octets → [TX] ACK (23) (p.26 : Body of data → ACK)", "ok");
+  if (b.got < b.siz) log("⚠️ Bloc " + A2(adr) + " clôt INCOMPLET : " + b.got + "/" + b.siz + " octets (écart " + (b.siz - b.got) + ") — à documenter au retour terrain", "ko");
 }
 function pmDumpMsg(d) {
   if (pmDump.timer) { clearTimeout(pmDump.timer); pmDump.timer = setTimeout(pmDumpIdle, 9000); }
@@ -897,9 +916,15 @@ function pmDumpMsg(d) {
     if (calc !== ck && (calc ^ cn) !== ck) { log("[RX] BTR checksum KO — ignoré : " + hex(d.slice(0, 12)), "ko"); return; }
     const adr = d[6], siz = d[9] << 14 | d[10] << 7 | d[11];
     pmDump.btrSeen = true;
-    pmDump.cur = adr; pmDump.blocks[adr] = { siz, data: new Array(siz).fill(null), got: 0 };
+    if (pmDump.cur !== null && pmDump.cur !== adr) pmAckBlock(pmDump.cur, "nouveau bloc " + A2(adr) + " reçu");   // v1.0.8 : un nouveau BTR clôt le bloc précédent (signe réel de fin sur le terrain : le KN2000 enchaîne même si got < SIZ — bloc 40 à 1056/1088 sur les captures du 18/10)
+    pmDump.cur = adr; pmDump.blocks[adr] = { siz, data: new Array(siz).fill(null), got: 0, acked: false };
     pmDumpStore(adr, 0, denibble(d.slice(12, d.length - 3)));
     log("[RX] BTR bloc " + A2(adr) + " — SIZ " + siz + " octets, checksum OK", "ok");
+    // v1.0.8 (terrain 26/10, choix minimal d'Yves) : ACK immédiat à réception du BTR — le KN2000 renvoyait
+    // le BTR du bloc 40 (jusqu'à 3 fois, cf. « 3 tentatives » p.25) puis ERR 7E/erreur 42 quand on
+    // n'ACKait qu'en fin de bloc : en handshake, l'état est confirmé PENDANT la transmission (p.25).
+    send(PM_ACK);
+    log("[TX] ACK (23) — accusé de réception du BTR bloc " + A2(adr) + " (handshake : état confirmé pendant la transmission, p.25)", "info");
     return;
   }
   if (cmd === 0x7e) {  // CDD : suite des données du bloc courant
@@ -909,14 +934,12 @@ function pmDumpMsg(d) {
     const calc = d.slice(1, d.length - 3).reduce((a, x) => a ^ x, 0);
     if (calc !== ck && (calc ^ cn) !== ck) { log("[RX] paquet checksum KO — ignoré (régime passif, pas de NAK) : " + hex(d.slice(0, 8)), "ko"); return; }
     pmDumpStore(pmDump.cur, b.got, denibble(d.slice(3, d.length - 3)));
-    if (cn === 0x00) {  // fin de bloc (Body of data complet) → ACK (doc p.26)
-      send(PM_ACK);
-      log("[RX] fin du bloc " + A2(pmDump.cur) + " — " + b.got + "/" + b.siz + " octets reçus → [TX] ACK (23) (p.26 : Body of data → ACK)", b.got >= b.siz ? "ok" : "info");
-      pmDump.cur = null;
-    }
+    log("[RX] CDD — bloc " + A2(pmDump.cur) + " : " + b.got + "/" + b.siz + " octets reçus", "info");   // v1.0.8 : chaque paquet est visible (ils étaient invisibles au test v1.0.7)
+    if (b.got >= b.siz) { pmAckBlock(pmDump.cur, "SIZ atteint"); pmDump.cur = null; }   // v1.0.8 : fin de bloc par COMPTE D'OCTETS — correction majeure : CN=00 n'est PAS un marqueur de fin (CN=00 apparaît en plein milieu des blocs dans les captures du 18/10) ; le bloc 40 s'arrête à 1056/1088 → l'ACK rétroactif sur BTR suivant/EOK couvre ce cas
     return;
   }
   if (cmd === 0x27 || cmd === 0x28) {
+    if (pmDump.cur !== null) { pmAckBlock(pmDump.cur, cmd === 0x27 ? "EOK reçu" : "END reçu"); pmDump.cur = null; }   // v1.0.8 : l'EOK/END clôt le bloc en cours
     send(PM_ACK);
     log("[RX] " + (cmd === 0x27 ? "EOK (27)" : "END (28)") + " → [TX] ACK (23) (p.26)", "ok");
     if (cmd === 0x28) pmDumpEnd(true);
@@ -943,7 +966,8 @@ function pmDumpEnd(finished) {
   pmCacheSave(cache); pmCacheUI();
   const ok41 = blk ? blk.got : 0, siz41 = blk ? blk.siz : 8064;
   const okTotal = cache.banks.filter(b => b && b.ok).length;
-  log("Dump " + (finished ? "terminé (END)" : "interrompu") + " — bloc 41 : " + ok41 + "/" + siz41 + " octets" + (blkFull ? " — " + okNew + " banques fusionnées, cache : " + okTotal + "/24" : (blk ? " — INCOMPLET : aucune fusion (cache conservé)" : " — pas de bloc 41 reçu")), blkFull ? "ok" : "info");
+  const blkList = Object.keys(pmDump.blocks).map(a => "bloc " + A2(Number(a)) + " : " + pmDump.blocks[a].got + "/" + pmDump.blocks[a].siz).join(" · ");   // v1.0.8 : récap de TOUS les blocs reçus (le bloc 40 était invisible au test v1.0.7)
+  log("Dump " + (finished ? "terminé (END)" : "interrompu") + (blkList ? " — " + blkList : " — aucun bloc reçu") + (blkFull ? " — " + okNew + " banques fusionnées, cache : " + okTotal + "/24" : (blk ? " — INCOMPLET : aucune fusion (cache conservé)" : "")), blkFull ? "ok" : "info");
   const idx = pmDump.reqIdx;
   if (idx >= 0) {
     if (cache.banks[idx] && cache.banks[idx].ok) { handlePMRecord(cache.banks[idx].data); log("📄 PM " + PM_NAMES[idx] + " affichée depuis le cache complété", "ok"); }
@@ -951,7 +975,7 @@ function pmDumpEnd(finished) {
       pmWait = false;
       $("pmDumpSt").textContent = "✗ PM " + PM_NAMES[idx] + " incomplète (" + okTotal + "/24 en cache) — OFF/ON du clavier ou re-afficher la page SYSEX BULK DUMP, puis « 🔄 Re-dump complet » (banques validées conservées)";
       $("pmDumpSt").className = "ko";
-      log("⚠️ Pas de re-DRQ automatique en v1.0.7 (un re-DRQ parasite relance la page BULK DUMP et contamine le handshake — suspect n°1 de l'erreur 42) : OFF/ON du clavier ou re-afficher la page SYSEX BULK DUMP, puis cliquer à nouveau.", "ko");
+      log("⚠️ Pas de re-DRQ automatique en v1.0.8 (un re-DRQ parasite relance la page BULK DUMP et contamine le handshake — suspect n°1 de l'erreur 42) : OFF/ON du clavier ou re-afficher la page SYSEX BULK DUMP, puis cliquer à nouveau.", "ko");
     }
   }
 }

@@ -13,6 +13,14 @@ Outils :
 
 ## 2026-10-26
 
+### Panel Console v1.0.8 — ACK-BTR immédiat + fin de bloc corrigée (retour terrain v1.0.7)
+- **Contexte du test terrain v1.0.7** : le handshake complet a fonctionné pour la première fois (DRQ → HRQ → HRT → HRT clavier → ACK → le dump est parti), mais le KN2000 a renvoyé le BTR du bloc 40 (2 puis 3 fois — cf. « 3 tentatives » p.25) puis a répondu ERR 7E avec erreur 42 affichée, **sans jamais envoyer les paquets CDD de suite**. Signature d'un émetteur qui attend une confirmation dès le BTR.
+- **ACK immédiat à réception de chaque BTR** (checksum OK) — le correctif central, choix minimal validé par Yves : en handshake, l'état est confirmé PENDANT la transmission (p.25). Les paquets CDD éventuels ne sont pas ACKés à ce stade (à ajuster selon le retour terrain).
+- **Correction majeure — fin de bloc** : la v1.0.7 attendait CN=00 dans les paquets CDD pour clore un bloc ; or les captures réelles du 18/10 montrent que **CN=00 n'est pas un marqueur de fin** (il apparaît en plein milieu des blocs). Désormais : ACK de fin de bloc par compte d'octets (SIZ atteint) **et** ACK rétroactif à l'arrivée du BTR suivant ou de l'EOK/END (le KN2000 enchaîne même si le bloc 40 s'arrête à 1056/1088 octets — écart systématique constaté sur toutes les captures, à documenter).
+- **Lecture seule de l'état des enables sysex avant chaque bulk** (demande d'Yves) : DRQ sur 20 04 00/01/02 (Non-Real Time Sysex, Real Time Sysex, Real Time Command), SIZ 1 — les réponses sont loguées ON/OFF, **rien n'est écrit sur le clavier** (« on verra ensuite ce qu'on fait des réponses »).
+- **ERR 29 gérée par le moteur de dump** : arrêt immédiat de la session (la v1.0.7 laissait filer un timeout fantôme de 9 s après l'erreur) ; message de timeout corrigé pour le cas observé (« BTR reçus mais pas de fin de dump » au lieu de « pas de HRQ reçu »).
+- **Journal détaillé du dump** : chaque paquet CDD est logué (octets reçus du bloc en cours) et le récap final liste TOUS les blocs reçus (le bloc 40 était invisible en v1.0.7) avec avertissement si un bloc est clôt incomplet.
+
 ### Panel Console v1.0.7 — dump doc-compliant (protocole Reference Guide p.25-26 joué par le livre)
 - **Handshake complet lors du dump panel** : sur HRQ (21) du clavier → envoi de la HRT (22) ; sur HRT (22) du clavier → envoi de l'ACK (23) ; fin de chaque bloc (Body of data complet) → ACK ; EOK (27) → ACK ; END (28) → ACK (séquence de confirmation p.25 + pattern p.26). Objectif : mode rapide et sans perte du protocole — l'ACK post-HRT n'avait jamais été testé proprement (la v1.0.5 avait été contaminée par un re-DRQ parasite, suspect n°1 de l'erreur 42).
 - **Zéro re-DRQ automatique** (essai unique) : en cas d'échec, message explicite « OFF/ON du clavier ou re-afficher la page SYSEX BULK DUMP, puis Re-dump complet » — relance manuelle, cache-fusion conservé (un bloc 41 complet de 8064 octets fusionne ses 24 banques).
