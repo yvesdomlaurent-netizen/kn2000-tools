@@ -14,6 +14,10 @@ Outils :
 
 ## 2026-10-26
 
+### Sauvegarde / Catalogue v0.2.1 — retour terrain v0.2 : dump PANEL complet ✅, bouton Vider déplacé à la charte
+- **Retour terrain v0.2 (essai 1, PANEL)** : connexion charte OK (ping → réponse → ● connecté → enables 3× ON automatiques), dump PANEL COMPLET — BTR 40 + 8 CDD (1056/1088), BTR 41 + 64 CDD (8064/8064 exact), EOK, END, 9120 octets — identique à la Panel Console v1.0.9. L'avertissement « Bloc 40 clôt INCOMPLET : 1056/1088 (écart 32) » est le mystère documenté (écart 32 systématique, sans conséquence), pas une erreur.
+- **Bouton « 🧹 Vider » déplacé dans l'en-tête du Journal MIDI** (charte console : logHead), hors de la rangée Connexion où il passait inaperçu.
+
 ### Sauvegarde / Catalogue v0.2 — connexion à la charte des pages (bouton Connecter + ping KN2000)
 - **Retour terrain v0.1** : la page affichait « non connecté » sans bouton de connexion — seule la sélection In/Out existait, sans test de réponse du clavier.
 - **Connexion identique à la Panel Console (charte des pages)** : bouton **🔌 Connecter** avec test de liaison (ping DRQ 20 00 02 Transpose, SIZ 1) AVANT toute action — pastille **● connecté** seulement si le KN2000 répond, sinon **⚠ pas de réponse** avec vérifications conseillées ; lecture automatique des enables après une connexion réussie.

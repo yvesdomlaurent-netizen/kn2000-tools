@@ -26,7 +26,7 @@
 </style>
 </head>
 <body>
-<h1>💾 KN2000 Sauvegarde / Catalogue <span style="font-size:.6em;color:#8fd0ff">v0.2</span></h1>
+<h1>💾 KN2000 Sauvegarde / Catalogue <span style="font-size:.6em;color:#8fd0ff">v0.2.1</span></h1>
 <div class="tip">💡 Catalogue l'état complet du clavier par dump handshake (protocole validé v1.0.9 : un ACK après chaque paquet).
 <strong>Mode d'emploi</strong> : au clavier, afficher la page <strong>SYSEX BULK DUMP</strong> et sélectionner le <strong>type correspondant</strong> à l'aire demandée, puis cliquer l'aire ci-dessous.
 Chaque aire se valide une à une ; l'export produit un <strong>JSON unique horodaté</strong>, auto-documenté (décodable par une future appli Android de repli terrain).</div>
@@ -38,8 +38,6 @@ Chaque aire se valide une à une ; l'export produit un <strong>JSON unique horod
     <label title="Sortie MIDI vers le KN2000">Out <select id="outSel"></select></label>
     <button id="btnConnect" title="Connecte la page au KN2000 (test de réponse, puis lecture des enables si OK)">🔌 Connecter</button>
     <span class="pill off" id="stMidi">non connecté</span>
-    <span style="flex:1"></span>
-    <button class="sec" id="btnClear" title="Vide le journal">🧹 Vider</button>
   </div>
   <div class="ast" id="stWeb">Web MIDI…</div>
   <div class="row"><span class="glbl">Fonctions MIDI</span>
@@ -63,7 +61,7 @@ Chaque aire se valide une à une ; l'export produit un <strong>JSON unique horod
 </div>
 <div class="ast">Le JSON contient : métadonnées (date, outil, version), état des enables, et pour chaque aire dumpée la liste des blocs (adresse, SIZ annoncé, octets reçus, checksum) avec les <strong>données brutes en hex</strong> — dénibblisées, telles que stockées dans le KN2000. Format documenté dans la page d'aide.</div>
 
-<h2>Journal MIDI</h2>
+<div id="logHead" style="margin:16px 0 4px"><b style="color:#8fd0ff;font-size:1rem">📜 Journal MIDI</b> <button class="sec" id="btnClear" style="font-size:12px;padding:3px 10px;margin:0;vertical-align:middle" title="Vide le journal de la session">🧹 Vider</button></div>
 <div id="log"></div>
 
 <script>
@@ -380,7 +378,7 @@ $("btnExport").onclick = () => {
     };
   }
   const cat = {
-    tool: "KN2000 Sauvegarde / Catalogue", format: "kn2000-catalog-v1", version: "0.2",
+    tool: "KN2000 Sauvegarde / Catalogue", format: "kn2000-catalog-v1", version: "0.2.1",
     date: new Date().toISOString(), keyboard: "Technics SX-KN2000",
     encodage: "chaque bloc : 'data' = octets originaux en hex (2 chiffres/octet, MSB d'abord), '--' = octet manquant ; nibblisation/dénibblisation selon Reference Guide p.22 (SIZ = octets originaux)",
     enables: { ...enableState, note: "DRQ lecture seule 20 04 00/01/02 (SIZ 1) — 00=OFF, 01=ON" },
