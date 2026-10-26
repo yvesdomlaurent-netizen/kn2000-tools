@@ -70,7 +70,7 @@
   <span class="bdg" id="bdgKn" title="Connexion KN2000 — clique pour ouvrir les réglages (section connexion)">🎹 KN2000 ○</span>
   <span class="bdg" id="bdgDir" title="Dossier de travail (exports/imports de la bibliothèque) — clique pour ouvrir les réglages (section dossier)">📁 —</span>
   <span style="flex:1"></span>
-  <h1>🎹 KN2000 Console <span style="font-size:.6em;color:#8fd0ff">v1.0.9</span></h1>
+  <h1>🎹 KN2000 Console <span style="font-size:.6em;color:#8fd0ff">v1.0.10</span></h1>
   <span style="flex:1"></span>
   <label class="ghost" title="Afficher/masquer le journal MIDI (sysex)"><input type="checkbox" id="logBtn" style="width:15px;height:15px;vertical-align:middle;transform:translateY(-1px)"> 📜 Log MIDI</label>
   <button class="ghost" id="btnCfg" title="Réglages & Aide : connexion, dossier de travail, moniteur, langue">⚙️ Réglages</button>
@@ -842,11 +842,11 @@ $("apcScan").onclick = async () => {
 // ===== v1.0.3 : moteur de dump panel (blocs 40+41) → cache 24 PM, fusion entre essais =====
 // La lecture PM individuelle (DRQ 41 00 00 SIZ 336) est REFUSÉE par le KN2000 (ERR 7E) : Panel Memory
 // est une aire dump (doc p.25). On passe donc par le dump panel complet (mécanique éprouvée).
-// v1.0.8 — suite doc-compliants (tests v1.0.7 du 26/10 : ACK-BTR immédiat, fin de bloc par compte d'octets) : la séquence p.25 doit être établie AVANT toute suite.
+// v1.0.10 — séquence conforme à backup.html (26/10) : DRQ direct, sans page SYSEX BULK DUMP au clavier ; ACK par paquet, jamais de re-DRQ.
 // DRQ 40 00 00 (code 42H) → le KN2000 (Master) annonce par HRQ → NOUS (Slave) répondons HRT (22)
 // → le KN2000 renvoie sa HRT → nous ACKons (23) → dump : chaque fin de bloc (Body) → ACK,
 // EOK (27) → ACK, END (28) → ACK (p.26). AUCUN re-DRQ automatique (le re-DRQ parasite de la v1.0.5
-// est le suspect n°1 de l'erreur 42) : en cas d'échec → OFF/ON ou re-afficher la page BULK DUMP,
+// est le suspect n°1 de l'erreur 42) : en cas d'échec → OFF/ON du clavier puis relancer,
 // relance manuelle. Règle de fusion conservée (filet de sécurité) : on ne jette rien — un bloc 41
 // complet (8064 octets) fusionne ses 24 banques ; les banques déjà validées restent.
 const PM_CACHE_KEY = "kn2000_pc_pm_cache";
@@ -871,30 +871,27 @@ function pmDumpStore(adr, off, bytes) {
 function pmDumpStart(reqIdx, attempt) {
   // v1.0.7 : doc-compliant — DRQ envoyé UNE fois, puis la séquence p.25 est jouée par pmDumpMsg :
   // HRQ (clavier) → notre HRT ; HRT (clavier) → notre ACK ; fin de bloc/EOK/END → notre ACK.
-  // v1.0.8 : avant le DRQ bulk, LECTURE SEULE de l'état des 3 enables sysex (20 04 00/01/02) —
-  // demandé par Yves ; les réponses 2C sont loguées (midiFnApply), RIEN n'est écrit sur le clavier
-  // (« on verra ensuite ce qu'on fait des réponses »). Puis DRQ envoyé UNE fois, séquence p.25 par pmDumpMsg.
+  // v1.0.10 : DRQ DIRECT, conforme à backup.html (découverte terrain 26/10 : le dump part depuis la page,
+  // PAS besoin de la page SYSEX BULK DUMP du clavier ; la lecture des enables avant bulk est retirée).
+  // DRQ envoyé UNE fois, puis séquence p.25 par pmDumpMsg : HRQ → HRT ; HRT → ACK ; BTR/CDD/EOK/END → un ACK par paquet, jamais de re-DRQ.
   pmDump.on = true; pmDump.reqIdx = reqIdx; pmDump.attempt = attempt || 1;
   pmDump.blocks = {}; pmDump.cur = null; pmDump.hrqSeen = false; pmDump.hrtSeen = false; pmDump.btrSeen = false;
   if (pmDump.timer) clearTimeout(pmDump.timer);
   pmDump.timer = setTimeout(pmDumpIdle, 9000);
-  setTimeout(async () => {
-    log("Lecture de l'état des enables sysex avant le bulk (DRQ 20 04 00/01/02, SIZ 1 — lecture seule, rien n'est écrit sur le clavier)…", "info");
-    for (const mf of MIDI_FN.slice(0, 3)) { send(sysex2B(mf.adr, 1)); await wait(180); }
-    await wait(350);
-    send(PM_DUMPREQ); log("[TX] Dump request panel (ADR 40 00 00, code 42H) — page SYSEX BULK DUMP à afficher au clavier ; essai unique (pas de re-DRQ auto)", "info");
+  setTimeout(() => {
+    send(PM_DUMPREQ); log("[TX] Dump request panel (ADR 40 00 00, code 42H) — envoi direct depuis la page (essai unique, pas de re-DRQ auto)", "info");
   }, 120);
 }
 function pmDumpIdle() {  // 9 s d'inactivité → clôture avec ce qu'on a
   if (!pmDump.on) return;
   if (!pmDump.hrqSeen)
-    log("⚠️ Timeout — pas de HRQ reçu : liaison (câble/ports) ? page SYSEX BULK DUMP affichée au clavier ?", "ko");
+    log("⚠️ Timeout — pas de HRQ reçu : liaison (câble/ports) ? Relancer « 🔄 Re-dump complet » ; si erreur 42 au clavier → OFF/ON du clavier puis relancer.", "ko");
   else if (pmDump.btrSeen)   // v1.0.8 : message correct pour le cas observé au test v1.0.7 (BTR reçus mais pas de fin de dump)
     log("⚠️ Timeout — bloc(s) BTR reçus mais pas de fin de dump (EOK/END) : le KN2000 attendait-il un ACK ? erreur affichée au clavier ?", "ko");
   else if (pmDump.hrtSeen)
     log("⚠️ Timeout — handshake établi (HRT reçue, ACK envoyé) mais pas de bloc reçu : côté clavier ? OFF/ON puis nouvel essai", "ko");
   else
-    log("⚠️ Timeout — HRQ reçus mais le dump n'est pas parti : regarder l'écran du KN2000 (erreur 42 ? page SYSEX BULK DUMP affichée ?). Avant tout nouvel essai : OFF/ON du clavier ou re-afficher la page BULK DUMP (fix du message v1.0.6 « dump muet »)", "ko");
+    log("⚠️ Timeout — HRQ reçus mais le dump n'est pas parti : regarder l'écran du KN2000 (erreur 42 ?). Avant tout nouvel essai : OFF/ON du clavier, puis relancer (découverte 26/10 : la page SYSEX BULK DUMP du clavier n'est plus nécessaire).", "ko");
   pmDumpEnd(false);
 }
 function pmCloseBlock(adr, why) {  // v1.0.9 : clôture PUREMENT LOGIQUE d'un bloc (aucun ACK ici — chaque paquet reçus a déjà son ACK ; un ACK non précédé d'un paquet est un candidat rejet/ERR)
@@ -976,9 +973,9 @@ function pmDumpEnd(finished) {
     if (cache.banks[idx] && cache.banks[idx].ok) { handlePMRecord(cache.banks[idx].data); log("📄 PM " + PM_NAMES[idx] + " affichée depuis le cache complété", "ok"); }
     else {
       pmWait = false;
-      $("pmDumpSt").textContent = "✗ PM " + PM_NAMES[idx] + " incomplète (" + okTotal + "/24 en cache) — OFF/ON du clavier ou re-afficher la page SYSEX BULK DUMP, puis « 🔄 Re-dump complet » (banques validées conservées)";
+      $("pmDumpSt").textContent = "✗ PM " + PM_NAMES[idx] + " incomplète (" + okTotal + "/24 en cache) — relancer « 🔄 Re-dump complet » (banques validées conservées) ; si erreur 42 → OFF/ON du clavier d'abord";
       $("pmDumpSt").className = "ko";
-      log("⚠️ Pas de re-DRQ automatique en v1.0.8 (un re-DRQ parasite relance la page BULK DUMP et contamine le handshake — suspect n°1 de l'erreur 42) : OFF/ON du clavier ou re-afficher la page SYSEX BULK DUMP, puis cliquer à nouveau.", "ko");
+      log("⚠️ Pas de re-DRQ automatique (un re-DRQ parasite contamine le handshake — suspect n°1 de l'erreur 42) : cliquer à nouveau « 🔄 Re-dump complet » ; si erreur 42 → OFF/ON du clavier d'abord.", "ko");
     }
   }
 }

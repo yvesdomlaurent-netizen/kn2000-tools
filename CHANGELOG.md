@@ -80,6 +80,12 @@ Outils :
 - **Mystère documenté** : le bloc 40 du panel s'arrête systématiquement à 1056/1088 octets (écart 32 constant, sans conséquence) — l'écart est consigné dans le JSON.
 - **Validation hors clavier** : le moteur a été rejoué sur la capture terrain validée du 18/10 (dump panel CtrlrX) — un ACK par paquet (70 ACK pour 70 paquets), fin sur END, bloc 40 à 1056/1088 conforme au terrain, structure d'export vérifiée. Les aires 30/50/60 restent à valider par le terrain.
 
+### Panel Console v1.0.10 — dump conforme à la séquence validée (DRQ direct, page SYSEX BULK DUMP retirée)
+- **Cadrage Yves** : avant de valider la chaîne Panel → écriture sur le KN2000, aligner la séquence de dump complet de la Console sur celle validée dans backup.html le 26/10.
+- **DRQ direct** : la lecture préalable des enables sysex (20 04 00/01/02) avant chaque bulk est **supprimée** — le DRQ `40 00 00` part directement depuis la page (3 échanges MIDI en moins, comportement identique à backup.html). La séquence handshake validée est inchangée : HRQ → HRT ; HRT → ACK ; **un ACK par paquet** (BTR, chaque CDD, EOK, END) ; **jamais de re-DRQ**.
+- **Page SYSEX BULK DUMP retirée des messages** : découverte terrain 26/10 (backup.html v0.3) — le dump part sans la page clavier. Tous les logs, tooltips et messages d'erreur (timeouts, PM incomplète, conseils erreur 42) sont mis à jour : « relancer le dump ; si erreur 42 → OFF/ON du clavier d'abord ». Le moteur v1.0.9 (déjà correct) n'est pas touché.
+- Syntaxe JS vérifiée hors clavier ; séquence critique intacte (HRQ/HRT/ACK/BTR/CDD/EOK/END).
+
 ### Panel Console v1.0.9 — ACK après chaque paquet (protocole handshake complet par le terrain)
 - **Retour terrain v1.0.8** : lecture des enables OK (tout ON), handshake complet OK, et l'ACK-BTR a **débloqué le dump** — les paquets CDD ont coulé pour la première fois (245 puis 370/1088 octets). Mais le KN2000 s'est arrêté après le 2ᵉ paquet et a répondu ERR 7E + erreur 42 : il attendait l'ACK **du paquet**.
 - **ACK après chaque paquet reçu** : BTR, CHAQUE paquet CDD (checksum OK), EOK, END — exactement un ACK par paquet, jamais deux. C'est le protocole de handshake complet : « état confirmé pendant la transmission » (p.25).
