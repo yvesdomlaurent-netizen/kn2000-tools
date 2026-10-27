@@ -70,7 +70,7 @@
   <span class="bdg" id="bdgKn" title="Connexion KN2000 — clique pour ouvrir les réglages (section connexion)">🎹 KN2000 ○</span>
   <span class="bdg" id="bdgDir" title="Dossier de travail (exports/imports de la bibliothèque) — clique pour ouvrir les réglages (section dossier)">📁 —</span>
   <span style="flex:1"></span>
-  <h1>🎹 KN2000 Console <span style="font-size:.6em;color:#8fd0ff">v1.0.13</span></h1>
+  <h1>🎹 KN2000 Console <span style="font-size:.6em;color:#8fd0ff">v1.0.14</span></h1>
   <span style="flex:1"></span>
   <label class="ghost" title="Afficher/masquer le journal MIDI (sysex)"><input type="checkbox" id="logBtn" style="width:15px;height:15px;vertical-align:middle;transform:translateY(-1px)"> 📜 Log MIDI</label>
   <button class="ghost" id="btnCfg" title="Réglages & Aide : connexion, dossier de travail, moniteur, langue">⚙️ Réglages</button>
@@ -175,8 +175,8 @@
   <select id="pmDumpSel"></select>
   <button class="sec" id="pmRead" title="Affiche la PM choisie : depuis le cache local si elle y est complète, sinon lance un dump panel complet (~10-20 s)">📄 Lire cette PM</button>
   <button class="sec" id="pmDumpAll" title="Force un dump panel complet (blocs 40+41) : les banques reçues complètes rafraîchissent le cache, les autres restent — rien n'est perdu">🔄 Re-dump complet</button>
-  <button id="pmWrite" title="Écrit le contenu affiché dans la PM choisie du clavier (3 trames ITW ≤120 o, pause 60 ms — le clavier n'accuse pas réception : l'écran juge, puis re-dump pour vérifier)">➡ Écrire cette PM vers le clavier</button>
-  <button class="sec" id="pmWriteAll" title="Écrit les 24 PM complètes du cache vers le clavier (72 trames ITW, ~8 s — restauration complète du bloc 41). Le clavier n'accuse pas réception : modifier une PM au clavier (SET) puis la renvoyer, elle doit revenir à sa position du backup">💾 Écrire les 24 PM (cache → clavier)</button>
+  <button id="pmWrite" title="Écrit le contenu affiché dans la PM choisie du clavier par bulk handshake (le bloc 41 entier est renvoyé : la PM choisie prend le contenu affiché, les 23 autres le cache). Le clavier ACKe chaque paquet — « réception OK » attendu à l'écran">➡ Écrire cette PM vers le clavier</button>
+  <button class="sec" id="pmWriteAll" title="Restaure les 24 PM du cache vers le clavier par bulk handshake (HRQ → HRT → ACK, puis 64 paquets chacun ACKés, EOK, END — ~30 s). « Réception OK » attendu à l'écran du clavier. Modifier une PM (SET) puis la renvoyer : elle doit revenir à sa position du backup">💾 Restaurer les 24 PM (bulk handshake)</button>
   <span id="pmCacheSt" class="info" style="font-size:12px"></span><br>
   <span id="pmDumpSt" class="info">—</span>
   <button class="sec" id="pmDiff" title="Compare les deux derni\u00e8res PM lues octet par octet \u2014 r\u00e9v\u00e8le si un r\u00e9glage (ex. son d'une Part) est stock\u00e9 dans la PM">&#8646; Diff 2 PM</button>
@@ -629,6 +629,7 @@ $("monBtn").onclick = () => { monitor = !monitor; $("monBtn").textContent = "\u{
 function onMsg(ev) {
   const d = ev.data; if (!d) return;
   if (monitor && d[0] !== 0xfe && !(d[0] === 0xf0 && d[1] === 0x50)) logRaw(d);   // v1.0.7 : tout le sysex Technics (50) est traité/logué par le moteur — pas de doublon brut (fix v1.0.6)
+  if (pmBulk.on && d[0] === 0xf0 && d[1] === 0x50 && (d[2] === 0x22 || d[2] === 0x23 || d[2] === 0x29)) { pmBulkMsg([...d]); return; }   // v1.0.14 : réponses du clavier pendant l'écriture bulk (HRT/ACK/ERR)
   // v1.0.1 : trame d'erreur du KN2000 (f0 50 29 <code> f7) — ce n'est PAS une 2C, ne pas la traiter en checksum KO
   if (d[0] === 0xf0 && d[1] === 0x50 && d[2] === 0x29) {
     connOk = true; // la machine répond (c'est une réponse, même d'erreur)
@@ -1006,55 +1007,101 @@ $("pmDumpAll").onclick = () => {
   pmDumpStart(idx, 1);
 };
 pmCacheUI();
-// ===== v1.0.12/13 : écriture Panel → KN2000 (PANEL MEMORY, ITW 2C) — trames ≤120 o, pace 60 ms =====
-// v1.0.13 : aire PANEL MEMORY = 108000H = ADR 42 00 00 (anomalie p.24 du guide : « 41 » est l'étiquette BTR du bloc, pas l'adresse).
-// Échec v1.0.12 (terrain 27/10) : écriture vers 41 xx xx ignorée en silence (trame invalide jetée sans ERR). Filet de secours si 42 échoue aussi : bulk replay (round-trip prouvé 17/10).
-let pmWriting = false;
-async function pmWriteBytes(idx, data) {   // 336 o → 3 trames ITW (120+120+96), ADR 42 en paires 7 bits (v1.0.13 : aire PANEL MEMORY = 108000H = 42 00 00, anomalie p.24 — l'étiquette « 41 » des BTR n'est PAS l'adresse d'écriture)
-  for (let off = 0; off < data.length; off += 120) {
-    const chunk = data.slice(off, Math.min(off + 120, data.length));
-    const abs = idx * 336 + off;
-    const adr = [0x42, (abs >> 7) & 0x7f, abs & 0x7f];
-    if (!send(sysex2C(adr, chunk))) throw new Error("envoi MIDI");
-    await wait(60);
-  }
+// ===== v1.0.14 : écriture Panel → KN2000 par BULK HANDSHAKE (le seul canal candidat restant pour les PM) =====
+// ITW 2C éliminé : terrain 27/10 — écritures 41 xx xx (v1.0.12) ET 42 xx xx (v1.0.13) ignorées en silence, aucun ERR.
+// Le canal prouvé = bulk replay (round-trip 17/10 : « réception OK » à l'écran, banque restaurée).
+// Séquence p.25 inversée (nous = MASTER, clavier = SLAVE) : HRQ → HRT du clavier → notre HRT → ACK du clavier,
+// puis chaque paquet (BTR/CDD/EOK/END) est ACKé par le clavier (p.26) — contrairement à l'ITW, la réception EST confirmée.
+const PM_HRQ = [0xf0, 0x50, 0x21, 0x01, 0x18, 0x10, 0xf7];
+const PM_OUR_HRT = [0xf0, 0x50, 0x22, 0x01, 0x18, 0x10, 0xf7];
+const PM_EOKW = [0xf0, 0x50, 0x27, 0x7e, 0xf7];
+const PM_ENDW = [0xf0, 0x50, 0x28, 0x7e, 0xf7];
+const pmBulk = { on: false, expect: null, resolve: null, timer: null };
+function pmBulkWait(cmd, ms, label) {   // attend une trame cmd (22 HRT / 23 ACK) du clavier
+  return new Promise((res, rej) => {
+    pmBulk.expect = cmd;
+    pmBulk.resolve = res;
+    pmBulk.timer = setTimeout(() => { pmBulk.expect = null; pmBulk.resolve = null; rej(new Error("pas de " + label + " du clavier sous " + ms / 1000 + " s")); }, ms);
+  });
 }
-async function pmWriteRun(list, label) {   // list = [{idx, data}] — enables, écriture séquencée, état clavier non confirmé (l'écran juge)
+function pmBulkMsg(d) {   // appelé par onMsg quand pmBulk.on : HRT (22) du clavier, ACK (23), ERR (29)
+  const c = d[2];
+  if (c === 0x29) { log("[RX] ⚠️ ERR du KN2000 pendant l'écriture bulk — arrêt. Code " + A2(d[3]) + " (écran du clavier ?)", "ko"); if (pmBulk.timer) clearTimeout(pmBulk.timer); pmBulk.expect = null; const r = pmBulk.resolve; pmBulk.resolve = null; if (r) r("err"); return; }
+  if (pmBulk.expect === c) { clearTimeout(pmBulk.timer); pmBulk.expect = null; const r = pmBulk.resolve; pmBulk.resolve = null; if (r) r("ok"); }
+}
+function pmBulkFrame(head, bytes, cn) {   // f0 50 <cmd> … head … <nibbles> CN CK f7 — checksum XOR octets 1..n-3 (formule validée sur les 2d/7e reçus)
+  const nib = []; for (const b of bytes) nib.push((b >> 4) & 0x0f, b & 0x0f);
+  const f = [...head, ...nib, cn, 0, 0xf7];
+  f[f.length - 2] = f.slice(1, f.length - 3).reduce((a, x) => a ^ x, 0);
+  return f;
+}
+function pmBulkPackets(data) {   // 8064 o → 1 BTR (ADR 41 00 00, SIZ 00 3F 00, 120 o inline, CN=01 CNT) + 64 CDD (126 o, dernier partiel 6 o, CN=00 STP)
+  const packets = [];
+  packets.push(pmBulkFrame([0xf0, 0x50, 0x2d, 0x01, 0x18, 0x10, 0x41, 0x00, 0x00, (data.length >> 14) & 0x7f, (data.length >> 7) & 0x7f, data.length & 0x7f], data.slice(0, 120), 0x01));
+  const rest = data.slice(120);
+  const n = Math.ceil(rest.length / 126);
+  for (let i = 0; i < n; i++) {
+    const chunk = rest.slice(i * 126, (i + 1) * 126);
+    packets.push(pmBulkFrame([0xf0, 0x50, 0x7e], chunk, i === n - 1 ? 0x00 : 0x01));   // CN 00 = STP (fin du bloc) sur le dernier paquet
+  }
+  return packets;
+}
+async function pmBulkRun(data, label) {   // data = 8064 o (24 PM complètes) — handshake complet, un ACK attendu par paquet
   if (!output) { log("Pas de sortie MIDI sélectionnée.", "ko"); return false; }
-  if (pmWriting || pmDump.on || pmWait) { log("Opération MIDI déjà en cours (dump ?) — attendre la fin.", "ko"); return false; }
-  const totalFrames = list.length * 3;
-  const warn = "⚠️ Écriture réelle vers le KN2000 — Panel Memory (bloc 41).\n" + label + " : " + list.length + " PM × 3 trames (" + totalFrames + " trames ITW, pause 60 ms, ~" + Math.round(totalFrames * 60 / 1000 + list.length * 0.4) + " s).\n\nLe clavier n'accuse pas réception : l'écran et le re-dump seront les juges.\nModifier une PM au clavier (SET) puis la renvoyer : elle doit revenir à sa position du backup. Continuer ?";
-  if (!confirm(warn)) { log("Écriture annulée.", "info"); return false; }
-  pmWriting = true; $("pmWrite").disabled = true; $("pmWriteAll").disabled = true;
-  log("=== " + label + " : " + list.length + " PM × 3 trames ITW (pause 60 ms) — observer l'écran du clavier ===", "info");
+  if (pmBulk.on || pmDump.on || pmWait) { log("Opération MIDI déjà en cours — attendre la fin.", "ko"); return false; }
+  if (!Array.isArray(data) || data.length !== 8064) { log("Bloc PM incomplet (" + (data ? data.length : 0) + "/8064 o) — l'écriture bulk exige les 24 PM complètes (re-dump complet d'abord).", "ko"); return false; }
+  if (!confirm("⚠️ Écriture réelle vers le KN2000 — Panel Memory (bloc 41, 8064 o = 24 PM).\n" + label + "\n\nHandshake : le clavier doit ACKer chaque paquet — tout manque d'ACK arrête l'envoi.\nNe rien toucher au clavier pendant l'opération. Continuer ?")) { log("Écriture annulée.", "info"); return false; }
+  pmBulk.on = true; $("pmWrite").disabled = true; $("pmWriteAll").disabled = true;
   try {
-    send(sysex2C([0x20, 0x04, 0x00], [0x01])); await wait(120);   // enables requis (méthodes validées panel)
-    send(sysex2C([0x20, 0x04, 0x01], [0x01])); await wait(120);
-    let done = 0;
-    for (const it of list) {
-      await pmWriteBytes(it.idx, it.data); done++;
-      log("[TX] 2C → PM " + PM_NAMES[it.idx] + " écrite (336 o en 3 trames, ADR 42) — " + done + "/" + list.length, "ok");
-      await wait(200);
+    log("=== " + label + " — bulk handshake (1 BTR + 64 CDD + EOK + END, un ACK attendu par paquet) ===", "info");
+    send(PM_HRQ); log("[TX] HRQ (21) — nous sommes master, le clavier doit répondre HRT (22)", "info");
+    let r = await pmBulkWait(0x22, 4000, "HRT (22)");
+    if (r === "err") throw new Error("ERR du clavier");
+    log("[RX] HRT (22) du clavier ✓ → [TX] notre HRT (22) (séquence p.25)", "ok");
+    send(PM_OUR_HRT);
+    r = await pmBulkWait(0x23, 4000, "ACK (23)");
+    if (r === "err") throw new Error("ERR du clavier");
+    log("[RX] ACK (23) du clavier ✓ — handshake établi, envoi du bloc 41 (8064 o)", "ok");
+    const packets = pmBulkPackets(data);
+    for (let i = 0; i < packets.length; i++) {
+      if (!send(packets[i])) throw new Error("envoi MIDI");
+      const rr = await pmBulkWait(0x23, 4000, "ACK (23)");
+      if (rr === "err") throw new Error("ERR du clavier");
+      if (i === 0 || (i + 1) % 16 === 0 || i === packets.length - 1) log("[TX] paquet " + (i + 1) + "/" + packets.length + " ACKé ✓ (" + (packets[i][2] === 0x2d ? "BTR ADR 41 00 00 · SIZ 00 3F 00" : "CDD 7e") + ")", "ok");
     }
-    log("✅ Écriture terminée : " + list.length + " PM. Le clavier n'a rien confirmé — vérifier : sélectionner la PM au clavier, ou modifier une PM (SET) puis la renvoyer, ou 🔄 Re-dump complet.", "ok");
+    send(PM_EOKW); r = await pmBulkWait(0x23, 4000, "ACK EOK"); if (r === "err") throw new Error("ERR du clavier");
+    log("[TX] EOK (27) → ACK du clavier ✓", "ok");
+    send(PM_ENDW); r = await pmBulkWait(0x23, 4000, "ACK END"); if (r === "err") throw new Error("ERR du clavier");
+    log("[TX] END (28) → ACK du clavier ✓", "ok");
+    log("✅ Écriture bulk terminée : 24 PM envoyées, chaque paquet ACKé par le clavier. L'écran du KN2000 doit afficher « réception OK ». Vérifier : sélectionner la PM modifiée (SET) puis la renvoyer → position du backup ; ou 🔄 Re-dump complet.", "ok");
     return true;
-  } catch (e) { log("Écriture interrompue : " + e.message, "ko"); return false; }
-  finally { pmWriting = false; $("pmWrite").disabled = false; $("pmWriteAll").disabled = false; }
+  } catch (e) { log("⚠️ Écriture bulk interrompue : " + e.message + " — l'état du clavier est incertain : OFF/ON conseillé avant tout nouvel essai, puis re-dump pour vérifier.", "ko"); return false; }
+  finally { pmBulk.on = false; pmBulk.expect = null; pmBulk.resolve = null; if (pmBulk.timer) clearTimeout(pmBulk.timer); $("pmWrite").disabled = false; $("pmWriteAll").disabled = false; }
+}
+function pmCacheBanks() {   // 24 banques complètes → tableau 8064 o, sinon null + liste des manquantes
+  const cache = pmCacheLoad();
+  const banks = (cache && cache.banks) ? cache.banks : [];
+  const missing = [];
+  for (let i = 0; i < 24; i++) if (!(banks[i] && banks[i].ok && Array.isArray(banks[i].data) && banks[i].data.length >= 336)) missing.push(PM_NAMES[i]);
+  return { banks, missing };
 }
 $("pmWrite").onclick = async () => {
   const idx = Number($("pmDumpSel").value);
   if (!pmRec) { log("Lire d'abord une PM (bouton « 📄 Lire cette PM »).", "ko"); return; }
-  if (idx !== pmRecIdx) { const go = confirm("Le contenu affiché vient de " + PM_NAMES[pmRecIdx] + ".\nÉcrire dans " + PM_NAMES[idx] + " écrasera cette PM du clavier avec ce contenu.\nConfirmer ?"); if (!go) return; }
-  await pmWriteRun([{ idx, data: pmRec }], "Écriture PM " + PM_NAMES[idx] + (idx !== pmRecIdx ? " (contenu de " + PM_NAMES[pmRecIdx] + ")" : ""));
+  const { banks, missing } = pmCacheBanks();
+  if (missing.length) { log("Le bloc doit être complet : " + missing.join(", ") + " manquent en cache — faire « 🔄 Re-dump complet » d'abord (l'écriture bulk envoie le bloc 41 entier).", "ko"); return; }
+  if (idx !== pmRecIdx) { const go = confirm("Le contenu affiché vient de " + PM_NAMES[pmRecIdx] + ".\nLa PM " + PM_NAMES[idx] + " du clavier sera écrasée avec ce contenu (les 23 autres PM du cache seront renvoyées à l'identique).\nConfirmer ?"); if (!go) return; }
+  else if (!confirm("Écraser la PM " + PM_NAMES[idx] + " du clavier avec le contenu affiché ? (les 23 autres PM du cache seront renvoyées à l'identique)")) return;
+  const data = [];
+  for (let i = 0; i < 24; i++) for (const b of (i === idx ? pmRec.slice(0, 336) : banks[i].data.slice(0, 336))) data.push(b);
+  await pmBulkRun(data, "Écriture PM " + PM_NAMES[idx] + (idx !== pmRecIdx ? " (contenu de " + PM_NAMES[pmRecIdx] + ")" : ""));
 };
 $("pmWriteAll").onclick = async () => {
-  const cache = pmCacheLoad();
-  const banks = (cache && cache.banks) ? cache.banks : [];
-  const list = [];
-  for (let i = 0; i < 24; i++) if (banks[i] && banks[i].ok && Array.isArray(banks[i].data) && banks[i].data.length >= 336) list.push({ idx: i, data: banks[i].data.slice(0, 336) });
-  if (!list.length) { log("Aucune PM complète en cache — faire d'abord « 🔄 Re-dump complet ».", "ko"); return; }
-  if (list.length < 24) log("⚠️ " + (24 - list.length) + " PM absentes du cache — elles ne seront PAS écrites (re-dump complet recommandé).", "info");
-  await pmWriteRun(list, "Écriture des " + list.length + "/24 PM du cache (restauration du bloc 41)");
+  const { banks, missing } = pmCacheBanks();
+  if (missing.length) { log("PM incomplètes en cache (" + missing.join(", ") + ") — l'écriture bulk exige le bloc complet : faire « 🔄 Re-dump complet » d'abord.", "ko"); return; }
+  const data = [];
+  for (let i = 0; i < 24; i++) for (const b of banks[i].data.slice(0, 336)) data.push(b);
+  await pmBulkRun(data, "Restauration des 24 PM du cache (bloc 41 complet)");
 };
 // ===== v1.0.11 : un dump reussi alimente la bibliothèque (24 ensembles « PM A1…C8 ») =====
 function pmSnapFromBytes(rec) {   // PM 336 o -> snapshot sémantique au format de la bibliothèque

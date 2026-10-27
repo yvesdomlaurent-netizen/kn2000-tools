@@ -86,6 +86,13 @@ Outils :
 - **Mystère documenté** : le bloc 40 du panel s'arrête systématiquement à 1056/1088 octets (écart 32 constant, sans conséquence) — l'écart est consigné dans le JSON.
 - **Validation hors clavier** : le moteur a été rejoué sur la capture terrain validée du 18/10 (dump panel CtrlrX) — un ACK par paquet (70 ACK pour 70 paquets), fin sur END, bloc 40 à 1056/1088 conforme au terrain, structure d'export vérifiée. Les aires 30/50/60 restent à valider par le terrain.
 
+### Panel Console v1.0.14 — écriture PM par bulk handshake (l'ITW éliminé après double échec terrain)
+
+- **Retour terrain v1.0.13** : l'écriture ITW vers 42 xx xx (108000H) a aussi été ignorée en silence — **l'écriture des PM ne passe pas par l'ITW 2C**, mais par le protocole bulk (round-trip prouvé le 17/10 : « réception OK » à l'écran, banque restaurée).
+- **Moteur `pmBulkRun`** : nous sommes master, séquence p.25 inversée — HRQ → HRT du clavier → notre HRT → ACK du clavier, puis BTR (ADR 41 00 00 étiquette dump, SIZ 00 3F 00, 120 o inline) + 64 paquets CDD (126 o, dernier 6 o ; CN 01=CNT, dernier 00=STP) → EOK → END. **Chaque paquet est ACKé par le clavier** — tout manque d'ACK (4 s) ou ERR (29) arrête l'envoi proprement.
+- Boutons : **➡ Écrire cette PM** (le bloc 41 complet est renvoyé : la PM choisie prend le contenu affiché, les 23 autres celui du cache) et **💾 Restaurer les 24 PM** (bloc complet du cache). Exigence : bloc complet en cache (re-dump d'abord).
+- 18 tests verts avec clavier simulé (structure des 65 paquets, checksums XOR, round-trip nibbles, handshake complet 69 trames, refus si cache incomplet, arrêt propre sur ERR).
+
 ### Panel Console v1.0.13 — correctif écriture PM : aire PANEL MEMORY = ADR 42 (108000H)
 
 - **Retour terrain v1.0.12** : l'écriture d'une PM (trames ITW vers 41 xx xx) a été ignorée en silence par le clavier — aucun ACK ni ERR, aucune réaction, aucune modification de la PM.
