@@ -14,6 +14,15 @@ Outils :
 
 ## 2026-10-27
 
+### Sauvegarde / Catalogue v0.5.5 — correctif slot Sons nommés (vrai bug trouvé) + logs « Sauvegarder tout »
+
+- **Retour terrain Yves (2 points)** : la restauration PANEL complète est **validée** (mode complet) ; le combo slot des Sons nommés retombait **toujours** sur A-1 dès qu'il changeait de son (v0.5.3/04 « inchangé »).
+- **Cause réelle du bug slot (différente du diagnostic v0.5.3)** : le label Firefox n'était pas (le seul) coupable — chaque changement de son relançait `sonsUI()`, qui **réimposait `slotSel.value = st.lastSlot` à chaque appel**. Si la mémorisation ne suivait pas côté Firefox, le combo revenait au mémorisé (A-1). Correctif de design : **le combo est initialisé une seule fois au chargement (`initSlotSel()`), `sonsUI()` ne le touche plus jamais** — la sélection en cours dans la page est la seule vérité ; `saveSlot()` persiste au changement (addEventListener change + input) **et à l'envoi** ; restauré au chargement suivant.
+- **Correctif « ▶ Sauvegarder tout (aires restantes) » (bug UX, convenu session 261)** : silencieux quand toutes les aires avaient déjà un dump terminé dans la session de page → messages explicites (« X aire(s) déjà dumpée(s) — ignorée(s) », « ℹ️ Rien à sauvegarder : … bouton 🔄 ou recharger la page »), plus de « ✅ » trompeur.
+- **Validation hors clavier** : verify-v055.js **27 tests verts** — dont le cas terrain reproduit (st.lastSlot="0" mémorisé, sélection B-18 en cours, sonsUI() ×2 → le slot ne bouge plus), saveSlot persiste dans le store, initSlotSel restaure, « Sauvegarder tout » avec tout dumpé → 0 trame + message explicite. Non-régression : v0.4 (16) + v0.5 (23) verts.
+- **Terrain en cours** : dump KO post-restore expliqué (OFF/ON + ~30 s : pile MIDI du clavier non resynchronisée — dump SOUND OK ensuite) ; restauration **différentielle** Sound (réécriture des 36 sons un par un, sans l'entête 80 o — la restauration complète d'une aire Sound exige le patch avec entête) documentée, à valider séparément.
+
+
 ### Sauvegarde / Catalogue v0.5.4 — ↩️ Restauration PANEL dans la section Restauration
 
 - **Retour terrain Yves** : le bouton d'écriture bulk PM était dans la carte 🎛️ Panel Memories (onglet Bibliothèque), pas dans la section **Restauration**. L'aire **PANEL ✅ restaurable (24 PM, bulk)** est désormais dans le select « Restaurer » ; ↩️ route vers le moteur bulk handshake (bloc 40 puis bloc 41 du patch PANEL courant, ~35 s, 78 trames) — identique au bouton ✉️ de la carte 🎛️. Tableau de bord et ast mis à jour (« ✅ validé terrain 27/10 »).
