@@ -46,7 +46,7 @@
 </style>
 </head>
 <body>
-<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.5.5</span>
+<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.5.6</span>
   <span class="pill warn" title="Page en construction : restauration validée terrain pour Sound (ITW) et Panel Memory (bulk handshake) ; Composer/Sequencer restent à valider (page outils)">🔨 en construction</span></h1>
 <div class="tip">💡 Sauvegarder et restaurer l'état du clavier : <strong>Dumps</strong> (KN2000 → page) puis <strong>Catalogue</strong> (patches versionnés, croisement KN2000 ↔ catalogue, restauration complète ou différentielle).
 <strong>Aucune préparation au clavier n'est nécessaire</strong> (validé terrain 26/10/2026). Mémoires volatiles : le KN2000 ne conserve ses mémoires que ~80 min hors tension.</div>
@@ -75,6 +75,7 @@
 <div id="areas"></div>
 <div class="row">
   <button id="btnAllSeq" title="Enchaîne les aires non encore validées, dans l'ordre (5 s de pause entre aires)">▶ Sauvegarder tout (aires restantes)</button>
+    <button class="sec" id="btnAllRedo" title="Re-dump TOUTES les aires, même celles déjà validées (5 s de pause entre aires)">🔁 Tout re-dumper</button>
   <span class="ast">Le dump se lance directement — aucune préparation au clavier.</span>
 </div>
 
@@ -163,8 +164,8 @@
 
 <div class="cardc">
   <div class="row"><span class="glbl">Sons nommés</span>
-    <select id="sonSel" title="Bibliothèque user : sons isolés (144 o), dédupliqués par contenu"></select>
-    <span>→ slot</span> <select id="slotSel" title="Slot de destination vers le clavier"></select>
+    <select id="sonSel" autocomplete="off" title="Bibliothèque user : sons isolés (144 o), dédupliqués par contenu"></select>
+    <span>→ slot</span> <select id="slotSel" autocomplete="off" title="Slot de destination vers le clavier"></select>
     <button id="btnSonSend" title="Envoie ce son (144 o) vers le slot choisi du KN2000 — 2 trames ITW, écriture réelle avec confirmation">✉️ Envoyer vers le clavier</button>
     <button class="sec" id="btnSonsExport" title="Exporte la bibliothèque de sons au format catalogue du Sound Editor (kn2000_sound_catalog.json)">⬇️ Exporter (catalogue Sound Editor)</button>
   </div>
@@ -479,20 +480,30 @@ document.querySelectorAll("[data-save]").forEach(btn => btn.onclick = () => {
   if (!results[id] || !results[id].blocks.length) { log("Dumper d'abord l'aire " + areaName(id) + ".", "ko"); return; }
   savePatch(id, serArea(results[id]), null);
 });
-$("btnAllSeq").onclick = async () => {
-  if (!output) { log("Choisir la sortie MIDI.", "ko"); return; }
-  const reste = AREAS.filter(a => !(results[a.id] && results[a.id].finished));
-  const deja = AREAS.length - reste.length;
-  if (deja) log("ℹ️ " + deja + " aire(s) déjà dumpée(s) dans cette session de page — ignorée(s).", "info");   // v0.5.5 : plus de silence (bug terrain : semblait ne rien déclencher)
-  if (!reste.length) { log("ℹ️ Rien à sauvegarder : toutes les aires ont déjà un dump terminé. Pour re-dumper : bouton 🔄 individuel ou recharger la page.", "info"); return; }
-  for (const a of reste) {
+async function dumpChain(liste) {
+  {
+  for (const a of liste) {
     log("▶ Enchaînement : aire " + a.name + " dans 5 s…", "info");
     await wait(5000);
     dumpStart(a);
     while (dump.on) await wait(500);
     if (!(results[a.id] && results[a.id].finished)) { log("Aire " + a.name + " non terminée — enchaînement stoppé.", "ko"); return; }
   }
-  log("✅ Aires enchaînées (" + reste.length + ").", "ok");
+  log("✅ Aires enchaînées (" + liste.length + ").", "ok");
+  }
+}
+$("btnAllSeq").onclick = async () => {   // v0.5.6 : aires restantes (les dumps sont restaurés au rechargement — le bouton ne re-dump pas ce qui est déjà fait)
+  if (!output) { log("Choisir la sortie MIDI.", "ko"); return; }
+  const reste = AREAS.filter(a => !(results[a.id] && results[a.id].finished));
+  const deja = AREAS.length - reste.length;
+  if (deja) log("ℹ️ " + deja + " aire(s) déjà dumpée(s) (derniers dumps restaurés au chargement) — ignorée(s). Utiliser 🔁 Tout re-dumper pour tout refaire.", "info");
+  if (!reste.length) { log("ℹ️ Rien à sauvegarder : toutes les aires ont déjà un dump terminé (restauré au chargement). Utiliser 🔁 Tout re-dumper ou le bouton 🔄 individuel.", "info"); return; }
+  await dumpChain(reste);
+};
+$("btnAllRedo").onclick = async () => {   // v0.5.6 : re-dump complet forcé (retour terrain : « rafraîchir » ne re-dump pas, les dumps persistent)
+  if (!output) { log("Choisir la sortie MIDI.", "ko"); return; }
+  log("🔁 Re-dump de TOUTES les aires (" + AREAS.length + ").", "info");
+  await dumpChain(AREAS);
 };
 
 // ===== export JSON =====
@@ -1043,7 +1054,7 @@ function soundSlotList(ser) {   // 36 {slot, name, raw_hex} depuis l'aire sound
 function buildMaster() {
   return {
     format: "kn2000-master-v1", version: 1, keyboard: "Technics SX-KN2000",
-    meta: { name: "KN2000 instrument", date: new Date().toISOString(), source: "backup.html v0.5.5" },
+    meta: { name: "KN2000 instrument", date: new Date().toISOString(), source: "backup.html v0.5.6" },
     doc: "Vérité binaire unique. Toutes les sections sont optionnelles. areas.<id>.blocks[] : adr (hex bloc), seq (occurrence), siz (octets originaux annoncés), got (reçus), data = hex minuscule 2 chiffres/octet MSB d'abord, '--' = octet manquant. sons[] : slot A-1..B-18, name (16 premiers octets), raw_hex = 144 octets du son. pms[] : slot A1..C8, raw_hex = 336 octets de la Panel Memory.",
     areas: st.lastDump,
     sons: soundSlotList(st.lastDump.sound) || undefined,
@@ -1155,8 +1166,14 @@ function initSlotSel() {   // v0.5.5 : le combo slot est initialisé UNE SEULE F
   slotSel.innerHTML = "";
   for (let n = 0; n < 36; n++) slotSel.add(new Option(n < 18 ? "A-" + (n + 1) : "B-" + (n - 17), String(n)));
   if (st.lastSlot !== undefined && st.lastSlot !== null && [...slotSel.options].some(o => o.value === String(st.lastSlot))) slotSel.value = String(st.lastSlot);
+  log("[slot] initialisation : " + slotSel.options.length + " options, valeur = " + slotSel.value + (st.lastSlot !== undefined && st.lastSlot !== null ? " (mémorisé : " + st.lastSlot + ")" : " (rien de mémorisé)"), "info");   // v0.5.6 diagnostic
 }
-function saveSlot() { st.lastSlot = $("slotSel").value; storeSave(); }   // v0.5.5 : persistance au changement ET à l'envoi
+function saveSlot() {   // v0.5.5 : persistance au changement ET à l'envoi — v0.5.6 : log + sentinelle diagnostic
+  const v = $("slotSel").value;
+  st.lastSlot = v; storeSave();
+  log("[slot] choix " + (v < 18 ? "A-" + (+v + 1) : "B-" + (v - 17)) + " mémorisé (valeur " + v + ")", "info");
+  setTimeout(() => { const now = $("slotSel").value; if (now !== v) log("⚠️ [slot] diagnostic : le combo est retombé sur " + (now < 18 ? "A-" + (+now + 1) : "B-" + (now - 17)) + " (valeur " + now + ") sans action de la page — le navigateur a réinitialisé le select. Signaler ce message.", "ko"); }, 400);   // v0.5.6 sentinelle
+}
 $("slotSel").addEventListener("change", saveSlot);
 $("slotSel").addEventListener("input", saveSlot);   // Firefox : 'input' couvre aussi la sélection
 $("sonSel").onchange = sonsUI;

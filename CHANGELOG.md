@@ -14,6 +14,13 @@ Outils :
 
 ## 2026-10-27
 
+### Sauvegarde / Catalogue v0.5.6 — 🔁 Tout re-dumper + instrumentation slot (bug « A-1 » inchangé : on cherche la vérité terrain)
+
+- **Retour terrain Yves** : (1) le combo slot « saute immédiatement » sur A-1 **même en v0.5.5** où plus aucune ligne JS ne le touche après le chargement — deux diagnostics à distance erronés, on passe à l'instrumentation ; (2) « déjà dumpée(s) » après F5 : comportement attendu découvert — **les derniers dumps sont restaurés au chargement** (bloc init lit `st.lastDump`), donc rafraîchir ne re-dump pas.
+- **🔁 Tout re-dumper** : nouveau bouton qui force le re-dump de TOUTES les aires (la boucle est factorisée dans `dumpChain(liste)`). Les messages de ▶ précisent la restauration au chargement.
+- **Instrumentation slot** : `saveSlot()` journalise chaque mémorisation (« [slot] choix B-2 mémorisé ») + **sentinelle 400 ms** qui détecte toute retombée non provoquée par la page (« ⚠️ [slot] diagnostic : le combo est retombé sur A-1… le navigateur a réinitialisé le select. Signaler ce message. ») ; `initSlotSel()` logue l'état au chargement ; `autocomplete="off"` sur les selects (défense autofill Firefox).
+- **Validation** : verify-v056.js **33 verts** + non-régression v0.4 (16) + v0.5 (23).
+
 ### Sauvegarde / Catalogue v0.5.5 — correctif slot Sons nommés (vrai bug trouvé) + logs « Sauvegarder tout »
 
 - **Retour terrain Yves (2 points)** : la restauration PANEL complète est **validée** (mode complet) ; le combo slot des Sons nommés retombait **toujours** sur A-1 dès qu'il changeait de son (v0.5.3/04 « inchangé »).
