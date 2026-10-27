@@ -86,6 +86,14 @@ Outils :
 - **Mystère documenté** : le bloc 40 du panel s'arrête systématiquement à 1056/1088 octets (écart 32 constant, sans conséquence) — l'écart est consigné dans le JSON.
 - **Validation hors clavier** : le moteur a été rejoué sur la capture terrain validée du 18/10 (dump panel CtrlrX) — un ACK par paquet (70 ACK pour 70 paquets), fin sur END, bloc 40 à 1056/1088 conforme au terrain, structure d'export vérifiée. Les aires 30/50/60 restent à valider par le terrain.
 
+### Panel Console v1.0.17 — écriture PM VALIDÉE TERRAIN ✅ · confirmations supprimées
+
+- **Validation terrain (Yves, 27/10)** : l'écriture PM par bulk handshake **fonctionne** — HRQ → HRT → ACK, bloc 40 (9/9 paquets ACKés) puis bloc 41 (65/65 ACKés), EOK/END ACKés. L'hypothèse du bloc 40 en tête était la bonne (v1.0.16).
+- **Confort (demande Yves)** : les **2 confirmations successives avant l'envoi supprimées** — remplacées par un message journal explicite. Les garde-fous restent (refus si cache incomplet ou bloc 40 absent).
+- **Vitesse** : ~35 s pour 78 paquets = latence d'un ACK par paquet (round-trip clavier) — le prix de la fiabilité ; une variante « ACK par bloc » (doc p.26-27) serait plus rapide mais non prouvée terrain — piste ouverte.
+- **Mode de communication (réponse à une question Yves)** : l'écriture PM exige la page **SYSEX BULK DUMP** au clavier contrairement à l'ITW (sons) — deux modes différents : l'**ITW/ITR (2C/2B)** est une communication individuelle one-way (aires 20/30, aucune préparation clavier, seul REAL TIME SYSEX ENABLE compte) ; le **bulk (HRQ/HRT/BTR/CDD, p.25-27)** n'écoute en réception QUE dans le contexte BULK DUMP (le dump sortant peut, lui, être déclenché par DRQ sans la page — découverte 26/10). Les PM ne répondent qu'au canal bulk → page obligatoire pour les écrire.
+- Validation hors clavier : 21 tests verts inchangés (v1.0.16), syntaxe OK.
+
 ### Panel Console v1.0.16 — le clavier attend le bloc 40 en tête : dump → cache, écriture 40 puis 41
 
 - **Retour terrain v1.0.15 (Yves)** : handshake OK sur la page BULK DUMP, mais le clavier NAK encore le BTR 41 (renvoi NAKé puis silence) — même avec le checksum corrigé. Confrontation au replay validé du 17/10 : il contenait **bloc 40 puis bloc 41** → le clavier attend le bloc 40 en tête.

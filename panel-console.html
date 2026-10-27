@@ -70,7 +70,7 @@
   <span class="bdg" id="bdgKn" title="Connexion KN2000 — clique pour ouvrir les réglages (section connexion)">🎹 KN2000 ○</span>
   <span class="bdg" id="bdgDir" title="Dossier de travail (exports/imports de la bibliothèque) — clique pour ouvrir les réglages (section dossier)">📁 —</span>
   <span style="flex:1"></span>
-  <h1>🎹 KN2000 Console <span style="font-size:.6em;color:#8fd0ff">v1.0.16</span></h1>
+  <h1>🎹 KN2000 Console <span style="font-size:.6em;color:#8fd0ff">v1.0.17</span></h1>
   <span style="flex:1"></span>
   <label class="ghost" title="Afficher/masquer le journal MIDI (sysex)"><input type="checkbox" id="logBtn" style="width:15px;height:15px;vertical-align:middle;transform:translateY(-1px)"> 📜 Log MIDI</label>
   <button class="ghost" id="btnCfg" title="Réglages & Aide : connexion, dossier de travail, moniteur, langue">⚙️ Réglages</button>
@@ -1063,7 +1063,7 @@ async function pmBulkRun(data, label, b40) {   // data = 8064 o (24 PM complète
   if (pmBulk.on || pmDump.on || pmWait) { log("Opération MIDI déjà en cours — attendre la fin.", "ko"); return false; }
   if (!Array.isArray(data) || data.length !== 8064) { log("Bloc PM incomplet (" + (data ? data.length : 0) + "/8064 o) — l'écriture bulk exige les 24 PM complètes (re-dump complet d'abord).", "ko"); return false; }
   if (!(b40 && Array.isArray(b40.data) && b40.data.length >= 1056)) { log("Bloc 40 absent du cache — l'écriture bulk envoie bloc 40 puis bloc 41 (séquence du replay validé 17/10) : faire « 🔄 Re-dump complet » d'abord.", "ko"); return false; }
-  if (!confirm("⚠️ Écriture réelle vers le KN2000 — bloc 40 (état du panel) puis Panel Memory (bloc 41, 8064 o = 24 PM).\n" + label + "\n\nHandshake : le clavier doit ACKer chaque paquet — tout manque d'ACK arrête l'envoi.\nSe positionner sur la page SYSEX BULK DUMP du clavier, ne rien toucher pendant l'opération. Continuer ?")) { log("Écriture annulée.", "info"); return false; }
+  log("⚠️ Écriture réelle — bloc 40 puis bloc 41 (" + label + ") : se positionner sur la page SYSEX BULK DUMP du clavier et ne rien toucher.", "info");
   pmBulk.on = true; $("pmWrite").disabled = true; $("pmWriteAll").disabled = true;
   try {
     log("=== " + label + " — bulk handshake (bloc 40 puis bloc 41, NAK = renvoi du paquet) ===", "info");
@@ -1121,8 +1121,7 @@ $("pmWrite").onclick = async () => {
   const { banks, missing, b40 } = pmCacheBanks();
   if (missing.length) { log("Le bloc doit être complet : " + missing.join(", ") + " manquent en cache — faire « 🔄 Re-dump complet » d'abord (l'écriture bulk envoie le bloc 41 entier).", "ko"); return; }
   if (!b40) { log("Bloc 40 (état du panel) absent du cache — l'écriture bulk envoie bloc 40 puis bloc 41 : faire « 🔄 Re-dump complet » d'abord.", "ko"); return; }
-  if (idx !== pmRecIdx) { const go = confirm("Le contenu affiché vient de " + PM_NAMES[pmRecIdx] + ".\nLa PM " + PM_NAMES[idx] + " du clavier sera écrasée avec ce contenu (les 23 autres PM du cache seront renvoyées à l'identique).\nConfirmer ?"); if (!go) return; }
-  else if (!confirm("Écraser la PM " + PM_NAMES[idx] + " du clavier avec le contenu affiché ? (les 23 autres PM du cache seront renvoyées à l'identique)")) return;
+  if (idx !== pmRecIdx) log("Écriture PM " + PM_NAMES[idx] + " avec le contenu affiché de " + PM_NAMES[pmRecIdx] + " (le bloc 41 entier est renvoyé, les 23 autres PM = cache).", "info");   // v1.0.17 : confirmations supprimées (demande Yves 27/10) — un message journal avant l'envoi
   const data = [];
   for (let i = 0; i < 24; i++) for (const b of (i === idx ? pmRec.slice(0, 336) : banks[i].data.slice(0, 336))) data.push(b);
   await pmBulkRun(data, "Écriture PM " + PM_NAMES[idx] + (idx !== pmRecIdx ? " (contenu de " + PM_NAMES[pmRecIdx] + ")" : ""), b40);
