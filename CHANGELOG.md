@@ -86,6 +86,13 @@ Outils :
 - **Mystère documenté** : le bloc 40 du panel s'arrête systématiquement à 1056/1088 octets (écart 32 constant, sans conséquence) — l'écart est consigné dans le JSON.
 - **Validation hors clavier** : le moteur a été rejoué sur la capture terrain validée du 18/10 (dump panel CtrlrX) — un ACK par paquet (70 ACK pour 70 paquets), fin sur END, bloc 40 à 1056/1088 conforme au terrain, structure d'export vérifiée. Les aires 30/50/60 restent à valider par le terrain.
 
+### Panel Console v1.0.16 — le clavier attend le bloc 40 en tête : dump → cache, écriture 40 puis 41
+
+- **Retour terrain v1.0.15 (Yves)** : handshake OK sur la page BULK DUMP, mais le clavier NAK encore le BTR 41 (renvoi NAKé puis silence) — même avec le checksum corrigé. Confrontation au replay validé du 17/10 : il contenait **bloc 40 puis bloc 41** → le clavier attend le bloc 40 en tête.
+- **v1.0.16** : (1) le dump met le **bloc 40 en cache** (`b40`, 1056 o, refus si incomplet) ; (2) l'écriture envoie **BTR 40 (SIZ 1088) + 8 CDD puis BTR 41 + 64 CDD, EOK, END** — 78 trames, chaque paquet ACKé, NAK = renvoi ×2, 3 NAK = arrêt propre ; (3) refus explicite si le bloc 40 manque en cache (re-dump complet d'abord) ; badge cache « + bloc 40 ».
+- **Validation hors clavier** : 21 tests verts avec clavier simulé strict (checksums réels vérifiés) — dont **bloc 40 reconstruit byte-exact 9/9 contre les trames réelles du clavier** (capture 18/10), structure 41 inchangée, séquence 40→41→EOK→END en 78 trames, refus sans b40, NAK/ERR → arrêts propres, `pmDumpEnd` → `cache.b40` 1056 o conformes.
+- **Protocole terrain** : recharger la Console → 🔄 **Re-dump complet** (obligatoire : le bloc 40 n'est pas encore en cache) → page SYSEX BULK DUMP au clavier → 💾 Restaurer les 24 PM → journal attendu : HRQ → HRT → ACK → « bloc 40 : paquet 1/9 ACKé » … → « bloc 41 : paquet 1/65 ACKé » … → EOK/END ACKés → « réception OK » à l'écran.
+
 ### Panel Console v1.0.15 — diagnostic terrain du NAK : checksum bulk (CN inclus) + CDD 125 o + NAK géré
 
 - **Retour terrain v1.0.14 (Yves)** : sur la page SYSEX BULK DUMP du clavier, le handshake passe intégralement (HRQ → HRT → notre HRT → ACK ✓ — **la page BULK DUMP au clavier est nécessaire pour la réception**), puis le clavier répond **NAK (24)** `f0 50 24 7e f7` au BTR (l'ancien code l'ignorait comme « trame trop courte »). NAK en réponse à un paquet = **erreur dans le paquet**, pas un silence.
