@@ -46,7 +46,7 @@
 </style>
 </head>
 <body>
-<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.5.2</span>
+<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.5.3</span>
   <span class="pill warn" title="Page en construction : la restauration est validée terrain pour la Sound Memory uniquement ; Panel/Composer/Sequencer restent à valider (page outils)">🔨 en construction</span></h1>
 <div class="tip">💡 Sauvegarder et restaurer l'état du clavier : <strong>Dumps</strong> (KN2000 → page) puis <strong>Catalogue</strong> (patches versionnés, croisement KN2000 ↔ catalogue, restauration complète ou différentielle).
 <strong>Aucune préparation au clavier n'est nécessaire</strong> (validé terrain 26/10/2026). Mémoires volatiles : le KN2000 ne conserve ses mémoires que ~80 min hors tension.</div>
@@ -145,9 +145,11 @@
 </div>
 
 <div class="cardc">
-  <div class="row"><span class="glbl">Panel Memories</span><span class="pill off" id="pmSrc">—</span></div>
+  <div class="row"><span class="glbl">Panel Memories</span><span class="pill off" id="pmSrc">—</span>
+    <button id="pmBulkBtn" title="Envoie le bloc 40 puis le bloc 41 (24 PM) du patch PANEL courant vers le KN2000 par bulk handshake — HRQ → HRT → ACK, chaque paquet ACKé, NAK = renvoi (~35 s). Se positionner sur la page SYSEX BULK DUMP du clavier. « Réception OK » attendu à l'écran. Le patch PANEL doit contenir les blocs 40 (1056 o) et 41 (8064 o) complets">✉️ Restaurer les 24 PM vers le clavier (bulk)</button>
+  </div>
   <div id="pmList" style="display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.8rem"></div>
-  <div class="ast">Vue des <strong>24 Panel Memories</strong> (A1…C8, 336 o chacune) extraite du bloc 41 du <strong>patch PANEL courant</strong> — même décodeur que la Panel Console (sons R1/R2/LEFT, rythme, tempo, APC, conductor, DSP ; survol = détail complet). Ces PM entrent aussi dans le master (section <code>pms</code>).</div>
+  <div class="ast">Vue des <strong>24 Panel Memories</strong> (A1…C8, 336 o chacune) extraite du bloc 41 du <strong>patch PANEL courant</strong> — même décodeur que la Panel Console (sons R1/R2/LEFT, rythme, tempo, APC, conductor, DSP ; survol = détail complet). Ces PM entrent aussi dans le master (section <code>pms</code>). <strong>✉️ Restaurer</strong> : moteur bulk handshake de la Panel Console (validé terrain 27/10) — bloc 40 puis bloc 41, chaque paquet ACKé par le clavier ; page SYSEX BULK DUMP du clavier requise.</div>
 </div>
 
 <div class="cardc">
@@ -162,7 +164,7 @@
 <div class="cardc">
   <div class="row"><span class="glbl">Sons nommés</span>
     <select id="sonSel" title="Bibliothèque user : sons isolés (144 o), dédupliqués par contenu"></select>
-    <label>→ slot <select id="slotSel" title="Slot de destination vers le clavier"></select></label>
+    <span>→ slot</span> <select id="slotSel" title="Slot de destination vers le clavier"></select>
     <button id="btnSonSend" title="Envoie ce son (144 o) vers le slot choisi du KN2000 — 2 trames ITW, écriture réelle avec confirmation">✉️ Envoyer vers le clavier</button>
     <button class="sec" id="btnSonsExport" title="Exporte la bibliothèque de sons au format catalogue du Sound Editor (kn2000_sound_catalog.json)">⬇️ Exporter (catalogue Sound Editor)</button>
   </div>
@@ -218,6 +220,7 @@ function logRaw(d) {
 function onMsg(ev) {
   const d = ev.data; if (!d) return;
   if (monitor && d[0] !== 0xfe && !(d[0] === 0xf0 && d[1] === 0x50)) logRaw(d);
+  if (pmBulk.on && d[0] === 0xf0 && d[1] === 0x50 && (d[2] === 0x22 || d[2] === 0x23 || d[2] === 0x24 || d[2] === 0x29)) { pmBulkMsg([...d]); return; }   // v0.5.3 : réponses du clavier pendant l'écriture bulk PM (HRT/ACK/NAK/ERR)
   if (d[0] === 0xf0 && d[1] === 0x50 && d[2] === 0x29) {   // ERR
     const code = d[3];
     const msg = code === 0x7e ? "ERR 7E — adresse inexistante ou demande refusée" : "ERR code " + A2(code);
@@ -891,6 +894,100 @@ function pmDecode(rec) {   // null-tolerant : octets manquants traites comme 0 p
   const short = "R1 " + (p1 ? p1[2] : "?") + " · R2 " + (p2 ? p2[2] : "?") + " · L " + (pl ? pl[2] : "?") + " · " + (rhy ? rhy[2] : "?") + " · tempo " + (g(290) * 2);
   return { full, short };
 }
+// ===== v0.5.3 : écriture PM par BULK HANDSHAKE (moteur validé terrain — Panel Console v1.0.16/17) =====
+// Nous master, clavier esclave : HRQ → HRT du clavier → notre HRT → ACK → bloc 40 puis bloc 41 (chaque
+// paquet ACKé, NAK = renvoi ×2) → EOK → END. Page SYSEX BULK DUMP du clavier REQUISE pour la réception.
+const PM_HRQ = [0xf0, 0x50, 0x21, 0x01, 0x18, 0x10, 0xf7];
+const PM_OUR_HRT = [0xf0, 0x50, 0x22, 0x01, 0x18, 0x10, 0xf7];
+const PM_EOKW = [0xf0, 0x50, 0x27, 0x7e, 0xf7];
+const PM_ENDW = [0xf0, 0x50, 0x28, 0x7e, 0xf7];
+const pmBulk = { on: false, expect: null, resolve: null, timer: null };
+function pmBulkWait(cmd, ms, label) {
+  return new Promise((res, rej) => {
+    pmBulk.expect = cmd; pmBulk.resolve = res;
+    pmBulk.timer = setTimeout(() => { pmBulk.expect = null; pmBulk.resolve = null; rej(new Error("pas de " + label + " du clavier sous " + ms / 1000 + " s")); }, ms);
+  });
+}
+function pmBulkMsg(d) {   // HRT (22) du clavier, ACK (23), NAK (24), ERR (29)
+  const c = d[2];
+  const done = v => { if (pmBulk.timer) clearTimeout(pmBulk.timer); pmBulk.expect = null; const r = pmBulk.resolve; pmBulk.resolve = null; if (r) r(v); };
+  if (c === 0x29) { log("[RX] ⚠️ ERR du KN2000 pendant l'écriture bulk — arrêt. Code " + A2(d[3]) + " (écran du clavier ?)", "ko"); done("err"); return; }
+  if (c === 0x24) { log("[RX] NAK (24) du clavier — paquet refusé (checksum ?), renvoi", "ko"); done("nak"); return; }
+  if (pmBulk.expect === c) done("ok");
+}
+function pmBulkFrame(head, bytes, cn) {   // checksum = XOR des octets 1..n-3 (CN INCLUS) — validé 65/65 sur trames réelles
+  const nib = []; for (const b of bytes) nib.push((b >> 4) & 0x0f, b & 0x0f);
+  const body = [...head, ...nib, cn];
+  const ck = body.slice(1).reduce((a, x) => a ^ x, 0);
+  return [...body, ck, 0xf7];
+}
+function pmBulkPackets(adr, siz, data) {   // 1 BTR (ADR adr 00 00, SIZ 3×7-bit, 120 o inline, CN=01) + CDD de 125 o, dernier partiel CN=00
+  const packets = [];
+  packets.push(pmBulkFrame([0xf0, 0x50, 0x2d, 0x01, 0x18, 0x10, adr, 0x00, 0x00, (siz >> 14) & 0x7f, (siz >> 7) & 0x7f, siz & 0x7f], data.slice(0, 120), 0x01));
+  const rest = data.slice(120);
+  const n = Math.ceil(rest.length / 125);
+  for (let i = 0; i < n; i++) packets.push(pmBulkFrame([0xf0, 0x50, 0x7e], rest.slice(i * 125, (i + 1) * 125), i === n - 1 ? 0x00 : 0x01));
+  return packets;
+}
+async function pmBulkRun(label, data41, data40) {   // bloc 40 (1056 o) PUIS bloc 41 (8064 o) — 78 trames, chaque paquet ACKé
+  if (!output) { log("Pas de sortie MIDI sélectionnée.", "ko"); return false; }
+  if (pmBulk.on || dump.on || sending) { log("Opération MIDI déjà en cours — attendre la fin.", "ko"); return false; }
+  pmBulk.on = true; sending = true; $("pmBulkBtn").disabled = true;
+  try {
+    log("⚠️ " + label + " — écriture réelle : page SYSEX BULK DUMP au clavier, ne rien toucher (~35 s).", "info");
+    log("=== " + label + " — bulk handshake (bloc 40 puis bloc 41, NAK = renvoi du paquet) ===", "info");
+    send(PM_HRQ); log("[TX] HRQ (21) — nous sommes master, le clavier doit répondre HRT (22)", "info");
+    let r = await pmBulkWait(0x22, 4000, "HRT (22)");
+    if (r === "err") throw new Error("ERR du clavier");
+    log("[RX] HRT (22) du clavier ✓ → [TX] notre HRT (22)", "ok");
+    send(PM_OUR_HRT);
+    r = await pmBulkWait(0x23, 4000, "ACK (23)");
+    if (r === "err") throw new Error("ERR du clavier");
+    log("[RX] ACK (23) du clavier ✓ — handshake établi", "ok");
+    const blocks = [[0x40, 1088, data40, "bloc 40 (état du panel)"], [0x41, 8064, data41, "bloc 41 (24 PM)"]];
+    const allPk = blocks.map(b => [pmBulkPackets(b[0], b[1], b[2]), b[3]]);
+    let nSent = 0, nTot = 0; for (const pk of allPk) nTot += pk[0].length;
+    for (const [packets, lbl] of allPk) for (let i = 0; i < packets.length; i++) {
+      let sent = 0, rr = "";
+      while (true) {
+        if (!send(packets[i])) throw new Error("envoi MIDI");
+        sent++;
+        rr = await pmBulkWait(0x23, 4000, "ACK (23)");
+        if (rr === "err") throw new Error("ERR du clavier");
+        if (rr === "nak") {
+          if (sent > 2) throw new Error("NAK (24) du clavier ×3 sur le paquet " + (i + 1) + " du " + lbl);
+          log("[TX] renvoi du paquet " + (i + 1) + "/" + packets.length + " du " + lbl + " après NAK (" + sent + "/2)", "ko");
+          await new Promise(res => setTimeout(res, 300));
+          continue;
+        }
+        break;
+      }
+      nSent++;
+      if (i === 0 || (i + 1) % 16 === 0 || i === packets.length - 1) log("[TX] " + lbl + " : paquet " + (i + 1) + "/" + packets.length + " ACKé ✓ (" + (packets[i][2] === 0x2d ? "BTR" : "CDD 7e") + (sent > 1 ? " · " + sent + " envois (NAK renvoyé)" : "") + ") — " + nSent + "/" + nTot + " paquets", "ok");
+    }
+    send(PM_EOKW); r = await pmBulkWait(0x23, 4000, "ACK EOK"); if (r === "err") throw new Error("ERR du clavier");
+    log("[TX] EOK (27) → ACK du clavier ✓", "ok");
+    send(PM_ENDW); r = await pmBulkWait(0x23, 4000, "ACK END"); if (r === "err") throw new Error("ERR du clavier");
+    log("[TX] END (28) → ACK du clavier ✓", "ok");
+    st.lastSend.panel = new Date().toISOString(); storeSave(); catUI();
+    log("✅ Écriture bulk terminée : 24 PM envoyées, chaque paquet ACKé. L'écran du KN2000 doit afficher « réception OK ». Vérifier : sélectionner une PM (SET) puis re-dumper l'aire PANEL.", "ok");
+    return true;
+  } catch (e) { log("⚠️ Écriture bulk interrompue : " + e.message + " — l'état du clavier est incertain : OFF/ON conseillé avant tout nouvel essai, puis re-dump pour vérifier.", "ko"); return false; }
+  finally { pmBulk.on = false; sending = false; pmBulk.expect = null; pmBulk.resolve = null; if (pmBulk.timer) clearTimeout(pmBulk.timer); $("pmBulkBtn").disabled = false; }
+}
+$("pmBulkBtn").onclick = async () => {
+  const cp = curPatch("panel");
+  if (!cp) { log("Aucun patch PANEL — dumper l'aire PANEL puis 💾 Cataloguer, ou importer un catalogue/master (l'écriture bulk envoie les blocs 40+41 du patch courant).", "ko"); return; }
+  const adrOf = x => cp.area.blocks.find(b => (typeof b.adr === "string" ? parseInt(b.adr, 16) : b.adr) === x);
+  const b40 = adrOf(0x40), b41 = adrOf(0x41);
+  if (!b41 || !b41.data) { log("Le patch PANEL courant ne contient pas le bloc 41 (24 PM) — re-dumper l'aire PANEL puis 💾 Cataloguer.", "ko"); return; }
+  const d41 = blocksBytes([b41]);
+  if (d41.length < 8064 || d41.slice(0, 8064).some(x => x === null)) { log("Bloc 41 incomplet (" + d41.filter(x => x !== null).length + "/8064 o) — re-dumper l'aire PANEL puis 💾 Cataloguer (l'écriture bulk envoie le bloc entier).", "ko"); return; }
+  if (!b40 || !b40.data) { log("Le patch PANEL courant ne contient pas le bloc 40 (état du panel) — re-dumper l'aire PANEL puis 💾 Cataloguer (le clavier exige le bloc 40 en tête).", "ko"); return; }
+  const d40 = blocksBytes([b40]);
+  if (d40.length < 1056 || d40.slice(0, 1056).some(x => x === null)) { log("Bloc 40 incomplet (" + d40.filter(x => x !== null).length + " o) — re-dumper l'aire PANEL puis 💾 Cataloguer.", "ko"); return; }
+  await pmBulkRun("Restauration des 24 PM du patch « " + cp.name + " »", d41.slice(0, 8064), d40.slice(0, 1056));
+};
 function pmListFromPatch() {   // 24 segments de 336 o depuis le bloc 41 du patch PANEL courant
   const cp = curPatch("panel");
   if (!cp) return null;
@@ -933,7 +1030,7 @@ function soundSlotList(ser) {   // 36 {slot, name, raw_hex} depuis l'aire sound
 function buildMaster() {
   return {
     format: "kn2000-master-v1", version: 1, keyboard: "Technics SX-KN2000",
-    meta: { name: "KN2000 instrument", date: new Date().toISOString(), source: "backup.html v0.5.2" },
+    meta: { name: "KN2000 instrument", date: new Date().toISOString(), source: "backup.html v0.5.3" },
     doc: "Vérité binaire unique. Toutes les sections sont optionnelles. areas.<id>.blocks[] : adr (hex bloc), seq (occurrence), siz (octets originaux annoncés), got (reçus), data = hex minuscule 2 chiffres/octet MSB d'abord, '--' = octet manquant. sons[] : slot A-1..B-18, name (16 premiers octets), raw_hex = 144 octets du son. pms[] : slot A1..C8, raw_hex = 336 octets de la Panel Memory.",
     areas: st.lastDump,
     sons: soundSlotList(st.lastDump.sound) || undefined,
@@ -1041,7 +1138,9 @@ function sonsUI() {
   });
   const slotSel = $("slotSel");
   if (!slotSel.options.length) for (let n = 0; n < 36; n++) slotSel.add(new Option(n < 18 ? "A-" + (n + 1) : "B-" + (n - 17), String(n)));
+  if (st.lastSlot !== undefined && [...slotSel.options].some(o => o.value === String(st.lastSlot))) slotSel.value = String(st.lastSlot);   // v0.5.3 : le slot choisi persiste (bug terrain : retombée sur A-1)
 }
+$("slotSel").onchange = () => { st.lastSlot = $("slotSel").value; storeSave(); };   // v0.5.3
 $("sonSel").onchange = sonsUI;
 function sonFrames(bytes, slot) {   // 2 trames ITW d'un son (144 o) vers un slot A/B
   return [[0, 120], [120, 144]].map(seg => {

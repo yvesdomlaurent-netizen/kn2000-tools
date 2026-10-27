@@ -14,6 +14,12 @@ Outils :
 
 ## 2026-10-26
 
+### Sauvegarde / Catalogue v0.5.3 — ✉️ Restaurer les 24 PM (bulk) + correctif slot Sons nommés
+
+- **Transposition du moteur bulk PM (Panel Console v1.0.16/17, validé terrain 27/10)** : bouton **✉️ Restaurer les 24 PM vers le clavier (bulk)** dans la carte 🎛️ Panel Memories — bloc 40 (1056 o, état du panel) **puis** bloc 41 (8064 o, 24 PM) du **patch PANEL courant**, handshake HRQ → HRT → notre HRT → ACK, chaque paquet ACKé, NAK (24) = renvoi ×2, ERR/NAK×3 = arrêt propre, EOK/END ACKés, `lastSend.panel` mis à jour (~35 s, 78 trames). Refus explicite : sans patch PANEL, bloc 41 incomplet, bloc 40 absent/incomplet. Rappel protocole : **page SYSEX BULK DUMP du clavier requise** pour la réception.
+- **Correctif « Sons nommés » (retour terrain Yves)** : le slot choisi revenait sur A-1 — le `<select>` était imbriqué dans un `<label>` (quirk Firefox). Label retiré + **le choix du slot persiste** (mémorisé dans le store, restauré à chaque affichage).
+- **Validation hors clavier** : 17 tests verts avec clavier simulé strict (checksums réels vérifiés) — 78 trames dans l'ordre 40→41→EOK→END, **bloc 40 byte-exact contre les trames réelles du clavier (9/9)**, données bloc 41 = source, NAK → renvoi, ERR → arrêt propre, 3 refus de garde, 36 slots, slot B-2 persiste après re-rendu. Non-régression : harnais v0.4 (16) + v0.5 (23) verts.
+
 ### Sauvegarde / Catalogue v0.5.2 — onglet 🗂️ Bibliothèque : carte 🎛️ Panel Memories (24)
 - **Cadrage Yves** : après l'import de l'état clavier, l'onglet Bibliothèque doit montrer le résultat — dont les 24 PM. Vérification : rien n'avait été perdu (l'onglet n'avait jamais affiché les PM ; c'était la Panel Console qui les listait).
 - **Carte 🎛️ Panel Memories (24)** : vue automatique des 24 PM (A1…C8, 336 o chacune) extraite du **bloc 41 du patch PANEL courant** — décodeur repris de la Panel Console (sons R1/R2/LEFT, rythme, tempo, APC, conductor, DSP ; **survol = résumé complet**). Source affichée (patch + date) ; PM incomplète signalée ; rafraîchie à chaque changement de patch.
