@@ -14,6 +14,12 @@ Outils :
 
 ## 2026-10-27
 
+### Sauvegarde / Catalogue v0.5.8 — l'encadré vert suit le son sélectionné (question terrain d'Yves)
+
+- **Terrain validé (Yves)** : choix du son ✓, envoi vers un slot ✓, réversible ✓ (remise du son d'origine). Question : l'encadré vert de la liste (marqueur du son sélectionné) ne changeait plus d'état — défaut introduit par le correctif v0.5.7 : la sélection était restaurée APRÈS le dessin de la liste, donc l'encadré était calculé sur l'ancienne valeur.
+- **Correctif** : restauration de la sélection AVANT le dessin de la liste (déplacement du bloc, aucune logique nouvelle).
+- **Validation** : verify-v058.js **40 verts** — dont : après sélection de Son B, l'encadré est vert sur Son B et gris sur les autres. Non-régression : v0.4 (16) + v0.5 (23).
+
 ### Sauvegarde / Catalogue v0.5.7 — le VRAI bug « revient toujours au premier » : le SON choisi détruit par sonsUI
 
 - **Capture terrain (Yves)** : le combo entouré était celui du **son** (Sons nommés), pas du slot — « revient toujours au premier » = retombée sur « Distortion Piano (A-1) », 1ʳᵉ option de la liste de sons. Le combo slot de destination tenait déjà (capture : A-5 retenu, correctif v0.5.5 opérationnel).
