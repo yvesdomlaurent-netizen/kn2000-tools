@@ -46,7 +46,7 @@
 </style>
 </head>
 <body>
-<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.5.6</span>
+<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.5.7</span>
   <span class="pill warn" title="Page en construction : restauration validée terrain pour Sound (ITW) et Panel Memory (bulk handshake) ; Composer/Sequencer restent à valider (page outils)">🔨 en construction</span></h1>
 <div class="tip">💡 Sauvegarder et restaurer l'état du clavier : <strong>Dumps</strong> (KN2000 → page) puis <strong>Catalogue</strong> (patches versionnés, croisement KN2000 ↔ catalogue, restauration complète ou différentielle).
 <strong>Aucune préparation au clavier n'est nécessaire</strong> (validé terrain 26/10/2026). Mémoires volatiles : le KN2000 ne conserve ses mémoires que ~80 min hors tension.</div>
@@ -1054,7 +1054,7 @@ function soundSlotList(ser) {   // 36 {slot, name, raw_hex} depuis l'aire sound
 function buildMaster() {
   return {
     format: "kn2000-master-v1", version: 1, keyboard: "Technics SX-KN2000",
-    meta: { name: "KN2000 instrument", date: new Date().toISOString(), source: "backup.html v0.5.6" },
+    meta: { name: "KN2000 instrument", date: new Date().toISOString(), source: "backup.html v0.5.7" },
     doc: "Vérité binaire unique. Toutes les sections sont optionnelles. areas.<id>.blocks[] : adr (hex bloc), seq (occurrence), siz (octets originaux annoncés), got (reçus), data = hex minuscule 2 chiffres/octet MSB d'abord, '--' = octet manquant. sons[] : slot A-1..B-18, name (16 premiers octets), raw_hex = 144 octets du son. pms[] : slot A1..C8, raw_hex = 336 octets de la Panel Memory.",
     areas: st.lastDump,
     sons: soundSlotList(st.lastDump.sound) || undefined,
@@ -1148,7 +1148,7 @@ function addUserSound(name, rawHex, slot) {
   return true;
 }
 function sonsUI() {
-  const sel = $("sonSel"); sel.innerHTML = "";
+  const sel = $("sonSel"); const prevVal = sel.value; sel.innerHTML = "";
   if (!st.userSounds.length) sel.add(new Option("(aucun son nommé — importer un catalogue)", ""));
   st.userSounds.forEach((s, i) => sel.add(new Option(s.name + (s.slot && s.slot !== "—" ? " (" + s.slot + ")" : ""), String(i))));
   const lst = $("sonsList");
@@ -1160,6 +1160,15 @@ function sonsUI() {
     st.userSounds = st.userSounds.filter(x => x.id !== b.dataset.sondel);
     storeSave(); sonsUI(); log("🗑 Son supprimé de la bibliothèque.", "info");
   });
+  // v0.5.7 : restaurer le SON sélectionné après reconstruction — bug terrain depuis l'origine : sel.innerHTML="" + re-add
+  // détruisait la sélection à chaque changement de son (retombée systématique sur le 1er de la liste).
+  if (st.userSounds.length) {
+    let idx = -1;
+    if (st.lastSonId !== undefined) idx = st.userSounds.findIndex(s => s.id === st.lastSonId);
+    if (idx < 0 && prevVal !== "" && !isNaN(+prevVal) && +prevVal < st.userSounds.length) idx = +prevVal;
+    sel.value = String(idx >= 0 ? idx : 0);
+  }
+  log("[son] liste reconstruite : " + st.userSounds.length + " son(s), sélection = " + (st.userSounds.length ? (sel.selectedIndex >= 0 ? "'" + st.userSounds[+sel.value].name + "'" : "(aucune)") : "(vide)"), "info");   // v0.5.7 diagnostic
 }
 function initSlotSel() {   // v0.5.5 : le combo slot est initialisé UNE SEULE FOIS au chargement — sonsUI ne doit plus jamais y toucher (bug terrain : changement de son → retombée sur A-1)
   const slotSel = $("slotSel");
@@ -1176,7 +1185,11 @@ function saveSlot() {   // v0.5.5 : persistance au changement ET à l'envoi — 
 }
 $("slotSel").addEventListener("change", saveSlot);
 $("slotSel").addEventListener("input", saveSlot);   // Firefox : 'input' couvre aussi la sélection
-$("sonSel").onchange = sonsUI;
+$("sonSel").onchange = () => {   // v0.5.7 : mémoriser le son choisi (par id) puis re-rendre sans perdre la sélection
+  const i = +$("sonSel").value;
+  if (st.userSounds[i]) { st.lastSonId = st.userSounds[i].id; storeSave(); log("[son] choix '" + st.userSounds[i].name + "' mémorisé (index " + i + ")", "info"); }
+  sonsUI();
+};
 function sonFrames(bytes, slot) {   // 2 trames ITW d'un son (144 o) vers un slot A/B
   return [[0, 120], [120, 144]].map(seg => {
     const t = 0x50 + slot * 0x90 + seg[0];

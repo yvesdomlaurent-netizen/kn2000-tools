@@ -14,6 +14,13 @@ Outils :
 
 ## 2026-10-27
 
+### Sauvegarde / Catalogue v0.5.7 — le VRAI bug « revient toujours au premier » : le SON choisi détruit par sonsUI
+
+- **Capture terrain (Yves)** : le combo entouré était celui du **son** (Sons nommés), pas du slot — « revient toujours au premier » = retombée sur « Distortion Piano (A-1) », 1ʳᵉ option de la liste de sons. Le combo slot de destination tenait déjà (capture : A-5 retenu, correctif v0.5.5 opérationnel).
+- **Cause (présente depuis l'origine de la carte)** : `sonSel.onchange → sonsUI()` qui fait `sel.innerHTML = ""` puis ré-ajoute les options — **la reconstruction détruit la sélection** ; retombée systématique sur la 1ʳᵉre option à chaque changement de son. Aucun rapport avec le label ni le slot : les diagnostics v0.5.3→v0.5.6 visaient les mauvais éléments.
+- **Correctif** : le son choisi est mémorisé **par id** (`st.lastSonId`, persisté au changement) et réimposé après reconstruction ; repli sur la valeur en cours si l'id est inconnu (ex. suppression). Journal : « [son] choix « X » mémorisé » + « [son] liste reconstruite : N son(s), sélection = « X » ».
+- **Validation** : verify-v057.js **37 verts** — dont le cas terrain (choisir Son C index 2 → onchange → le son tient ; re-rendus multiples → tient par id ; changement pour Son B → tient ; lastSonId persisté) + non-régression v0.4 (16) + v0.5 (23).
+
 ### Sauvegarde / Catalogue v0.5.6 — 🔁 Tout re-dumper + instrumentation slot (bug « A-1 » inchangé : on cherche la vérité terrain)
 
 - **Retour terrain Yves** : (1) le combo slot « saute immédiatement » sur A-1 **même en v0.5.5** où plus aucune ligne JS ne le touche après le chargement — deux diagnostics à distance erronés, on passe à l'instrumentation ; (2) « déjà dumpée(s) » après F5 : comportement attendu découvert — **les derniers dumps sont restaurés au chargement** (bloc init lit `st.lastDump`), donc rafraîchir ne re-dump pas.
