@@ -86,6 +86,14 @@ Outils :
 - **Mystère documenté** : le bloc 40 du panel s'arrête systématiquement à 1056/1088 octets (écart 32 constant, sans conséquence) — l'écart est consigné dans le JSON.
 - **Validation hors clavier** : le moteur a été rejoué sur la capture terrain validée du 18/10 (dump panel CtrlrX) — un ACK par paquet (70 ACK pour 70 paquets), fin sur END, bloc 40 à 1056/1088 conforme au terrain, structure d'export vérifiée. Les aires 30/50/60 restent à valider par le terrain.
 
+### Panel Console v1.0.13 — correctif écriture PM : aire PANEL MEMORY = ADR 42 (108000H)
+
+- **Retour terrain v1.0.12** : l'écriture d'une PM (trames ITW vers 41 xx xx) a été ignorée en silence par le clavier — aucun ACK ni ERR, aucune réaction, aucune modification de la PM.
+- **Cause identifiée dans nos archives (carte p.24, session 25/10)** : « 41 » est l'étiquette du bloc PM dans les BTR du dump, mais l'adresse 21 bits réelle de l'aire PANEL MEMORY est **108000H = `42 00 00`** (anomalie documentée du guide). L'écriture utilise désormais `42` en paires 7 bits : PM A1 → 42 00 00 / 42 00 78 / 42 01 70.
+- **Trame TMP (25) décodée** : le KN2000 annonce son tempo à chaque sélection de PM (`f0 50 25 08 07 f7` = ♩116) — désormais affiché dans le journal au lieu d'être ignoré (« trame trop courte »).
+- 18 tests verts hors clavier (ADR 42, trames 120/120/96, checksums, nibbles, séquence complète 23/24 PM).
+- Filet de secours si l'ITW 42 échoue aussi : écriture par bulk replay (round-trip prouvé le 17/10 — rejeu du dump → « réception OK » à l'écran) — à cadrer séparément si besoin.
+
 ### Panel Console v1.0.12 — écriture des Panel Memories vers le KN2000 (bloc 41, trames ITW)
 
 - **➡ Écrire cette PM vers le clavier** : le contenu affiché (cache ou lecture) est écrit dans la PM choisie du clavier — 3 trames ITW 2C ≤120 octets (120+120+96), pause 60 ms, enables sysex en préambule (20 04 00/01), adresse ADR 41 en paires 7 bits (méthode validée sur l'écriture des sons). Confirmation explicite si la PM cible diffère de la PM lue.

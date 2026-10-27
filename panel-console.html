@@ -70,7 +70,7 @@
   <span class="bdg" id="bdgKn" title="Connexion KN2000 — clique pour ouvrir les réglages (section connexion)">🎹 KN2000 ○</span>
   <span class="bdg" id="bdgDir" title="Dossier de travail (exports/imports de la bibliothèque) — clique pour ouvrir les réglages (section dossier)">📁 —</span>
   <span style="flex:1"></span>
-  <h1>🎹 KN2000 Console <span style="font-size:.6em;color:#8fd0ff">v1.0.12</span></h1>
+  <h1>🎹 KN2000 Console <span style="font-size:.6em;color:#8fd0ff">v1.0.13</span></h1>
   <span style="flex:1"></span>
   <label class="ghost" title="Afficher/masquer le journal MIDI (sysex)"><input type="checkbox" id="logBtn" style="width:15px;height:15px;vertical-align:middle;transform:translateY(-1px)"> 📜 Log MIDI</label>
   <button class="ghost" id="btnCfg" title="Réglages & Aide : connexion, dossier de travail, moniteur, langue">⚙️ Réglages</button>
@@ -645,6 +645,11 @@ function onMsg(ev) {
     if (pmDump.on && (c2 === 0x21 || c2 === 0x22 || c2 === 0x2d || c2 === 0x7e || c2 === 0x27 || c2 === 0x28)) { pmDumpMsg([...d]); return; }
     if (!pmDump.on && (c2 === 0x2d || c2 === 0x7e)) { log("[RX] trame dump " + A2(c2) + " reçue hors session — ignorée (" + d.length + " oct)", "info"); return; }
   }
+  if (d[0] === 0xf0 && d[1] === 0x50 && d[2] === 0x25) {   // v1.0.13 : trame TMP (tempo) du KN2000 — émise à chaque sélection de PM
+    const t = d.length >= 6 ? (((d[4] & 0x1f) << 4) | (d[3] & 0x0f)) : null;   // DT1 = 4 bits bas, DT2 = 5 bits hauts, ♩=40-300
+    log("[RX] Tempo du KN2000 : ♩" + t + " (trame TMP 25)", "info");
+    return;
+  }
   if (d[0] === 0xf0 && d.length < 12) { log("[RX] trame sysex trop courte (" + d.length + " octets) ignorée : " + hex([...d]), "ko"); return; }
   if (!(d[0] === 0xf0 && d[1] === 0x50 && d[2] === 0x2c)) return;  // v1.0.6 : ne traiter que les 2C — le non-sysex (notes, CC…) est ignoré (bug v1.0.5 : « 2C checksum KO » sur les notes)
   const ck = d[d.length - 2], cn = d[d.length - 3];
@@ -762,7 +767,7 @@ log("Pr\u00eat. Cliquer \u00ab Lire l'\u00e9tat du clavier \u00bb apr\u00e8s con
 const PM_NAMES = []; for (const L of "ABC") for (let i = 1; i <= 8; i++) PM_NAMES.push(L + i);
 for (let i = 0; i < 24; i++) $("pmDumpSel").add(new Option(PM_NAMES[i], i));
 let pmRec = null, pmRecIdx = -1, pmWait = false; // pmWait : lecture PM en cours (pour rapporter proprement les erreurs KN2000)
-function pmAddr(idx) { const off = idx * 336; return [0x41, (off >> 8) & 0x7f, off & 0x7f]; }   // obsolète v1.0.12 : l'écriture ITW utilise les paires 7 bits (abs>>7), comme les trames Sound validées
+function pmAddr(idx) { const off = idx * 336; return [0x42, (off >> 7) & 0x7f, off & 0x7f]; }   // v1.0.13 : aire PM = 42 (108000H) ; l'ancien 41>>8 était FAUX (écriture ignorée en silence, terrain 27/10)
 function pmDecode(rec) {
   if (!rec || rec.length < 328 || rec[1] !== 0x0a || rec[13] !== 0x0a) return null;
   const part = (off, lbl) => { const r = rec.slice(off, off + 12); const s = KN.sounds.find(x => x[4] === r[2] && x[5] === ((r[6] || 0) * 16)); return lbl + " " + (s ? s[2] : "PC " + r[2] + " ?") + " — vol " + r[3] + ((r[4] & 0x40) ? ", Digital" : "") + ((r[4] & 0x20) ? ", DSP" : ""); };
@@ -1001,13 +1006,15 @@ $("pmDumpAll").onclick = () => {
   pmDumpStart(idx, 1);
 };
 pmCacheUI();
-// ===== v1.0.12 : écriture Panel → KN2000 (bloc 41, ITW 2C) — trames ≤120 o, pace 60 ms, méthode validée sur les sons =====
+// ===== v1.0.12/13 : écriture Panel → KN2000 (PANEL MEMORY, ITW 2C) — trames ≤120 o, pace 60 ms =====
+// v1.0.13 : aire PANEL MEMORY = 108000H = ADR 42 00 00 (anomalie p.24 du guide : « 41 » est l'étiquette BTR du bloc, pas l'adresse).
+// Échec v1.0.12 (terrain 27/10) : écriture vers 41 xx xx ignorée en silence (trame invalide jetée sans ERR). Filet de secours si 42 échoue aussi : bulk replay (round-trip prouvé 17/10).
 let pmWriting = false;
-async function pmWriteBytes(idx, data) {   // 336 o → 3 trames ITW (120+120+96), ADR 41 en paires 7 bits comme les trames Sound
+async function pmWriteBytes(idx, data) {   // 336 o → 3 trames ITW (120+120+96), ADR 42 en paires 7 bits (v1.0.13 : aire PANEL MEMORY = 108000H = 42 00 00, anomalie p.24 — l'étiquette « 41 » des BTR n'est PAS l'adresse d'écriture)
   for (let off = 0; off < data.length; off += 120) {
     const chunk = data.slice(off, Math.min(off + 120, data.length));
     const abs = idx * 336 + off;
-    const adr = [0x41, (abs >> 7) & 0x7f, abs & 0x7f];
+    const adr = [0x42, (abs >> 7) & 0x7f, abs & 0x7f];
     if (!send(sysex2C(adr, chunk))) throw new Error("envoi MIDI");
     await wait(60);
   }
@@ -1026,7 +1033,7 @@ async function pmWriteRun(list, label) {   // list = [{idx, data}] — enables, 
     let done = 0;
     for (const it of list) {
       await pmWriteBytes(it.idx, it.data); done++;
-      log("[TX] 2C → PM " + PM_NAMES[it.idx] + " écrite (336 o en 3 trames, ADR 41) — " + done + "/" + list.length, "ok");
+      log("[TX] 2C → PM " + PM_NAMES[it.idx] + " écrite (336 o en 3 trames, ADR 42) — " + done + "/" + list.length, "ok");
       await wait(200);
     }
     log("✅ Écriture terminée : " + list.length + " PM. Le clavier n'a rien confirmé — vérifier : sélectionner la PM au clavier, ou modifier une PM (SET) puis la renvoyer, ou 🔄 Re-dump complet.", "ok");
