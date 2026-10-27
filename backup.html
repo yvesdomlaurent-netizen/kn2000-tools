@@ -46,8 +46,8 @@
 </style>
 </head>
 <body>
-<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.5.3</span>
-  <span class="pill warn" title="Page en construction : la restauration est validée terrain pour la Sound Memory uniquement ; Panel/Composer/Sequencer restent à valider (page outils)">🔨 en construction</span></h1>
+<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.5.4</span>
+  <span class="pill warn" title="Page en construction : restauration validée terrain pour Sound (ITW) et Panel Memory (bulk handshake) ; Composer/Sequencer restent à valider (page outils)">🔨 en construction</span></h1>
 <div class="tip">💡 Sauvegarder et restaurer l'état du clavier : <strong>Dumps</strong> (KN2000 → page) puis <strong>Catalogue</strong> (patches versionnés, croisement KN2000 ↔ catalogue, restauration complète ou différentielle).
 <strong>Aucune préparation au clavier n'est nécessaire</strong> (validé terrain 26/10/2026). Mémoires volatiles : le KN2000 ne conserve ses mémoires que ~80 min hors tension.</div>
 
@@ -116,8 +116,8 @@
     <button id="btnRestore" title="Envoie le patch courant de l'aire vers le KN2000 en trames ITW (2C) — écriture réelle, avec confirmation">↩️ Restaurer</button>
     <span class="pill off" id="resSt">—</span>
   </div>
-  <div class="ast">Sound Memory : ✅ <strong>validée terrain</strong> (re-dump = 0 octet différent). Panel / Composer / Sequencer : restauration <strong>non validée</strong> — barée tant que l'écriture n'est pas prouvée (tests dans la page outils).
-  Trames de 120 octets max (limite terrain), pause 60 ms. Le clavier n'accuse jamais réception : l'écran et le re-dump sont les seuls juges. Après restauration : le tableau de bord passe 🟢 après un re-dump.</div>
+  <div class="ast">Sound Memory : ✅ <strong>validée terrain</strong> (re-dump = 0 octet différent). <strong>Panel Memory : ✅ validée terrain 27/10 par bulk handshake</strong> (bloc 40 puis bloc 41 = 24 PM, chaque paquet ACKé — page SYSEX BULK DUMP du clavier requise, ~35 s). Composer / Sequencer : restauration <strong>non validée</strong> (page outils).
+  Sound : trames de 120 octets max (limite terrain), pause 60 ms — le clavier n'accuse jamais réception (l'écran et le re-dump jugent). Panel : chaque paquet est ACKé par le clavier (« réception OK » à l'écran). Après restauration : le tableau de bord passe 🟢 après un re-dump.</div>
 </div>
 </div>
 
@@ -369,7 +369,7 @@ function dumpIdle() {
   if (!dump.on) return;
   if (!dump.hrqSeen) log("⚠️ Timeout — pas de HRQ reçu : liaison ? clavier allumé et prêt ?", "ko");
   else if (dump.btrSeen) log("⚠️ Timeout — bloc(s) reçus mais pas de fin de dump (EOK/END) : le clavier attendait-il un ACK ?", "ko");
-  else if (!dump.cur) log("⚠️ Timeout — handshake établi mais pas de bloc reçu.", "ko");
+  else if (!dump.cur) log("⚠️ Timeout — handshake établi mais pas de bloc reçu. Clavier resté en réception BULK (après un restore) ? Quitter la page SYSEX BULK DUMP / OFF-ON du clavier, puis relancer.", "ko");   // v0.5.4 : indice terrain 27/10 (dump KO juste après une réception bulk, émission non relancée)
   dumpEnd(false);
 }
 function bLbl(b) { return A2(b.adr) + (b.seq > 1 ? "#" + b.seq : ""); }
@@ -651,7 +651,9 @@ function crossUIhtml() {
     const send = st.lastSend[a.id] ? '<span class="st-ok">📤 ' + fmtDate(st.lastSend[a.id]) + "</span>" : '<span class="st-none">jamais</span>';
     const rest = a.id === "sound"
       ? '<span class="st-ok">✅ validé terrain</span>'
-      : '<span class="st-none">à valider (page outils)</span>';
+      : a.id === "panel"
+        ? '<span class="st-ok">✅ validé terrain (24 PM, bulk — 27/10)</span>'
+        : '<span class="st-none">à valider (page outils)</span>';
     rows += "<tr><td class='aname'>" + a.name + "</td><td>" + dKn + "</td><td>" + dPt + "</td><td>" + dSt + "</td><td>" + send + "</td><td>" + rest + "</td></tr>";
   }
   return "<table class='cross'><tr><th>Aire</th><th>Dans le KN2000 (dernier dump)</th><th>Patch courant du catalogue</th><th>État</th><th>Dernier envoi → KN2000</th><th>Restauration</th></tr>" + rows + "</table>";
@@ -667,7 +669,7 @@ function patchesUIhtml() {
       out += "<div class='ptline" + (i === l.length - 1 ? " cur" : "") + "'><span>" + (i === l.length - 1 ? "▶ " : "") + "<b>" + p.name + "</b></span>"
         + "<span class='ast'>" + fmtDate(p.date) + " · " + p.area.blocks.length + " bloc(s) · " + blocksBytes(p.area.blocks).filter(x => x !== null).length + " o"
         + (p.area.blocks.some(b => b.data && b.data.indexOf("--") >= 0) ? " · écart 32 documenté (bloc 40)" : "") + "</span>"
-        + (a.id === "sound" ? "" : "<span class='ast'>restauration à valider</span>")
+        + (a.id === "sound" || a.id === "panel" ? "" : "<span class='ast'>restauration à valider</span>")
         + "<button class='sec' data-del=\"" + p.id + "\" title='Supprimer explicitement ce patch (jamais automatique)'>🗑</button></div>";
       if (a.id === "sound") {
         const inf = areaInfos(p.area);
@@ -697,7 +699,7 @@ function catUI() {
   const sa = $("resArea");
   const prev = sa.value;
   sa.innerHTML = "";
-  for (const a of AREAS) sa.add(new Option(a.name + (a.id === "sound" ? " ✅ restaurable" : " — à valider"), a.id));
+  for (const a of AREAS) sa.add(new Option(a.name + (a.id === "sound" ? " ✅ restaurable" : a.id === "panel" ? " ✅ restaurable (24 PM, bulk)" : " — à valider"), a.id));
   sa.value = prev || "sound";   // défaut : SOUND MEMORY (seule aire restaurable aujourd'hui)
   resUI();
 }
@@ -760,6 +762,14 @@ function buildSoundFrames(patchSer, dumpSer, mode) {   // trames de restauration
 }
 function resUI() {
   const id = $("resArea").value, btn = $("btnRestore"), stEl = $("resSt");
+  if (id === "panel") {   // v0.5.4 : restauration PANEL par bulk handshake (24 PM — moteur validé terrain 27/10)
+    const cp = curPatch("panel");
+    btn.disabled = !cp || sending;
+    btn.title = cp ? "Envoie le bloc 40 puis le bloc 41 (24 PM) du patch « " + cp.name + " » par bulk handshake (moteur validé terrain) — page SYSEX BULK DUMP du clavier requise, chaque paquet ACKé (~35 s)" : "Aucun patch PANEL dans le catalogue";
+    stEl.textContent = sending ? stEl.textContent : (cp ? "prêt : " + cp.name + " (bulk PM)" : "aucun patch");
+    stEl.className = "pill " + (cp ? "on" : "off");
+    return;
+  }
   if (id !== "sound") {
     btn.disabled = true; btn.title = "Restauration non validée pour cette aire — tester via la page outils";
     stEl.textContent = "à valider"; stEl.className = "pill off";
@@ -775,6 +785,7 @@ $("resArea").onchange = resUI;
 $("resMode").onchange = resUI;
 $("btnRestore").onclick = async () => {
   const id = $("resArea").value;
+  if (id === "panel") { await $("pmBulkBtn").onclick(); return; }   // v0.5.4 : même moteur bulk PM (bouton de la carte Panel Memories)
   if (id !== "sound") { log("Restauration " + areaName(id) + " : non validée — voir la page outils.", "ko"); return; }
   if (!output) { log("Choisir la sortie MIDI.", "ko"); return; }
   if (dump.on || sending) { log("Opération MIDI déjà en cours.", "ko"); return; }
@@ -1030,7 +1041,7 @@ function soundSlotList(ser) {   // 36 {slot, name, raw_hex} depuis l'aire sound
 function buildMaster() {
   return {
     format: "kn2000-master-v1", version: 1, keyboard: "Technics SX-KN2000",
-    meta: { name: "KN2000 instrument", date: new Date().toISOString(), source: "backup.html v0.5.3" },
+    meta: { name: "KN2000 instrument", date: new Date().toISOString(), source: "backup.html v0.5.4" },
     doc: "Vérité binaire unique. Toutes les sections sont optionnelles. areas.<id>.blocks[] : adr (hex bloc), seq (occurrence), siz (octets originaux annoncés), got (reçus), data = hex minuscule 2 chiffres/octet MSB d'abord, '--' = octet manquant. sons[] : slot A-1..B-18, name (16 premiers octets), raw_hex = 144 octets du son. pms[] : slot A1..C8, raw_hex = 336 octets de la Panel Memory.",
     areas: st.lastDump,
     sons: soundSlotList(st.lastDump.sound) || undefined,

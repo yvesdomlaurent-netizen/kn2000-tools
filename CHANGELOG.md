@@ -12,6 +12,14 @@ Outils :
 
 ## [Non publié] / Unreleased
 
+## 2026-10-27
+
+### Sauvegarde / Catalogue v0.5.4 — ↩️ Restauration PANEL dans la section Restauration
+
+- **Retour terrain Yves** : le bouton d'écriture bulk PM était dans la carte 🎛️ Panel Memories (onglet Bibliothèque), pas dans la section **Restauration**. L'aire **PANEL ✅ restaurable (24 PM, bulk)** est désormais dans le select « Restaurer » ; ↩️ route vers le moteur bulk handshake (bloc 40 puis bloc 41 du patch PANEL courant, ~35 s, 78 trames) — identique au bouton ✉️ de la carte 🎛️. Tableau de bord et ast mis à jour (« ✅ validé terrain 27/10 »).
+- **Indice dump post-bulk** : le message de timeout du dump PANEL signale désormais que le clavier peut être resté en réception BULK (page SYSEX BULK DUMP) — quitter la page ou OFF/ON, puis re-dump. **Le moteur de dump n'a pas changé** (diff v0.5.2 → v0.5.3 : aucun retrait ; le KO terrain est un état clavier, pas une régression).
+- **Validation hors clavier** : 21 tests verts (routage Restauration → bulk, bouton actif avec patch, refus sans patch, option marquée restaurable) + non-régression v0.4 (16) + v0.5 (23).
+
 ## 2026-10-26
 
 ### Sauvegarde / Catalogue v0.5.3 — ✉️ Restaurer les 24 PM (bulk) + correctif slot Sons nommés
