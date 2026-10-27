@@ -70,7 +70,7 @@
   <span class="bdg" id="bdgKn" title="Connexion KN2000 — clique pour ouvrir les réglages (section connexion)">🎹 KN2000 ○</span>
   <span class="bdg" id="bdgDir" title="Dossier de travail (exports/imports de la bibliothèque) — clique pour ouvrir les réglages (section dossier)">📁 —</span>
   <span style="flex:1"></span>
-  <h1>🎹 KN2000 Console <span style="font-size:.6em;color:#8fd0ff">v1.0.14</span></h1>
+  <h1>🎹 KN2000 Console <span style="font-size:.6em;color:#8fd0ff">v1.0.15</span></h1>
   <span style="flex:1"></span>
   <label class="ghost" title="Afficher/masquer le journal MIDI (sysex)"><input type="checkbox" id="logBtn" style="width:15px;height:15px;vertical-align:middle;transform:translateY(-1px)"> 📜 Log MIDI</label>
   <button class="ghost" id="btnCfg" title="Réglages & Aide : connexion, dossier de travail, moniteur, langue">⚙️ Réglages</button>
@@ -629,7 +629,7 @@ $("monBtn").onclick = () => { monitor = !monitor; $("monBtn").textContent = "\u{
 function onMsg(ev) {
   const d = ev.data; if (!d) return;
   if (monitor && d[0] !== 0xfe && !(d[0] === 0xf0 && d[1] === 0x50)) logRaw(d);   // v1.0.7 : tout le sysex Technics (50) est traité/logué par le moteur — pas de doublon brut (fix v1.0.6)
-  if (pmBulk.on && d[0] === 0xf0 && d[1] === 0x50 && (d[2] === 0x22 || d[2] === 0x23 || d[2] === 0x29)) { pmBulkMsg([...d]); return; }   // v1.0.14 : réponses du clavier pendant l'écriture bulk (HRT/ACK/ERR)
+  if (pmBulk.on && d[0] === 0xf0 && d[1] === 0x50 && (d[2] === 0x22 || d[2] === 0x23 || d[2] === 0x24 || d[2] === 0x29)) { pmBulkMsg([...d]); return; }   // v1.0.14/15 : réponses du clavier pendant l'écriture bulk (HRT/ACK/NAK/ERR)
   // v1.0.1 : trame d'erreur du KN2000 (f0 50 29 <code> f7) — ce n'est PAS une 2C, ne pas la traiter en checksum KO
   if (d[0] === 0xf0 && d[1] === 0x50 && d[2] === 0x29) {
     connOk = true; // la machine répond (c'est une réponse, même d'erreur)
@@ -1024,24 +1024,29 @@ function pmBulkWait(cmd, ms, label) {   // attend une trame cmd (22 HRT / 23 ACK
     pmBulk.timer = setTimeout(() => { pmBulk.expect = null; pmBulk.resolve = null; rej(new Error("pas de " + label + " du clavier sous " + ms / 1000 + " s")); }, ms);
   });
 }
-function pmBulkMsg(d) {   // appelé par onMsg quand pmBulk.on : HRT (22) du clavier, ACK (23), ERR (29)
+function pmBulkMsg(d) {   // appelé par onMsg quand pmBulk.on : HRT (22) du clavier, ACK (23), NAK (24), ERR (29)
   const c = d[2];
   if (c === 0x29) { log("[RX] ⚠️ ERR du KN2000 pendant l'écriture bulk — arrêt. Code " + A2(d[3]) + " (écran du clavier ?)", "ko"); if (pmBulk.timer) clearTimeout(pmBulk.timer); pmBulk.expect = null; const r = pmBulk.resolve; pmBulk.resolve = null; if (r) r("err"); return; }
+  if (c === 0x24) { log("[RX] NAK (24) du clavier — paquet refusé (checksum ?), renvoi", "warn"); if (pmBulk.timer) clearTimeout(pmBulk.timer); pmBulk.expect = null; const r = pmBulk.resolve; pmBulk.resolve = null; if (r) r("nak"); return; }   // v1.0.15 : NAK observé terrain 27/10 en réponse au BTR (l'ancien code l'ignorait)
   if (pmBulk.expect === c) { clearTimeout(pmBulk.timer); pmBulk.expect = null; const r = pmBulk.resolve; pmBulk.resolve = null; if (r) r("ok"); }
 }
-function pmBulkFrame(head, bytes, cn) {   // f0 50 <cmd> … head … <nibbles> CN CK f7 — checksum XOR octets 1..n-3 (formule validée sur les 2d/7e reçus)
+function pmBulkFrame(head, bytes, cn) {   // f0 50 <cmd> … head … <nibbles> CN CK f7
+  // v1.0.15 : CHECKSUM = XOR des octets 1..n-3 (en-tête + données nibblisées + CN INCLUS)
+  // — validé 65/65 sur les trames 2d/7e réelles du clavier (capture 18/10). La v1.0.14 faisait le XOR
+  // en excluant le CN (slice 1..n-4) → CK faux (écart ^01 sur CN=01) → NAK (24) du clavier observé terrain 27/10.
   const nib = []; for (const b of bytes) nib.push((b >> 4) & 0x0f, b & 0x0f);
-  const f = [...head, ...nib, cn, 0, 0xf7];
-  f[f.length - 2] = f.slice(1, f.length - 3).reduce((a, x) => a ^ x, 0);
-  return f;
+  const body = [...head, ...nib, cn];
+  const ck = body.slice(1).reduce((a, x) => a ^ x, 0);
+  return [...body, ck, 0xf7];
 }
-function pmBulkPackets(data) {   // 8064 o → 1 BTR (ADR 41 00 00, SIZ 00 3F 00, 120 o inline, CN=01 CNT) + 64 CDD (126 o, dernier partiel 6 o, CN=00 STP)
+function pmBulkPackets(data) {   // 8064 o → 1 BTR (ADR 41 00 00, SIZ 00 3F 00, 120 o inline, CN=01 CNT) + 64 CDD (63×125 o + final 69 o, CN=01 sauf dernier 00 STP)
+  // v1.0.15 : CDD de 125 o (250 nibbles, 256 sur le fil) — tailles EXACTES du flux réel du clavier (capture 18/10 : BTR 255 o + CDD 256 o).
   const packets = [];
   packets.push(pmBulkFrame([0xf0, 0x50, 0x2d, 0x01, 0x18, 0x10, 0x41, 0x00, 0x00, (data.length >> 14) & 0x7f, (data.length >> 7) & 0x7f, data.length & 0x7f], data.slice(0, 120), 0x01));
   const rest = data.slice(120);
-  const n = Math.ceil(rest.length / 126);
+  const n = Math.ceil(rest.length / 125);
   for (let i = 0; i < n; i++) {
-    const chunk = rest.slice(i * 126, (i + 1) * 126);
+    const chunk = rest.slice(i * 125, (i + 1) * 125);
     packets.push(pmBulkFrame([0xf0, 0x50, 0x7e], chunk, i === n - 1 ? 0x00 : 0x01));   // CN 00 = STP (fin du bloc) sur le dernier paquet
   }
   return packets;
@@ -1053,7 +1058,7 @@ async function pmBulkRun(data, label) {   // data = 8064 o (24 PM complètes) �
   if (!confirm("⚠️ Écriture réelle vers le KN2000 — Panel Memory (bloc 41, 8064 o = 24 PM).\n" + label + "\n\nHandshake : le clavier doit ACKer chaque paquet — tout manque d'ACK arrête l'envoi.\nNe rien toucher au clavier pendant l'opération. Continuer ?")) { log("Écriture annulée.", "info"); return false; }
   pmBulk.on = true; $("pmWrite").disabled = true; $("pmWriteAll").disabled = true;
   try {
-    log("=== " + label + " — bulk handshake (1 BTR + 64 CDD + EOK + END, un ACK attendu par paquet) ===", "info");
+    log("=== " + label + " — bulk handshake (1 BTR + 64 CDD + EOK + END ; NAK = renvoi du paquet) ===", "info");
     send(PM_HRQ); log("[TX] HRQ (21) — nous sommes master, le clavier doit répondre HRT (22)", "info");
     let r = await pmBulkWait(0x22, 4000, "HRT (22)");
     if (r === "err") throw new Error("ERR du clavier");
@@ -1064,10 +1069,21 @@ async function pmBulkRun(data, label) {   // data = 8064 o (24 PM complètes) �
     log("[RX] ACK (23) du clavier ✓ — handshake établi, envoi du bloc 41 (8064 o)", "ok");
     const packets = pmBulkPackets(data);
     for (let i = 0; i < packets.length; i++) {
-      if (!send(packets[i])) throw new Error("envoi MIDI");
-      const rr = await pmBulkWait(0x23, 4000, "ACK (23)");
-      if (rr === "err") throw new Error("ERR du clavier");
-      if (i === 0 || (i + 1) % 16 === 0 || i === packets.length - 1) log("[TX] paquet " + (i + 1) + "/" + packets.length + " ACKé ✓ (" + (packets[i][2] === 0x2d ? "BTR ADR 41 00 00 · SIZ 00 3F 00" : "CDD 7e") + ")", "ok");
+      let sent = 0, rr = "";
+      while (true) {   // v1.0.15 : sur NAK (24), renvoyer le paquet (max 2 renvois) avant d'abandonner
+        if (!send(packets[i])) throw new Error("envoi MIDI");
+        sent++;
+        rr = await pmBulkWait(0x23, 4000, "ACK (23)");
+        if (rr === "err") throw new Error("ERR du clavier");
+        if (rr === "nak") {
+          if (sent > 2) throw new Error("NAK (24) du clavier ×3 sur le paquet " + (i + 1));
+          log("[TX] renvoi du paquet " + (i + 1) + "/" + packets.length + " après NAK (" + sent + "/2)", "warn");
+          await new Promise(res => setTimeout(res, 300));
+          continue;
+        }
+        break;
+      }
+      if (i === 0 || (i + 1) % 16 === 0 || i === packets.length - 1) log("[TX] paquet " + (i + 1) + "/" + packets.length + " ACKé ✓ (" + (packets[i][2] === 0x2d ? "BTR ADR 41 00 00 · SIZ 00 3F 00" : "CDD 7e") + (sent > 1 ? " · " + sent + " envois (NAK renvoyé)" : "") + ")", "ok");
     }
     send(PM_EOKW); r = await pmBulkWait(0x23, 4000, "ACK EOK"); if (r === "err") throw new Error("ERR du clavier");
     log("[TX] EOK (27) → ACK du clavier ✓", "ok");

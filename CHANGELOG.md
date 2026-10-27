@@ -86,6 +86,14 @@ Outils :
 - **Mystère documenté** : le bloc 40 du panel s'arrête systématiquement à 1056/1088 octets (écart 32 constant, sans conséquence) — l'écart est consigné dans le JSON.
 - **Validation hors clavier** : le moteur a été rejoué sur la capture terrain validée du 18/10 (dump panel CtrlrX) — un ACK par paquet (70 ACK pour 70 paquets), fin sur END, bloc 40 à 1056/1088 conforme au terrain, structure d'export vérifiée. Les aires 30/50/60 restent à valider par le terrain.
 
+### Panel Console v1.0.15 — diagnostic terrain du NAK : checksum bulk (CN inclus) + CDD 125 o + NAK géré
+
+- **Retour terrain v1.0.14 (Yves)** : sur la page SYSEX BULK DUMP du clavier, le handshake passe intégralement (HRQ → HRT → notre HRT → ACK ✓ — **la page BULK DUMP au clavier est nécessaire pour la réception**), puis le clavier répond **NAK (24)** `f0 50 24 7e f7` au BTR (l'ancien code l'ignorait comme « trame trop courte »). NAK en réponse à un paquet = **erreur dans le paquet**, pas un silence.
+- **Cause trouvée byte-exact contre la capture réelle 18/10** : (1) le **checksum bulk = XOR des octets 1..n-3 (CN INCLUS)** — validé **65/65** sur les trames 2d/7e réelles du clavier ; la v1.0.14 excluait le CN (écart ^01 sur tous les paquets CN=01) → BTR refusé. (2) Les **CDD réelles font 125 o** (250 nibbles, 256 sur le fil), pas 126 : vrai format du bloc 41 = BTR (120 o inline) + 63 CDD × 125 o + 1 CDD finale de 69 o.
+- **v1.0.15** : `pmBulkFrame` checksum CN inclus ; `pmBulkPackets` segmentation 125 o conforme au flux réel ; **NAK (24) géré** — log explicite puis renvoi du paquet (max 2 renvois, 300 ms), 3 NAK sur le même paquet = arrêt propre ; NAK/ACK/ERR/HRT tous routés pendant l'écriture.
+- **Validation hors clavier** : 24 tests verts avec **clavier simulé strict** (vérifie chaque checksum avec la formule réelle et NAK les paquets invalides) — 65 paquets aux tailles exactes du flux réel (BTR 255 o, CDD 256 o, finale 144 o), round-trip 8064 o, NAK unique → renvoi et réussite, NAK ×3 → arrêt propre, ERR → arrêt, refus cache incomplet, contre-preuve v1.0.14 ≠ v1.0.15. **Plus : 100 % des trames réelles du clavier (BTR 41 + 55 CDD de la capture) re-construites byte-exact par le moteur** (`pmBulkFrame` sur les données/CN extraits de la capture).
+- **Protocole terrain** : recharger la Console → se positionner sur la page **MIDI SYSEX BULK DUMP du clavier** → 💾 Restaurer les 24 PM (ou ➡ sur une PM) → le journal doit montrer HRQ → HRT → ACK → BTR ACKé → paquets 2..65 ACKés → EOK/END ACKés, et « réception OK » à l'écran.
+
 ### Panel Console v1.0.14 — écriture PM par bulk handshake (l'ITW éliminé après double échec terrain)
 
 - **Retour terrain v1.0.13** : l'écriture ITW vers 42 xx xx (108000H) a aussi été ignorée en silence — **l'écriture des PM ne passe pas par l'ITW 2C**, mais par le protocole bulk (round-trip prouvé le 17/10 : « réception OK » à l'écran, banque restaurée).
