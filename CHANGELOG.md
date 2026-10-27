@@ -210,6 +210,12 @@ Outils :
 - **Squelette i18n FR/EN** (`STR`, localStorage `kn2000_pc_lang`) sur les éléments de la charte (badges, libellés des groupes, bouton langue).
 - **Aide restructurée** (`help/panel-console.html`) : sections par onglet avec ancres stables, bloc Réglages, historique v1.0.
 
+### Sound Editor v0.9.18 — correctif Firefox : select Slot sorti du label (le bug « retombe sur A-1 » était ICI)
+
+- **Retour terrain Yves (4 versions de backup.html sans effet…)** : le combo slot « saute immédiatement sur la 1re option, sans événement » — le bug était sur **le Sound Editor**, pas sur la page Sauvegarde. Cause : `<select id="slotSel">` imbriqué dans un `<label>` — quirk Firefox (diagnostiqué session 259 sur un cas identique) : le clic sur l'option bulle au label qui re-dispatche un clic vers le select → sélection jamais commise → retombée immédiate **sans événement change** (explique : aucun log des instrumentations v0.5.5/06, aucun message sentinelle).
+- Correctif : label remplacé par un span (visuel inchangé), `autocomplete="off"` posé. Aucune autre page touchée ; backup.html v0.5.6 inchangée (son propre combo était déjà hors label depuis v0.5.3).
+- Leçon : « la partie sound » désignait le **Sound Editor** — toujours faire confirmer la page exacte d'un bug terrain avant de corriger.
+
 ### Sound Editor v0.9.17 — icône d'aide en SVG (livre au trait)
 - **Les icônes d'aide des 5 onglets et le bouton « Aide » des Réglages passent en SVG inline** (livre dessiné au trait, bleu #38bdf8) — remplace l'emoji 📖/❓ qui s'affichait en carré blanc sur les systèmes sans glyphe correspondant ; rendu garanti, taille et couleur contrôlées, indépendant des polices.
 
