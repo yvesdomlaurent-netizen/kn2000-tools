@@ -86,6 +86,13 @@ Outils :
 - **Mystère documenté** : le bloc 40 du panel s'arrête systématiquement à 1056/1088 octets (écart 32 constant, sans conséquence) — l'écart est consigné dans le JSON.
 - **Validation hors clavier** : le moteur a été rejoué sur la capture terrain validée du 18/10 (dump panel CtrlrX) — un ACK par paquet (70 ACK pour 70 paquets), fin sur END, bloc 40 à 1056/1088 conforme au terrain, structure d'export vérifiée. Les aires 30/50/60 restent à valider par le terrain.
 
+### Panel Console v1.0.12 — écriture des Panel Memories vers le KN2000 (bloc 41, trames ITW)
+
+- **➡ Écrire cette PM vers le clavier** : le contenu affiché (cache ou lecture) est écrit dans la PM choisie du clavier — 3 trames ITW 2C ≤120 octets (120+120+96), pause 60 ms, enables sysex en préambule (20 04 00/01), adresse ADR 41 en paires 7 bits (méthode validée sur l'écriture des sons). Confirmation explicite si la PM cible diffère de la PM lue.
+- **💾 Écrire les 24 PM (cache → clavier)** : restauration complète du bloc 41 depuis le cache du dernier dump (24 PM complètes × 3 trames, ~8 s). Les PM absentes du cache ne sont pas écrites (avertissement explicite).
+- Le KN2000 n'accuse jamais réception d'une 2C : l'écran juge (modifier une PM au clavier via SET puis la renvoyer → elle doit revenir à sa position du backup), et le 🔄 Re-dump complet permet la vérification byte-exact.
+- Correctif documentation : le KN2000 n'a pas de connexion USB — l'interface MIDI (ex. Arturia MiniFuse) se branche en MIDI DIN (aide Console + aide Sauvegarde, FR/EN).
+
 ### Panel Console v1.0.11 — un dump réussi alimente automatiquement la bibliothèque (24 ensembles « PM A1…C8 »)
 - **Cadrage Yves** : « lorsque je demande le dump je voudrais que le résultat alimente l'onglet bibliothèque automatiquement » — les 24 PM d'un dump = l'image de l'état du clavier, donc l'onglet doit les montrer d'après le dump.
 - **Pont dump → bibliothèque** : à la fin d'un dump (bloc 41 fusionné au cache), `libSyncFromDump()` crée/remplace **24 ensembles « PM A1 » … « PM C8 »** décodés sémantiquement (`pmSnapFromBytes` : sons R1/R2/LEFT via KN, rythme, vols, drums, Digital/DSP par part, APC, conductor, DSP, tempo/split en survol). ▶ Charger les rejoue en temps réel ; **ensembles personnels intacts** (seules les entrées « PM A1…C8 » sont remplacées) ; PM non décodable signalée sans entrée.

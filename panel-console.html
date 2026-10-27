@@ -70,7 +70,7 @@
   <span class="bdg" id="bdgKn" title="Connexion KN2000 — clique pour ouvrir les réglages (section connexion)">🎹 KN2000 ○</span>
   <span class="bdg" id="bdgDir" title="Dossier de travail (exports/imports de la bibliothèque) — clique pour ouvrir les réglages (section dossier)">📁 —</span>
   <span style="flex:1"></span>
-  <h1>🎹 KN2000 Console <span style="font-size:.6em;color:#8fd0ff">v1.0.11</span></h1>
+  <h1>🎹 KN2000 Console <span style="font-size:.6em;color:#8fd0ff">v1.0.12</span></h1>
   <span style="flex:1"></span>
   <label class="ghost" title="Afficher/masquer le journal MIDI (sysex)"><input type="checkbox" id="logBtn" style="width:15px;height:15px;vertical-align:middle;transform:translateY(-1px)"> 📜 Log MIDI</label>
   <button class="ghost" id="btnCfg" title="Réglages & Aide : connexion, dossier de travail, moniteur, langue">⚙️ Réglages</button>
@@ -170,12 +170,13 @@
 
 <!-- ================= PANEL MEMORY ================= -->
 <div class="panel" id="p-pm">
-<h2>⚙️ Panel Memory — lecture des 24 PM par dump panel complet (protocole dump) — section avancée</h2>
+<h2>⚙️ Panel Memory — lecture et écriture des 24 PM (dump complet / trames ITW) — section avancée</h2>
 <div class="part">
   <select id="pmDumpSel"></select>
   <button class="sec" id="pmRead" title="Affiche la PM choisie : depuis le cache local si elle y est complète, sinon lance un dump panel complet (~10-20 s)">📄 Lire cette PM</button>
   <button class="sec" id="pmDumpAll" title="Force un dump panel complet (blocs 40+41) : les banques reçues complètes rafraîchissent le cache, les autres restent — rien n'est perdu">🔄 Re-dump complet</button>
-  <button id="pmWrite" disabled title="Écriture 2C vers le bloc 41 NON testée sur le clavier — désactivée en attendant une validation dédiée (PM sacrifiable)">➡ Écrire vers le clavier</button>
+  <button id="pmWrite" title="Écrit le contenu affiché dans la PM choisie du clavier (3 trames ITW ≤120 o, pause 60 ms — le clavier n'accuse pas réception : l'écran juge, puis re-dump pour vérifier)">➡ Écrire cette PM vers le clavier</button>
+  <button class="sec" id="pmWriteAll" title="Écrit les 24 PM complètes du cache vers le clavier (72 trames ITW, ~8 s — restauration complète du bloc 41). Le clavier n'accuse pas réception : modifier une PM au clavier (SET) puis la renvoyer, elle doit revenir à sa position du backup">💾 Écrire les 24 PM (cache → clavier)</button>
   <span id="pmCacheSt" class="info" style="font-size:12px"></span><br>
   <span id="pmDumpSt" class="info">—</span>
   <button class="sec" id="pmDiff" title="Compare les deux derni\u00e8res PM lues octet par octet \u2014 r\u00e9v\u00e8le si un r\u00e9glage (ex. son d'une Part) est stock\u00e9 dans la PM">&#8646; Diff 2 PM</button>
@@ -761,7 +762,7 @@ log("Pr\u00eat. Cliquer \u00ab Lire l'\u00e9tat du clavier \u00bb apr\u00e8s con
 const PM_NAMES = []; for (const L of "ABC") for (let i = 1; i <= 8; i++) PM_NAMES.push(L + i);
 for (let i = 0; i < 24; i++) $("pmDumpSel").add(new Option(PM_NAMES[i], i));
 let pmRec = null, pmRecIdx = -1, pmWait = false; // pmWait : lecture PM en cours (pour rapporter proprement les erreurs KN2000)
-function pmAddr(idx) { const off = idx * 336; return [0x41, (off >> 8) & 0x7f, off & 0x7f]; }
+function pmAddr(idx) { const off = idx * 336; return [0x41, (off >> 8) & 0x7f, off & 0x7f]; }   // obsolète v1.0.12 : l'écriture ITW utilise les paires 7 bits (abs>>7), comme les trames Sound validées
 function pmDecode(rec) {
   if (!rec || rec.length < 328 || rec[1] !== 0x0a || rec[13] !== 0x0a) return null;
   const part = (off, lbl) => { const r = rec.slice(off, off + 12); const s = KN.sounds.find(x => x[4] === r[2] && x[5] === ((r[6] || 0) * 16)); return lbl + " " + (s ? s[2] : "PC " + r[2] + " ?") + " — vol " + r[3] + ((r[4] & 0x40) ? ", Digital" : "") + ((r[4] & 0x20) ? ", DSP" : ""); };
@@ -1000,15 +1001,53 @@ $("pmDumpAll").onclick = () => {
   pmDumpStart(idx, 1);
 };
 pmCacheUI();
-$("pmWrite").onclick = () => {
-  if (!output) { log("Pas de sortie MIDI sélectionnée.", "ko"); return; }
+// ===== v1.0.12 : écriture Panel → KN2000 (bloc 41, ITW 2C) — trames ≤120 o, pace 60 ms, méthode validée sur les sons =====
+let pmWriting = false;
+async function pmWriteBytes(idx, data) {   // 336 o → 3 trames ITW (120+120+96), ADR 41 en paires 7 bits comme les trames Sound
+  for (let off = 0; off < data.length; off += 120) {
+    const chunk = data.slice(off, Math.min(off + 120, data.length));
+    const abs = idx * 336 + off;
+    const adr = [0x41, (abs >> 7) & 0x7f, abs & 0x7f];
+    if (!send(sysex2C(adr, chunk))) throw new Error("envoi MIDI");
+    await wait(60);
+  }
+}
+async function pmWriteRun(list, label) {   // list = [{idx, data}] — enables, écriture séquencée, état clavier non confirmé (l'écran juge)
+  if (!output) { log("Pas de sortie MIDI sélectionnée.", "ko"); return false; }
+  if (pmWriting || pmDump.on || pmWait) { log("Opération MIDI déjà en cours (dump ?) — attendre la fin.", "ko"); return false; }
+  const totalFrames = list.length * 3;
+  const warn = "⚠️ Écriture réelle vers le KN2000 — Panel Memory (bloc 41).\n" + label + " : " + list.length + " PM × 3 trames (" + totalFrames + " trames ITW, pause 60 ms, ~" + Math.round(totalFrames * 60 / 1000 + list.length * 0.4) + " s).\n\nLe clavier n'accuse pas réception : l'écran et le re-dump seront les juges.\nModifier une PM au clavier (SET) puis la renvoyer : elle doit revenir à sa position du backup. Continuer ?";
+  if (!confirm(warn)) { log("Écriture annulée.", "info"); return false; }
+  pmWriting = true; $("pmWrite").disabled = true; $("pmWriteAll").disabled = true;
+  log("=== " + label + " : " + list.length + " PM × 3 trames ITW (pause 60 ms) — observer l'écran du clavier ===", "info");
+  try {
+    send(sysex2C([0x20, 0x04, 0x00], [0x01])); await wait(120);   // enables requis (méthodes validées panel)
+    send(sysex2C([0x20, 0x04, 0x01], [0x01])); await wait(120);
+    let done = 0;
+    for (const it of list) {
+      await pmWriteBytes(it.idx, it.data); done++;
+      log("[TX] 2C → PM " + PM_NAMES[it.idx] + " écrite (336 o en 3 trames, ADR 41) — " + done + "/" + list.length, "ok");
+      await wait(200);
+    }
+    log("✅ Écriture terminée : " + list.length + " PM. Le clavier n'a rien confirmé — vérifier : sélectionner la PM au clavier, ou modifier une PM (SET) puis la renvoyer, ou 🔄 Re-dump complet.", "ok");
+    return true;
+  } catch (e) { log("Écriture interrompue : " + e.message, "ko"); return false; }
+  finally { pmWriting = false; $("pmWrite").disabled = false; $("pmWriteAll").disabled = false; }
+}
+$("pmWrite").onclick = async () => {
   const idx = Number($("pmDumpSel").value);
-  if (!pmRec) { log("Lire d'abord une PM (bouton « Lire cette PM »).", "ko"); return; }
-  if (idx !== pmRecIdx) { const go = confirm("Le contenu affiché vient de " + PM_NAMES[pmRecIdx] + ".\nÉcrire dans " + PM_NAMES[idx] + " écrasera cette PM avec ce contenu.\nConfirmer ?"); if (!go) return; }
-  else if (!confirm("Écrire le contenu affiché dans la PM " + PM_NAMES[idx] + " du clavier ?")) return;
-  send(sysex2C([0x20, 0x04, 0x00], [0x01]));
-  const a = pmAddr(idx);
-  setTimeout(() => { send(sysex2C(a, pmRec)); log("[TX] 2C → écriture PM " + PM_NAMES[idx] + " (336 octets, ADR 41 " + A2(a[1]) + " " + A2(a[2]) + ")", "ok"); }, 120);
+  if (!pmRec) { log("Lire d'abord une PM (bouton « 📄 Lire cette PM »).", "ko"); return; }
+  if (idx !== pmRecIdx) { const go = confirm("Le contenu affiché vient de " + PM_NAMES[pmRecIdx] + ".\nÉcrire dans " + PM_NAMES[idx] + " écrasera cette PM du clavier avec ce contenu.\nConfirmer ?"); if (!go) return; }
+  await pmWriteRun([{ idx, data: pmRec }], "Écriture PM " + PM_NAMES[idx] + (idx !== pmRecIdx ? " (contenu de " + PM_NAMES[pmRecIdx] + ")" : ""));
+};
+$("pmWriteAll").onclick = async () => {
+  const cache = pmCacheLoad();
+  const banks = (cache && cache.banks) ? cache.banks : [];
+  const list = [];
+  for (let i = 0; i < 24; i++) if (banks[i] && banks[i].ok && Array.isArray(banks[i].data) && banks[i].data.length >= 336) list.push({ idx: i, data: banks[i].data.slice(0, 336) });
+  if (!list.length) { log("Aucune PM complète en cache — faire d'abord « 🔄 Re-dump complet ».", "ko"); return; }
+  if (list.length < 24) log("⚠️ " + (24 - list.length) + " PM absentes du cache — elles ne seront PAS écrites (re-dump complet recommandé).", "info");
+  await pmWriteRun(list, "Écriture des " + list.length + "/24 PM du cache (restauration du bloc 41)");
 };
 // ===== v1.0.11 : un dump reussi alimente la bibliothèque (24 ensembles « PM A1…C8 ») =====
 function pmSnapFromBytes(rec) {   // PM 336 o -> snapshot sémantique au format de la bibliothèque
