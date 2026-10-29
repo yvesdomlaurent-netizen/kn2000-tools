@@ -30,7 +30,7 @@
 </head>
 <body>
 <header>
-  <span><b>KN2000 APC Live Test</b> v0.28 — Simplification : horloge réelle F8/FA validée sur tous les navigateurs (Android Chrome, PC Edge/Firefox) ; démontage WebUSB et recalage batterie ; « 🎯 Caler » + trim conservés en secours</span>
+  <span><b>KN2000 APC Live Test</b> v0.29 — Écran MIDI-Ox : position mesure:temps:pulse COMPTÉE sur les F8 réels (FA = remise à 1:01:000) ; tempo exclusivement via la trame TMP (fini le jitter de mesure sur les intervalles F8)</span>
   &nbsp; <span id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
@@ -57,7 +57,7 @@
     </div>
     <div class="row">
       <label>Pulses/noire <input type="number" id="ppq" value="24" min="1" max="96"></label>
-      <span class="hint">24 = standard MIDI. Si le BPM paraît faux (÷2 ou ×2), essaie 48 ou 12.</span>
+      <span class="hint">24 = standard MIDI (comptage de la position). Si la position avance 2× trop lent/vite, essaie 48 ou 12.</span>
     </div>
     <div class="row" id="bpmRow" style="border:1px solid #ddd;border-radius:6px;padding:6px;background:#f5f0ff">
       <div style="display:flex;align-items:center;gap:8px">
@@ -69,14 +69,14 @@
     </div>
     <div class="row" style="border:1px solid #ddd;border-radius:6px;padding:6px;background:#eef6ff">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <div id="pos" style="font-size:22px;font-weight:bold;color:#1273b0;font-family:monospace;line-height:1.1">— : — : ———</div>
+        <div id="pos" style="font-size:30px;font-weight:bold;color:#1273b0;font-family:monospace;line-height:1.1">— : — : ———</div>
         <button id="caler" title="Clique AU MOMENT où tu entends le temps 1 du clavier (secours, sans rythme démarré) : l'horloge se cale sur mesure 1 temps 1">🎯 Caler maintenant</button>
         <button id="trimMoins" title="Décale le calage de −10 ms">◀ −10 ms</button>
         <input type="number" id="trimIn" value="0" step="5" min="-500" max="500" title="Calage fin en ms : compense ton réflexe de clic sur « Caler » (clic trop tardif = valeur négative). À ♩120, 1 pulse ≈ 21 ms.">
         <button id="trimPlus" title="Décale le calage de +10 ms">+10 ms ▶</button>
         <span class="hint" id="trimVal">0 ms</span>
       </div>
-      <div class="hint">🕐 Horloge réelle du KN2000 : chaque F8 (horloge MIDI) estampille le tempo, chaque FA (Start) cale la position sur le vrai temps 1 — reçus sur tous tes navigateurs. « 🎯 Caler » (+ trim ±10 ms) reste en secours : clique sur le temps 1 entendu si tu lances la séquence sans rythme démarré. Coche « 🎯 Départ calé » (Test 2) pour que ▶ Démarrer attende le prochain temps 1 de l'horloge. Le journal batterie ch16 (ci-dessus) sert au diagnostic : chaque note y est estampillée mesure:temps:pulse.</div>
+      <div class="hint">🕐 Écran MIDI-Ox : la position <b>mesure : temps : pulse</b> est COMPTÉE sur les F8 réels (24 pulses/noire) — mise à jour à chaque F8, figée quand le rythme s'arrête ; chaque FA (Start) remet le compteur à 1:01:000 (vrai temps 1). Le <b>tempo</b> fait foi via la trame TMP : affiché tel qu'annoncé par le KN2000 (molette suivie en direct), jamais mesuré sur les intervalles de F8 (ça jitter). « 🎯 Caler » (+ trim ±10 ms) reste en secours si tu lances la séquence sans rythme démarré. Coche « 🎯 Départ calé » (Test 2) pour que ▶ Démarrer attende le prochain temps 1. Le journal batterie ch16 (ci-dessus) est estampillé avec cette même position.</div>
     </div>
 
     <h3>🕐 Horloge & temps réel</h3>
@@ -197,9 +197,9 @@ async function initMidi() {
 }
 document.getElementById("resetMidi").onclick = () => initMidi();
 
-// ---------- Horloge MIDI : lecture du tempo (F8) ----------
+// ---------- Tempo : exclusivement via la trame TMP (sysex) ----------
 const bpmEl = document.getElementById("bpm"), bpmSrc = document.getElementById("bpmSrc");
-let lastF8 = 0, f8Times = [], measuredBpm = null;
+let measuredBpm = null;
 let synchroArmed = null; // null = inconnu, true = ON (20 60 08 = 01), false = OFF
 function synBadge() {
   const b = document.getElementById("synBadge");
@@ -209,19 +209,25 @@ function synBadge() {
 }
 synBadge();
 // ---------- Horloge de mesure (mesure:temps:pulse) ----------
-// Calée sur le VRAI temps 1 à chaque FA reçu (Start du rythme) ; tempo mesuré sur les F8.
-// « Caler » manuel + trim restent en secours (séquence sans rythme démarré).
+// POSITION COMPTÉE sur les F8 réels (comme la fenêtre MIDI Sync de MIDI-Ox) : chaque F8 avance
+// le compteur de pulses, chaque FA (Start) le remet à 1:01:000. Le TEMPO fait foi via la trame
+// TMP (pas de mesure sur les intervalles F8 : ça jitter). « Caler » manuel + trim restent en
+// secours (séquence sans rythme démarré → interpolation au tempo TMP).
 let barAnchor = null, syncTrim = 0; // anchor = instant du dernier « mesure 1 temps 1 » calé
 const posEl = document.getElementById("pos");
 function anchorEff() { return barAnchor === null ? null : barAnchor + syncTrim; }
 function posInfo() {
-  const a = anchorEff();
+  const pp = ppq();
+  if (lastF8At || pulse > 0) { // horloge réelle reçue : position COMPTÉE (vraie), figée à l'arrêt
+    return { meas: Math.floor(pulse / (pp * 4)) + 1, beat: Math.floor(pulse / pp) % 4 + 1, tick: pulse % pp };
+  }
+  const a = anchorEff(); // secours sans F8 : interpolation depuis le Caler manuel
   if (a === null) return null;
   const ms = performance.now() - a;
   if (ms < 0) return null;
   const beatMs = 60000 / curBpm();
   const total = ms / beatMs;
-  return { meas: Math.floor(total / 4) + 1, beat: Math.floor(total % 4) + 1, tick: Math.floor((total % 1) * 24), total };
+  return { meas: Math.floor(total / 4) + 1, beat: Math.floor(total % 4) + 1, tick: Math.floor((total % 1) * pp), total };
 }
 function posStr() {
   const p = posInfo();
@@ -237,13 +243,6 @@ let pulse = 0;
 const activeNotes = new Set();
 function ppq() { return Math.max(1, parseInt(document.getElementById("ppq").value) || 24); }
 let lastF8At = 0;
-
-function measureBeatInfo() {
-  const pp = ppq() * 4; // mesure 4/4
-  const meas = Math.floor(pulse / pp) + 1;
-  const beat = Math.floor((pulse % pp) / ppq()) + 1;
-  return "mesure " + meas + " temps " + beat;
-}
 
 function chordOn(c) {
   if (!c) { chordOff(); log("♪ — silence (NC)", "info"); return; }
@@ -323,24 +322,14 @@ function parseGridText(raw) {
 }
 
 function updateBpm(t) {
-  const p = ppq();
-  if (lastF8) {
-    f8Times.push(t - lastF8);
-    const win = Math.max(6, p * 2); // fenêtre ≈ 2 noires
-    while (f8Times.length > win) f8Times.shift();
-    if (f8Times.length >= Math.min(win, 12)) {
-      const med = f8Times.slice().sort((a,b)=>a-b)[Math.floor(f8Times.length/2)];
-      measuredBpm = Math.round(60000 / (med * p) * 10) / 10;
-      bpmEl.textContent = measuredBpm + " BPM";
-      bpmSrc.textContent = "Horloge active — " + f8Times.length + " pulses analysés";
-    }
-  }
+  // v0.29 : les F8 ne MESURENT plus le tempo (jitter d'intervalle ±0,x BPM) — il fait foi
+  // via la trame TMP. Les F8 servent au COMPTE de pulses (position MIDI-Ox) et à la vie de l'horloge.
+  if (!lastF8At) bpmSrc.textContent = "Horloge active (F8 reçus) — tempo : ♩" + curBpm() + " via trame TMP (molette suivie en direct)";
   lastF8At = t;
 }
 setInterval(() => {
   if (lastF8At && performance.now() - lastF8At > 2000) {
-    bpmEl.textContent = "— BPM";
-    bpmSrc.textContent = "Horloge arrêtée (pas de F8 depuis 2 s) — dernière position : " + measureBeatInfo();
+    bpmSrc.textContent = "Horloge arrêtée (pas de F8 depuis 2 s) — position figée : " + posStr() + " — tempo : " + (curBpm()) + " (TMP)";
     lastF8At = 0;
   }
 }, 500);
@@ -358,17 +347,19 @@ function onMidiMsg(ev) {
       if (document.getElementById("rtLog").checked) log("F8 clock — pulse " + pulse, "clock");
       pulse++;
       updateBpm(t);
-      lastF8 = t; lastF8At = t;
+      lastF8At = t;
+      posEl.textContent = posStr(); // écran MIDI-Ox : position mise à jour à CHAQUE F8
     } else if (b === 0xFA) { // MIDI Start : repère du premier temps — CALAGE AUTO de la mesure
-      log("MIDI Start (FA) — rythme lancé : horloge de mesure CALÉE sur le vrai temps 1.", "ok");
+      log("MIDI Start (FA) — rythme lancé : compteur remis à 1:01:000, horloge CALÉE sur le vrai temps 1.", "ok");
       if (document.getElementById("rtLog").checked) log("MIDI Start (FA) — rythme lancé", "clock");
-      pulse = 0; lastF8 = 0; f8Times = []; lastF8At = performance.now();
+      pulse = 0; lastF8At = performance.now();
       barAnchor = performance.now() - syncTrim; // FA = début de mesure réel
+      posEl.textContent = posStr();
     } else if (b === 0xFB) { log("MIDI Continue (FB)", "clock"); }
     else if (b === 0xFC) {
       log("MIDI Stop (FC) — rythme arrêté (RX temps réel)" + (seqQueue ? " — le KN2000 a probablement changé de rythme/tempo" : ""), "clock");
       if (seqQueue && document.getElementById("fcStop").checked) { chordOff(); if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; } seqQueue = null; log("Séquence locale libérée (FC reçu, case « FC reçu = stopper » cochée).", "info"); }
-      else if (seqQueue) log("▶ La séquence LOCALE CONTINUE à travers ce FC (case « FC reçu = stopper » décochée) — le tempo suivra les F8 et le prochain FA recalera la mesure.", "info");
+      else if (seqQueue) log("▶ La séquence LOCALE CONTINUE à travers ce FC (case « FC reçu = stopper » décochée) — le tempo suivra la trame TMP et le prochain FA recalera la mesure.", "info");
       lastF8At = 0;
     }
   }
@@ -412,7 +403,7 @@ function onMidiMsg(ev) {
       log("RX ch" + chN + " : PC " + ev.data[1], "info");
     }
     if (!document.getElementById("hideNotes").checked) log("RX ch" + chN + " : " + hex([...ev.data]), "info");
-    // Journal batterie ch16 : chaque note est estampillée de la position interne (mesure:temps:pulse)
+    // Journal batterie ch16 : chaque note est estampillée de la position comptée sur les F8 (mesure:temps:pulse)
     if (document.getElementById("drumLog").checked && st === 0x90 && ev.data[2] > 0 && (ev.data[0] & 0x0F) === 15) {
       const p = posInfo();
       const n = ev.data[1];
