@@ -30,7 +30,7 @@
 </head>
 <body>
 <header>
-  <span><b>KN2000 APC Live Test</b> v0.18 — Synchro&Break persistant (armé une fois, PLUS JAMAIS désarmé par l'outil) + badge d'état</span>
+  <span><b>KN2000 APC Live Test</b> v0.19 — Plus aucun DRQ tempo (20 00 25 muet, soupçonné de bloquer) : tempo IMPOSÉ au clavier par trame TMP au chargement et au démarrage</span>
   &nbsp; <span id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
@@ -64,7 +64,7 @@
         <button id="bpmUp" title="Tempo +1 → envoyé au KN2000 (trame TMP)">＋</button>
         <button id="bpmDn" title="Tempo −1 → envoyé au KN2000 (trame TMP)">－</button>
       </div>
-      <div id="bpmSrc" class="hint">Tempo : lu par DRQ 20 00 25 au chargement, mis à jour par le KN2000 (trame TMP), ± envoyé au clavier.</div>
+      <div id="bpmSrc" class="hint">Tempo : IMPOSÉ au clavier (trame TMP) au chargement et au démarrage ; mis à jour si le KN2000 annonce un changement (trame TMP) ; boutons ± pour ajuster en direct.</div>
     </div>
 
     <h3>🕐 Horloge & temps réel</h3>
@@ -73,7 +73,7 @@
       <button id="rtcOn">⏱ Activer temps réel (02=1)</button>
       <button id="rtcOff">⏹ Désactiver (02=0)</button>
     </div>
-    <div class="hint">20 04 02 = REAL TIME COMMAND ENABLE (01 = ON). 20 04 03 = CLOCK SELECT (00=Internal, 01=MIDI) — lecture seule.<br>🎹 <b>Tempo</b> : DRQ 20 00 25 (doc p.28-29) au chargement et avant chaque démarrage ; le KN2000 annonce ses changements par la trame TMP (F0 50 25 DT1 DT2 F7) ; les boutons ± envoient la trame TMP au clavier.</div>
+    <div class="hint">20 04 02 = REAL TIME COMMAND ENABLE (01 = ON). 20 04 03 = CLOCK SELECT (00=Internal, 01=MIDI) — lecture seule.<br>🎹 <b>Tempo</b> : PLUS AUCUN DRQ 20 00 25 (jamais de réponse, soupçonné de bloquer le clavier) — le tempo est IMPOSÉ par la trame TMP (F0 50 25 DT1 DT2 F7) au chargement et avant chaque démarrage (♩ du champ BPM manuel) ; si le KN2000 annonce ses changements (trame TMP), l'affichage suit.</div>
 
     <h3>🎹 Test 1 — canal de détection APC</h3>
     <div class="row">
@@ -123,11 +123,11 @@
       <input class="grid-input" id="progInput" value="| C . . . | Am . . . | F . . . | G7 . . . |" spellcheck="false">
     </div>
     <div class="row">
-      <button id="play">▶ Démarrer (rqt tempo → clavier en attente → séquence)</button>
+      <button id="play">▶ Démarrer (tempo TMP imposé → clavier en attente → séquence)</button>
       <button id="stopPlay">■ Stop</button>
       <label><input type="checkbox" id="repeat"> 🔁 Repeat (boucle tant que cochée ; décocher = jouer jusqu'à la fin puis stop)</label>
     </div>
-    <div class="hint">▶ Démarrer : (1) DRQ 20 00 25 → tempo lu du clavier ; (2) ITW 20 60 08 = 01 envoyé SEULEMENT si le Synchro n'est pas déjà armé (badge ⚔ en haut) ; (3) la séquence part au tempo lu — le premier accord (Note On ch8) fait démarrer le clavier. Le tempo est suivi en live (trame TMP) : la molette du clavier reste utilisable en cours de lecture. Au Stop, le Synchro reste armé.</div>
+    <div class="hint">▶ Démarrer : (1) tempo IMPOSÉ au clavier (trame TMP, ♩ = BPM manuel ou dernier reçu) ; (2) ITW 20 60 08 = 01 envoyé SEULEMENT si le Synchro n'est pas déjà armé (badge ⚔ en haut) ; (3) la séquence part à ce tempo — le premier accord (Note On ch8) fait démarrer le clavier. Le tempo reste suivi en live (trame TMP) : la molette du clavier reste utilisable en cours de lecture. Au Stop, le Synchro reste armé.</div>
     <div class="hint">2 formats acceptés : <b>tokens</b> <code>C4 F7-2 Gm7-2</code> (accord + noires) ou <b>grille ChordPro/JJazzLab</b> <code>| Am6 . . . | D7 . . . |</code> / <code>! Bb7 ! D7#5 !</code> — <code>.</code> tenue, <code>/</code> rejouer, <code>%</code> répète la mesure, <code>NC</code> silence, <code>~</code> plusieurs accords/cellule, <code>| 3/4 B7 |</code> chiffrage. Types : C, Cm, C7, CM7/7M, Cm7, Cm7b5, Cdim, Caug, C6, Csus4…</div>
     <div class="hint" id="prog" style="margin-top:4px"></div>
 
@@ -178,9 +178,7 @@ async function initMidi() {
     rx.onchange = bind; tx.onchange = bind; bind();
     access.onstatechange = () => { fill(rx, [...access.inputs.values()], rx.value); fill(tx, [...access.outputs.values()], tx.value); bind(); };
     log("MIDI prêt — " + ins.length + " entrée(s), " + outs.length + " sortie(s).", "ok");
-    if (midiOut) { sendDrq(0x20, 0x00, 0x25, "Tempo (TMP 25)", 2); log("🔍 Tempo demandé au KN2000 au chargement (DRQ 20 00 25).", "info");
-      setTimeout(() => { if (measuredBpm === null) log("ℹ️ Pas de réponse tempo au DRQ 20 00 25 — le tempo sera pris à la première trame TMP du clavier (molette, sélection PM/rythme) ou au champ BPM manuel.", "info"); }, 1500);
-    }
+    if (midiOut) { sendTmpN(parseFloat(document.getElementById("bpmMan").value) || 120); log("📤 Tempo imposé au KN2000 au chargement (trame TMP, ♩ du champ BPM manuel).", "info"); }
   } catch (e) { log("Erreur accès MIDI : " + e.message, "ko"); }
 }
 document.getElementById("resetMidi").onclick = () => initMidi();
@@ -517,7 +515,7 @@ document.getElementById("rtStart").onclick = () => send([0xFA], "FA = MIDI Start
 document.getElementById("rtCont").onclick = () => send([0xFB], "FB = MIDI Continue (temps réel, sans canal)");
 document.getElementById("rtStop").onclick = () => { send([0xFC], "FC = MIDI Stop (temps réel, sans canal)"); log("⏹ FC envoyé — le rythme doit s'arrêter si le KN2000 reçoit le Stop temps réel.", "info"); };
 
-// ---------- Test 2 : progression — Démarrer (rqt tempo → attente clavier → séquence) ----------
+// ---------- Test 2 : progression — Démarrer (tempo TMP imposé → attente clavier → séquence) ----------
 let playTimers = [];
 function clearPlay() { playTimers.forEach(clearTimeout); playTimers = []; }
 
@@ -553,17 +551,16 @@ document.getElementById("play").onclick = () => {
   const seq = parseSeq();
   if (!seq) return;
   clearPlay(); if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; } chordOff();
-  log("=== ▶ Démarrer : (1) rqt tempo DRQ 20 00 25 ; (2) Synchro&Break si nécessaire ; (3) envoi de la séquence ===", "info");
+  log("=== ▶ Démarrer : (1) tempo imposé au clavier (trame TMP, ♩" + curBpm() + ") ; (2) Synchro&Break si nécessaire ; (3) envoi de la séquence ===", "info");
   document.getElementById("prog").textContent = seq.map(s => chordLabel(s.chord) + "×" + s.beats).join("  ");
-  sendDrq(0x20, 0x00, 0x25, "Tempo (TMP 25)", 2);
+  sendTmpN(curBpm());
   if (synchroArmed === true) log("⚔ Synchro&Break déjà ON — pas de réarmement (il reste armé au clavier).", "info");
   else { sendSysexParam(0x20, 0x60, 0x08, 1, "SYNCHRO & BREAK = ON — le KN2000 se met en attente"); synchroArmed = true; synBadge(); }
   seqQueue = seq; seqIdx = 0;
   playTimers.push(setTimeout(() => {
     log("▶ Séquence lancée @ ♩" + curBpm() + " — le premier accord (Note On ch" + (chChord() + 1) + ") fait démarrer le clavier. Tempo suivi en live (TMP)." + (document.getElementById("repeat").checked ? "  🔁 Repeat ON." : ""), "ok");
     seqStep();
-    setTimeout(() => { if (measuredBpm === null) log("ℹ️ Pas de réponse au DRQ tempo : tempo = BPM manuel. Tourne la molette tempo du clavier (ou change de rythme/PM) pour que le KN2000 envoie sa trame TMP — la séquence se recalera.", "info"); }, 900);
-  }, 500)); // laisse le temps au clavier de répondre (ITR tempo) avant de partir
+  }, 500)); // laisse le temps au clavier d'ingérer le tempo TMP avant de partir
 };
 document.getElementById("stopPlay").onclick = () => {
   clearPlay(); if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; }
