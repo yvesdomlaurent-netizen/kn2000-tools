@@ -70,7 +70,7 @@
     <div class="row" style="border:1px solid #ddd;border-radius:6px;padding:6px;background:#eef6ff">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <div id="pos" style="font-size:22px;font-weight:bold;color:#1273b0;font-family:monospace;line-height:1.1">— : — : ———</div>
-        <button id="caler" title="Clique AU MOMENT où tu entends le temps 1 du clavier : l'horloge interne se cale sur mesure 1 temps 1">🎯 Caler maintenant</button>
+        <button id="caler" title="Clique AU MOMENT où tu entends le temps 1 du clavier (secours, sans rythme démarré) : l'horloge se cale sur mesure 1 temps 1">🎯 Caler maintenant</button>
         <button id="trimMoins" title="Décale le calage de −10 ms">◀ −10 ms</button>
         <input type="number" id="trimIn" value="0" step="5" min="-500" max="500" title="Calage fin en ms : compense ton réflexe de clic sur « Caler » (clic trop tardif = valeur négative). À ♩120, 1 pulse ≈ 21 ms.">
         <button id="trimPlus" title="Décale le calage de +10 ms">+10 ms ▶</button>
@@ -138,7 +138,7 @@
       <button id="play">▶ Démarrer (tempo TMP imposé → clavier en attente → séquence)</button>
       <button id="stopPlay">■ Stop</button>
       <label><input type="checkbox" id="repeat"> 🔁 Repeat (boucle tant que cochée ; décocher = jouer jusqu'à la fin puis stop)</label>
-      <label><input type="checkbox" id="syncStart"> 🎯 Départ calé sur la mesure (attend le prochain temps 1 de l'horloge interne)</label>
+      <label><input type="checkbox" id="syncStart"> 🎯 Départ calé sur la mesure (attend le prochain temps 1 de l'horloge)</label>
       <label><input type="checkbox" id="fcStop"> FC reçu du clavier = stopper la séquence (décoché : la séquence traverse un changement de rythme/tempo)</label>
     </div>
     <div class="hint">▶ Démarrer : (1) tempo IMPOSÉ au clavier (trame TMP, ♩ = BPM manuel ou dernier reçu) ; (2) armement Synchro&Break ITW 20 60 08 = 01 — reconfirmé à chaque lancement car le Stop le repasse OFF ; (3) la séquence part à ce tempo — le premier accord (Note On ch8) fait démarrer le clavier. Le tempo reste suivi en live (trame TMP) : la molette du clavier reste utilisable en cours de lecture.</div>
@@ -208,9 +208,9 @@ function synBadge() {
   b.style.color = v === true ? "#0a7a0a" : (v === false ? "#c00" : "#555");
 }
 synBadge();
-// ---------- Horloge interne de mesure (mesure:temps:pulse) ----------
-// Chrome ne livre pas les F8/FA du KN2000 au navigateur (MIDI-Ox les voit) : la page tient
-// sa position SEULE, au tempo TMP, avec un calage de phase (anchor + trim de latence).
+// ---------- Horloge de mesure (mesure:temps:pulse) ----------
+// Calée sur le VRAI temps 1 à chaque FA reçu (Start du rythme) ; tempo mesuré sur les F8.
+// « Caler » manuel + trim restent en secours (séquence sans rythme démarré).
 let barAnchor = null, syncTrim = 0; // anchor = instant du dernier « mesure 1 temps 1 » calé
 const posEl = document.getElementById("pos");
 function anchorEff() { return barAnchor === null ? null : barAnchor + syncTrim; }
@@ -583,7 +583,7 @@ function sendRhythmStop() {
   synchroArmed = false; synBadge(); // info terrain Yves 29/10 : le Stop repasse l'état Synchro&Break du clavier sur OFF
 }
 let seqNextAt = 0; // horloge absolue du prochain accord — corrige la dérive des setTimeout en chaîne
-let seqOriginBeats = null; // si Départ calé : position en noires de la séquence sur la grille de l'horloge interne
+let seqOriginBeats = null; // si Départ calé : position en noires de la séquence sur la grille de l'horloge
 function seqStep() {
   const s = seqQueue && seqQueue[seqIdx];
   if (!s) {
