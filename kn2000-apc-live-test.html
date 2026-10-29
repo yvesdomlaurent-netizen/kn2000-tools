@@ -30,7 +30,7 @@
 </head>
 <body>
 <header>
-  <span><b>KN2000 APC Live Test</b> v0.21 — Repeat : retour à l'accord 1 SANS temps mort + planification sur horloge absolue (plus de dérive à chaque tour de boucle)</span>
+  <span><b>KN2000 APC Live Test</b> v0.22 — Horloge interne de mesure (mesure:temps:pulse) + « 🎯 Caler » + trim ±ms de latence + journal batterie ch16 + départ calé sur la mesure</span>
   &nbsp; <span id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
@@ -39,6 +39,7 @@
   <label><input type="checkbox" id="rtLog"> Journal temps réel (F8/FA/FB/FC)</label>
   <label><input type="checkbox" id="hideNotes" checked> Masquer les notes RX</label>
   <label><input type="checkbox" id="ccLog" checked> Journal CC/PC RX</label>
+  <label><input type="checkbox" id="drumLog" checked> Journal batterie ch16</label>
 </header>
 <main>
   <div id="log"></div>
@@ -65,6 +66,16 @@
         <button id="bpmDn" title="Tempo −1 → envoyé au KN2000 (trame TMP)">－</button>
       </div>
       <div id="bpmSrc" class="hint">Tempo : IMPOSÉ au clavier (trame TMP) au chargement et au démarrage ; mis à jour si le KN2000 annonce un changement (trame TMP) ; boutons ± pour ajuster en direct.</div>
+    </div>
+    <div class="row" style="border:1px solid #ddd;border-radius:6px;padding:6px;background:#eef6ff">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <div id="pos" style="font-size:22px;font-weight:bold;color:#1273b0;font-family:monospace;line-height:1.1">— : — : ———</div>
+        <button id="caler" title="Clique AU MOMENT où tu entends le temps 1 du clavier : l'horloge interne se cale sur mesure 1 temps 1">🎯 Caler maintenant</button>
+        <button id="trimMoins" title="Décale le calage de −5 ms (affiné une fois pour toutes selon la latence de ta chaîne)">◀ −5 ms</button>
+        <button id="trimPlus" title="Décale le calage de +5 ms">+5 ms ▶</button>
+        <span class="hint" id="trimVal">calage 0 ms</span>
+      </div>
+      <div class="hint">🕐 Horloge interne de mesure <b>mesure : temps : pulse</b> (24 pulses/noire), tenue au tempo TMP — le navigateur ne reçoit pas les F8/FA du KN2000 (filtrés par Chrome, MIDI-Ox les voit lui) donc la page tient sa position seule. « 🎯 Caler » : clique sur le temps 1 entendu. Le trim ± compense la latence une bonne fois. Coche « 🎯 Départ calé » (Test 2) pour que ▶ Démarrer attende le prochain temps 1. Le journal batterie ch16 affiche la position de chaque note reçue → vérifie si la grosse caisse (temps 1) suit un pattern stable.</div>
     </div>
 
     <h3>🕐 Horloge & temps réel</h3>
@@ -126,6 +137,7 @@
       <button id="play">▶ Démarrer (tempo TMP imposé → clavier en attente → séquence)</button>
       <button id="stopPlay">■ Stop</button>
       <label><input type="checkbox" id="repeat"> 🔁 Repeat (boucle tant que cochée ; décocher = jouer jusqu'à la fin puis stop)</label>
+      <label><input type="checkbox" id="syncStart"> 🎯 Départ calé sur la mesure (attend le prochain temps 1 de l'horloge interne)</label>
     </div>
     <div class="hint">▶ Démarrer : (1) tempo IMPOSÉ au clavier (trame TMP, ♩ = BPM manuel ou dernier reçu) ; (2) armement Synchro&Break ITW 20 60 08 = 01 — reconfirmé à chaque lancement car le Stop le repasse OFF ; (3) la séquence part à ce tempo — le premier accord (Note On ch8) fait démarrer le clavier. Le tempo reste suivi en live (trame TMP) : la molette du clavier reste utilisable en cours de lecture.</div>
     <div class="hint">2 formats acceptés : <b>tokens</b> <code>C4 F7-2 Gm7-2</code> (accord + noires) ou <b>grille ChordPro/JJazzLab</b> <code>| Am6 . . . | D7 . . . |</code> / <code>! Bb7 ! D7#5 !</code> — <code>.</code> tenue, <code>/</code> rejouer, <code>%</code> répète la mesure, <code>NC</code> silence, <code>~</code> plusieurs accords/cellule, <code>| 3/4 B7 |</code> chiffrage. Types : C, Cm, C7, CM7/7M, Cm7, Cm7b5, Cdim, Caug, C6, Csus4…</div>
@@ -194,6 +206,29 @@ function synBadge() {
   b.style.color = v === true ? "#0a7a0a" : (v === false ? "#c00" : "#555");
 }
 synBadge();
+// ---------- Horloge interne de mesure (mesure:temps:pulse) ----------
+// Chrome ne livre pas les F8/FA du KN2000 au navigateur (MIDI-Ox les voit) : la page tient
+// sa position SEULE, au tempo TMP, avec un calage de phase (anchor + trim de latence).
+let barAnchor = null, syncTrim = 0; // anchor = instant du dernier « mesure 1 temps 1 » calé
+const posEl = document.getElementById("pos");
+function anchorEff() { return barAnchor === null ? null : barAnchor + syncTrim; }
+function posInfo() {
+  const a = anchorEff();
+  if (a === null) return null;
+  const ms = performance.now() - a;
+  if (ms < 0) return null;
+  const beatMs = 60000 / curBpm();
+  const total = ms / beatMs;
+  return { meas: Math.floor(total / 4) + 1, beat: Math.floor(total % 4) + 1, tick: Math.floor((total % 1) * 24), total };
+}
+function posStr() {
+  const p = posInfo();
+  return p ? (p.meas + ":" + String(p.beat).padStart(2, "0") + ":" + String(p.tick).padStart(3, "0")) : "— : — : ———";
+}
+setInterval(() => { posEl.textContent = posStr(); }, 50);
+document.getElementById("caler").onclick = () => { barAnchor = performance.now(); log("🎯 Calage manuel — horloge interne : mesure 1, temps 1 (pulse 0). Le journal batterie ch16 va montrer si les temps 1 du clavier tombent dessus.", "ok"); };
+document.getElementById("trimMoins").onclick = () => { syncTrim -= 5; document.getElementById("trimVal").textContent = "calage " + syncTrim + " ms"; };
+document.getElementById("trimPlus").onclick = () => { syncTrim += 5; document.getElementById("trimVal").textContent = "calage " + syncTrim + " ms"; };
 let pulse = 0;
 const activeNotes = new Set();
 function ppq() { return Math.max(1, parseInt(document.getElementById("ppq").value) || 24); }
@@ -362,6 +397,11 @@ function onMidiMsg(ev) {
       log("RX ch" + chN + " : PC " + ev.data[1], "info");
     }
     if (!document.getElementById("hideNotes").checked) log("RX ch" + chN + " : " + hex([...ev.data]), "info");
+    // Journal batterie ch16 : chaque note est estampillée de la position interne (mesure:temps:pulse)
+    if (document.getElementById("drumLog").checked && st === 0x90 && ev.data[2] > 0 && (ev.data[0] & 0x0F) === 15) {
+      const p = posInfo();
+      log("🥁 RX ch16 : note " + ev.data[1] + (p ? " @ " + p.meas + ":" + String(p.beat).padStart(2, "0") + ":" + String(p.tick).padStart(3, "0") : " (horloge non calée)"), "info");
+    }
   }
 }
 
@@ -565,8 +605,18 @@ document.getElementById("play").onclick = () => {
   synchroArmed = true; synBadge();
   seqQueue = seq; seqIdx = 0;
   playTimers.push(setTimeout(() => {
-    log("▶ Séquence lancée @ ♩" + curBpm() + " — le premier accord (Note On ch" + (chChord() + 1) + ") fait démarrer le clavier. Tempo suivi en live (TMP)." + (document.getElementById("repeat").checked ? "  🔁 Repeat ON." : ""), "ok");
-    seqStep();
+    const startSeq = () => {
+      log("▶ Séquence lancée @ ♩" + curBpm() + " — le premier accord (Note On ch" + (chChord() + 1) + ") fait démarrer le clavier. Tempo suivi en live (TMP)." + (document.getElementById("repeat").checked ? "  🔁 Repeat ON." : ""), "ok");
+      seqStep();
+    };
+    if (document.getElementById("syncStart").checked && barAnchor !== null) {
+      const beatMs = 60000 / curBpm();
+      const ms = performance.now() - anchorEff();
+      const inBar = ((ms / beatMs) % 4 + 4) % 4;
+      const wait = (4 - inBar) * beatMs;
+      log("🎯 Départ calé sur la mesure : " + Math.round(wait) + " ms d'attente jusqu'au prochain temps 1 (position " + posStr() + ").", "info");
+      playTimers.push(setTimeout(startSeq, wait));
+    } else startSeq();
   }, 500)); // laisse le temps au clavier d'ingérer le tempo TMP avant de partir
 };
 document.getElementById("stopPlay").onclick = () => {
