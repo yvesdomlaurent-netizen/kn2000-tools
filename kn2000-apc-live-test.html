@@ -45,7 +45,7 @@
 </head>
 <body>
 <header>
-  <span><b>🎼 APC Live KN2000</b> <span class="hint">v0.37 — correctif : le FA émis par le clavier au démarrage de son rythme ne remet plus la séquence au début — réalignage sur le temps 1, la lecture continue</span></span>
+  <span><b>🎼 APC Live KN2000</b> <span class="hint">v0.38 — le compteur de position démarre à la mesure de départ (N:01:000) et ne retombe plus à 1:01</span></span>
   &nbsp; <span id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
@@ -101,7 +101,7 @@ Thème
       <span id="mCount">—</span>
     </div>
     <div class="row"><div id="tapeBar" title="Glisser la bande pour choisir la mesure de départ"><div id="tapeFill"></div><div id="tapeHandle">▼</div></div></div>
-    <div class="hint">▶ Démarrer : (1) tempo imposé au clavier (trame TMP) ; (2) armement Synchro&Break ; (3) séquence — <b>si l'horloge F8 tourne, les accords sont pilotés par le COMPTEUR de pulses</b> : zéro dérive, un changement de tempo à la molette est suivi instantanément, le calage reste collé au compteur affiché (sinon secours au minuteur). <b>🎛 Transport clavier</b> : FA Start → séquence lancée depuis l'accord 1 pile sur le temps 1 ; FB Continue → reprise de la séquence arrêtée (accord interrompu rejoué) ; FC Stop → arrêt (notes OFF). <b>📼 Départ mesure</b> : champ, flèches ⏮ ◀ ▶ ⏭ ou bande glissante — <b>▶ Démarrer part de la mesure choisie</b> (les mesures d'avant ne sont pas envoyées ; 🔁 Repeat y reboucle) ; FA du clavier à l'arrêt → mesure 1 ; FA pendant la lecture → simple réalignage, la lecture continue (le KN2000 émet FA au démarrage de son rythme) ; le compteur affiche la mesure en cours pendant la lecture. <b>Saisie multi-lignes</b> : les accords OBLIGATOIREMENT entre <code>| … |</code> ; une ligne sans <code>|</code> = <b>titre de section</b> (non joué) ; <code>//</code> = commentaire ; <code>||</code> ouvre un bloc de répétition, <code>|| x2</code> le referme et le joue 2 fois ; la MESURE en cours est surlignée en violet pâle derrière le texte de la zone de saisie pendant la lecture. Voir <b>❓ Aide</b> ci-dessous pour tous les types d'accords. <b>🎵 Morceaux</b> : sélectionner un morceau charge sa séquence et <b>envoie sa config au KN2000</b> (tempo, rythme, APC, sons, volumes — aucun rappel Panel Memory : la config vit dans la page, morceau par morceau) ; <b>💾 Sauver morceau</b> capture la séquence affichée + les réglages COURANTS du clavier (lecture panel façon Panel Console) ; ⬇️ Export / ⬆️ Import pour tout emporter en JSON.</div>
+    <div class="hint">▶ Démarrer : (1) tempo imposé au clavier (trame TMP) ; (2) armement Synchro&Break ; (3) séquence — <b>si l'horloge F8 tourne, les accords sont pilotés par le COMPTEUR de pulses</b> : zéro dérive, un changement de tempo à la molette est suivi instantanément, le calage reste collé au compteur affiché (sinon secours au minuteur). <b>🎛 Transport clavier</b> : FA Start → séquence lancée depuis l'accord 1 pile sur le temps 1 ; FB Continue → reprise de la séquence arrêtée (accord interrompu rejoué) ; FC Stop → arrêt (notes OFF). <b>📼 Départ mesure</b> : champ, flèches ⏮ ◀ ▶ ⏭ ou bande glissante — <b>▶ Démarrer part de la mesure choisie</b> (les mesures d'avant ne sont pas envoyées ; 🔁 Repeat y reboucle) ; FA du clavier à l'arrêt → mesure 1 ; FA pendant la lecture → simple réalignage, la lecture continue (le KN2000 émet FA au démarrage de son rythme) ; le grand compteur de position démarre à la mesure de départ (N:01:000) ; le compteur affiche la mesure en cours pendant la lecture. <b>Saisie multi-lignes</b> : les accords OBLIGATOIREMENT entre <code>| … |</code> ; une ligne sans <code>|</code> = <b>titre de section</b> (non joué) ; <code>//</code> = commentaire ; <code>||</code> ouvre un bloc de répétition, <code>|| x2</code> le referme et le joue 2 fois ; la MESURE en cours est surlignée en violet pâle derrière le texte de la zone de saisie pendant la lecture. Voir <b>❓ Aide</b> ci-dessous pour tous les types d'accords. <b>🎵 Morceaux</b> : sélectionner un morceau charge sa séquence et <b>envoie sa config au KN2000</b> (tempo, rythme, APC, sons, volumes — aucun rappel Panel Memory : la config vit dans la page, morceau par morceau) ; <b>💾 Sauver morceau</b> capture la séquence affichée + les réglages COURANTS du clavier (lecture panel façon Panel Console) ; ⬇️ Export / ⬆️ Import pour tout emporter en JSON.</div>
   </div>
 
   <details>
@@ -255,10 +255,11 @@ synBadge();
 let barAnchor = null, syncTrim = 0; // anchor = instant du dernier « mesure 1 temps 1 » calé
 const posEl = document.getElementById("pos");
 function anchorEff() { return barAnchor === null ? null : barAnchor + syncTrim; }
+let posMeasOffset = 0; // v0.38 : décalage (en mesures) du compteur de position — ▶ Démarrer à la mesure N → le grand compteur démarre à N:01:000 (retour à zéro à la fin de la progression)
 function posInfo() {
   const pp = ppq();
   if (lastF8At || pulse > 0) { // horloge réelle reçue : position COMPTÉE (vraie), figée à l'arrêt
-    return { meas: Math.floor(pulse / (pp * 4)) + 1, beat: Math.floor(pulse / pp) % 4 + 1, tick: pulse % pp };
+    return { meas: Math.floor(pulse / (pp * 4)) + 1 + posMeasOffset, beat: Math.floor(pulse / pp) % 4 + 1, tick: pulse % pp };
   }
   const a = anchorEff(); // secours sans F8 : interpolation depuis le Caler manuel
   if (a === null) return null;
@@ -266,7 +267,7 @@ function posInfo() {
   if (ms < 0) return null;
   const beatMs = 60000 / curBpm();
   const total = ms / beatMs;
-  return { meas: Math.floor(total / 4) + 1, beat: Math.floor(total % 4) + 1, tick: Math.floor((total % 1) * pp), total };
+  return { meas: Math.floor(total / 4) + 1 + posMeasOffset, beat: Math.floor(total % 4) + 1, tick: Math.floor((total % 1) * pp), total };
 }
 function posStr() {
   const p = posInfo();
@@ -509,7 +510,7 @@ function onMidiMsg(ev) {
           log("FA du clavier pendant la lecture — origine réalignée sur le temps 1 du rythme : la séquence CONTINUE (mesure de départ conservée).", "info");
           seqPump();
         } else {
-          seqQueue = seqList; seqIdx = 0; seqStartIdx = 0; seqOriginPulse = pulse; // pulse = 0 au FA → accord 1 pile sur le temps 1
+          seqQueue = seqList; seqIdx = 0; seqStartIdx = 0; seqOriginPulse = pulse; posMeasOffset = 0; // pulse = 0 au FA → accord 1 pile sur le temps 1 ; compteur à 1:01 (départ clavier)
           log("▶ FA Start du clavier — séquence lancée depuis l'accord 1 (mesure 1), calée sur le temps 1 ; les envois suivent le compteur F8.", "ok");
           seqPump();
         }
@@ -717,7 +718,7 @@ function sendRhythmStop() {
 let seqNextAt = 0; // horloge absolue du prochain accord — corrige la dérive des setTimeout en chaîne
 let seqOriginBeats = null; // si Départ calé : position en noires de la séquence sur la grille de l'horloge
 function endSeqLocal() {
-  chordOff(); markChord(-1); sendRhythmStop(); seqQueue = null; seqOriginPulse = null; seqOriginBeats = null; lastStopIdx = null;
+  chordOff(); markChord(-1); sendRhythmStop(); seqQueue = null; seqOriginPulse = null; seqOriginBeats = null; lastStopIdx = null; posMeasOffset = 0; // v0.38 : le compteur de position redevient l'horloge brute après la progression
   log("=== Fin de la progression — notes OFF + rythme arrêté (CC82 Stop, canal Control " + document.getElementById("chDrums").value + ") ===", "ok");
 }
 function seqPump() {
@@ -783,6 +784,7 @@ document.getElementById("play").onclick = () => {
   seqIdx = firstIdxFromMeasure(seq, nStart);
   if (nStart > 1 && seqIdx >= seq.length) { log("Mesure de départ " + nStart + " au-delà de la grille (" + (seqMeasures || "?") + " mesure(s)) — départ au dernier accord.", "ko"); seqIdx = Math.max(0, seq.length - 1); }
   else if (nStart > 1) log("📼 Départ à la mesure " + nStart + " — les mesures précédentes ne sont pas envoyées (tempo et réglages panel inchangés).", "info");
+  posMeasOffset = Math.max(0, nStart - 1); // v0.38 : le compteur de position démarre à la mesure de départ (N:01:000)
   seqStartIdx = seqIdx;
   playTimers.push(setTimeout(() => {
     if (lastF8At && performance.now() - lastF8At < 400) {
