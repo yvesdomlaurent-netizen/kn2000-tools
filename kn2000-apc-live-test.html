@@ -21,7 +21,10 @@
   .bigscreen { display: flex; flex-wrap: wrap; align-items: center; gap: 28px; padding-bottom: 10px; border-bottom: 1px solid #eee; margin-bottom: 10px; }
   #pos { font-size: 42px; font-weight: bold; color: #1273b0; font-family: monospace; line-height: 1.05; }
   #bpm { font-size: 42px; font-weight: bold; color: #7a4fd0; font-family: monospace; line-height: 1.05; }
-  #prog { white-space: nowrap; font-family: monospace; font-size: 15px; color: #333; margin-top: 6px; }
+  #prog { margin-top: 8px; line-height: 1.9; }
+  #prog .secTitle { font-weight: 700; color: #b35c00; margin: 8px 0 2px; font-size: 13px; }
+  #prog .chordCell { display: inline-block; padding: 2px 9px; margin: 2px; border: 1px solid #e2e2e2; border-radius: 6px; font-family: monospace; font-size: 14px; background: #fafafa; }
+  #prog .chordCell.on { background: #7a4fd0; border-color: #7a4fd0; color: #fff; font-weight: bold; }
   details { margin-top: 12px; background: #fff; border: 1px solid #e3e3e3; border-radius: 8px; padding: 6px 12px; font-size: 13px; }
   details summary { cursor: pointer; font-weight: 600; font-size: 13px; }
   details .row { margin: 8px 0 4px; }
@@ -33,7 +36,7 @@
 </head>
 <body>
 <header>
-  <span><b>🎼 APC Live KN2000</b> <span class="hint">v0.30 — accords pilotés par le compteur F8 (zéro dérive) ; transport du clavier (FA/FB/FC)</span></span>
+  <span><b>🎼 APC Live KN2000</b> <span class="hint">v0.31 — grille multi-lignes : titres de section, blocs || … || xN ; accord en cours surligné ; accords obligatoirement entre | |</span></span>
   &nbsp; <span id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
@@ -54,7 +57,14 @@
       </div>
     </div>
     <div id="bpmSrc" class="hint">Tempo : IMPOSÉ au clavier (trame TMP) au chargement et au démarrage ; mis à jour si le KN2000 annonce un changement (trame TMP) ; boutons ± pour ajuster en direct.</div>
-    <div class="row"><input class="grid-input" id="progInput" value="| C . . . | Am . . . | F . . . | G7 . . . |" spellcheck="false"></div>
+    <div class="row"><textarea class="grid-input" id="progInput" rows="10" spellcheck="false">// Ligne de texte = titre de section (non jouée) · // = commentaire · || ouvre un bloc, || xN le referme et le répète N fois
+Intro
+||
+| C . . . | Am . . . |
+|| x2
+
+Thème
+| F . . . | G7 . . . | C . . . | C . . . |</textarea></div>
     <div class="row">
       <button id="play">▶ Démarrer</button>
       <button id="stopPlay">■ Stop</button>
@@ -63,8 +73,28 @@
       <label title="FA Start → lance la séquence (accord 1 calé sur le temps 1) ; FB Continue → reprend ; FC Stop → arrête"><input type="checkbox" id="xport" checked> 🎛 Transport clavier</label>
     </div>
     <div class="hint" id="prog"></div>
-    <div class="hint">▶ Démarrer : (1) tempo imposé au clavier (trame TMP) ; (2) armement Synchro&Break ; (3) séquence — <b>si l'horloge F8 tourne, les accords sont pilotés par le COMPTEUR de pulses</b> : zéro dérive, un changement de tempo à la molette est suivi instantanément, le calage reste collé au compteur affiché (sinon secours au minuteur). <b>🎛 Transport clavier</b> : FA Start → séquence lancée depuis l'accord 1 pile sur le temps 1 ; FB Continue → reprise de la séquence arrêtée (accord interrompu rejoué) ; FC Stop → arrêt (notes OFF). <b>Formats</b> : tokens <code>C4 F7-2 Gm7-2</code> ou grille <code>| Am6 . . . | D7 . . . |</code> / <code>! Bb7 ! D7#5 !</code> — <code>.</code> tenue, <code>/</code> rejouer, <code>%</code> répète la mesure, <code>NC</code> silence, <code>~</code> plusieurs accords/cellule, <code>| 3/4 B7 |</code> chiffrage. Types : C, Cm, C7, CM7/7M, Cm7, Cm7b5, Cdim, Caug, C6, Csus4…</div>
+    <div class="hint">▶ Démarrer : (1) tempo imposé au clavier (trame TMP) ; (2) armement Synchro&Break ; (3) séquence — <b>si l'horloge F8 tourne, les accords sont pilotés par le COMPTEUR de pulses</b> : zéro dérive, un changement de tempo à la molette est suivi instantanément, le calage reste collé au compteur affiché (sinon secours au minuteur). <b>🎛 Transport clavier</b> : FA Start → séquence lancée depuis l'accord 1 pile sur le temps 1 ; FB Continue → reprise de la séquence arrêtée (accord interrompu rejoué) ; FC Stop → arrêt (notes OFF). <b>Saisie multi-lignes</b> : les accords OBLIGATOIREMENT entre <code>| … |</code> ; une ligne sans <code>|</code> = <b>titre de section</b> (non joué) ; <code>//</code> = commentaire ; <code>||</code> ouvre un bloc de répétition, <code>|| x2</code> le referme et le joue 2 fois ; l'accord en cours est surligné en violet pendant la lecture. Voir <b>❓ Aide</b> ci-dessous pour tous les types d'accords.</div>
   </div>
+
+  <details>
+    <summary>❓ Aide — accords autorisés & syntaxe de grille</summary>
+    <div class="hint" style="line-height:1.7">
+      <b>Structure</b> — les accords sont OBLIGATOIREMENT entre indicateurs de mesure <code>| … |</code> (ou <code>! … !</code>).
+      Une ligne sans <code>|</code> = <b>titre de section</b> (affiché, non joué) · <code>//</code> = commentaire ignoré · ligne vide = séparateur.
+      <b>Bloc de répétition</b> : <code>||</code> (ou <code>!!</code>) seul sur sa ligne ouvre un bloc ; <code>|| x2</code> le referme et le joue 2 fois (<code>x3</code>, <code>x4</code>…).<br>
+      <b>Dans une mesure</b> : <code>.</code> tenue · <code>/</code> rejouer l'accord · <code>%</code> répète la mesure · <code>NC</code> silence · <code>C~F~G</code> plusieurs accords dans la cellule · <code>| 3/4 B7 |</code> chiffrage (mesure à N temps).<br>
+      <b>Fondamentales</b> : <code>C D E F G A B</code> avec <code>#</code>/<code>b</code> (ex. <code>Bb</code>, <code>F#</code>).<br>
+      <b>Types d'accords reconnus</b> (sur C) : <code>C</code>, <code>CM</code> (majeur) · <code>Cm</code> · <code>C7</code> · <code>CM7</code> (7M) · <code>Cm7</code> · <code>Cm7b5</code> · <code>Cdim</code> · <code>Caug</code> · <code>Caug7</code> · <code>C7#5</code> · <code>C6</code> · <code>Cm6</code> · <code>Csus4</code> · <code>C7sus4</code> · <code>CmM7</code> · <code>CmM7b5</code> · <code>CM7b5</code> · <code>Cb5</code> · <code>Cmb5</code>.<br>
+      <b>Alias acceptés</b> : <code>min</code>→m · <code>maj</code>→rien · <code>7M</code>→M7 · <code>ø</code>→m7b5 · <code>°</code>→dim (ex. <code>Am6</code>, <code>D7#5</code>, <code>BbM7</code>).<br>
+      <b>Exemple complet</b> :<br>
+      <code>Intro</code><br>
+      <code>||</code><br>
+      <code>| C . . . | Am . . . |</code><br>
+      <code>|| x2</code><br>
+      <code>Thème</code><br>
+      <code>| F . % . | G7 . . . | C . / . NC . . . |</code>
+    </div>
+  </details>
 
   <details>
     <summary>⚙️ Canaux & réglages</summary>
@@ -276,19 +306,81 @@ function normChord(tok) {
 const NOTE_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 function chordLabel(c) { return c ? (NOTE_NAMES[c.root] + c.type) : "NC"; }
 
-function parseSeq() {
-  const text = document.getElementById("progInput").value.trim();
-  if (/[|!]/.test(text)) return parseGridText(text);
-  const toks = text.split(/\s+/), seq = [];
-  for (const t of toks) {
-    const c = parseChord(t);
-    if (!c) { log("Token non reconnu : \"" + t + "\"", "ko"); return null; }
-    seq.push({ chord: c, beats: c.beats, label: t });
+let lastDisp = []; // structure d'affichage de la séquence chargée (titres + accords, blocs expansés)
+// ---------- Affichage de la séquence chargée (titres + accords) & surlignage de l'accord en cours ----------
+let lastMark = null;
+function renderSeq(disp) {
+  const el = document.getElementById("prog");
+  el.innerHTML = "";
+  for (const it of disp) {
+    if (it.t === "title") { const h = document.createElement("div"); h.className = "secTitle"; h.textContent = it.text; el.appendChild(h); }
+    else { const s = document.createElement("span"); s.className = "chordCell"; s.id = "ch" + it.i; s.textContent = (it.chord ? chordLabel(it.chord) : "NC") + (it.beats > 1 ? "×" + it.beats : ""); el.appendChild(s); }
   }
+}
+function markChord(i) { // change la couleur de l'accord en cours pendant la lecture
+  if (lastMark) { lastMark.classList.remove("on"); lastMark = null; }
+  const el = document.getElementById("ch" + i);
+  if (el) { el.classList.add("on"); lastMark = el; }
+}
+function loadSeq() { // parse + cum + rendu — appelé par ▶ Démarrer ET par la saisie
+  const seq = parseSeq();
+  if (!seq) { document.getElementById("prog").innerHTML = ""; return null; }
+  let cum = 0; seq.forEach(s => { s.cum = cum; cum += s.beats; }); seqTotalBeats = cum;
+  seqList = seq;
+  renderSeq(lastDisp);
+  log("📋 Séquence chargée : " + seq.length + " événement(s), " + cum + " temps — prête pour ▶ Démarrer ou le transport du clavier (FA Start).", "info");
   return seq;
 }
 
-function parseGridText(raw) {
+function parseSeq() {
+  // v0.31 — saisie MULTI-LIGNES :
+  //  • ligne avec | ou !  → ligne de grille (accords OBLIGATOIREMENT entre indicateurs de mesure)
+  //  • || ou !! seul      → OUVERTURE d'un bloc ; || xN (ou !! xN) → FERMETURE, le bloc est joué N fois
+  //  • toute autre ligne  → TITRE DE SECTION (affiché, non joué) ; // = commentaire ignoré ; vide = séparateur
+  const text = document.getElementById("progInput").value;
+  const seq = [], disp = [];
+  let block = null;
+  const flush = (it) => { // vers le bloc en cours, ou vers la séquence directement
+    if (block) block.items.push(it);
+    else {
+      if (it.t === "ev") { it.i = seq.length; seq.push(it); }
+      disp.push(it);
+    }
+  };
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith("//")) continue;
+    const mk = line.match(/^(\|\||!!)\s*(?:[x×]\s*(\d+))?$/);
+    if (mk) {
+      if (!block) block = { items: [] };
+      else {
+        const n = Math.max(1, mk[2] ? parseInt(mk[2]) : 1);
+        for (let r = 0; r < n; r++) for (const it of block.items) {
+          if (it.t === "ev") { const ev = { ...it, i: seq.length }; seq.push(ev); disp.push(ev); }
+          else disp.push(it);
+        }
+        block = null;
+      }
+      continue;
+    }
+    if (/[|!]/.test(line)) {
+      const evs = parseGridText(line, true);
+      if (!evs) { log("Ligne de grille non reconnue : \"" + line + "\"", "ko"); return null; }
+      for (const e of evs) flush({ t: "ev", chord: e.chord, beats: e.beats, label: e.label });
+      continue;
+    }
+    flush({ t: "title", text: line });
+  }
+  if (block) {
+    log("Bloc de répétition non refermé (|| sans || xN) — son contenu est joué une seule fois.", "info");
+    for (const it of block.items) { if (it.t === "ev") { const ev = { ...it, i: seq.length }; seq.push(ev); disp.push(ev); } else disp.push(it); }
+  }
+  lastDisp = disp;
+  if (!seq.length) { log("Aucun accord trouvé. Les accords doivent être entre | | (ex. | C . . . |) ; une ligne sans | = titre de section.", "ko"); return null; }
+  return seq;
+}
+
+function parseGridText(raw, quiet) {
   const t = raw.replace(/\/\/.*$/gm, "").replace(/\d*[|!]\d*/g, "|").replace(/:+/g, "");
   const measures = t.split(/[|!]/).map(m => m.trim()).filter(m => m.length);
   const markers = []; let totalBeats = 0, prevCells = null, lastChord = null;
@@ -305,6 +397,7 @@ function parseGridText(raw) {
       const beat = totalBeats;
       if (cell === ".") { /* tenue de l'accord précédent */ }
       else if (cell === "/") markers.push({ beat, kind: "re", label: "/" });
+      else if (cell === "%") markers.push({ beat, kind: "re", label: "%" }); // v0.31 : reprise de l'accord précédent en milieu de mesure (comme "/")
       else if (/^nc$/i.test(cell)) markers.push({ beat, kind: "nc", label: "NC" });
       else if (cell.includes("~")) {
         const parts = cell.split("~").filter(x => x.length);
@@ -331,7 +424,7 @@ function parseGridText(raw) {
     else if (mk.kind === "re") seq.push({ chord: lastChord, beats, label: "/" });
     else seq.push({ chord: null, beats, label: "NC" });
   });
-  log("Grille décodée : " + measures.length + " mesure(s), " + totalBeats + " temps — " + seq.length + " événement(s).", "info");
+  if (!quiet) log("Grille décodée : " + measures.length + " mesure(s), " + totalBeats + " temps — " + seq.length + " événement(s).", "info");
   return seq;
 }
 
@@ -620,7 +713,7 @@ function sendRhythmStop() {
 let seqNextAt = 0; // horloge absolue du prochain accord — corrige la dérive des setTimeout en chaîne
 let seqOriginBeats = null; // si Départ calé : position en noires de la séquence sur la grille de l'horloge
 function endSeqLocal() {
-  chordOff(); sendRhythmStop(); seqQueue = null; seqOriginPulse = null; seqOriginBeats = null; lastStopIdx = null;
+  chordOff(); markChord(-1); sendRhythmStop(); seqQueue = null; seqOriginPulse = null; seqOriginBeats = null; lastStopIdx = null;
   log("=== Fin de la progression — notes OFF + rythme arrêté (CC82 Stop, canal Control " + document.getElementById("chDrums").value + ") ===", "ok");
 }
 function seqPump() {
@@ -630,7 +723,7 @@ function seqPump() {
   if (!seqQueue || seqOriginPulse === null) return;
   const pp = ppq();
   while (seqIdx < seqQueue.length && pulse >= seqOriginPulse + seqQueue[seqIdx].cum * pp) {
-    const s = seqQueue[seqIdx++]; chordOn(s.chord);
+    const s = seqQueue[seqIdx++]; chordOn(s.chord); markChord(seqIdx - 1);
   }
   if (seqIdx >= seqQueue.length && pulse >= seqOriginPulse + seqTotalBeats * pp) {
     if (document.getElementById("repeat").checked) {
@@ -654,6 +747,7 @@ function seqStep() {
   }
   chordOn(s.chord);
   seqIdx++;
+  markChord(seqIdx - 1);
   // tempo live : recalculé à chaque accord — la molette tempo du clavier reste suivie (trame TMP)
   // planification : sur la GRILLE de l'horloge si Départ calé (chaque FA recale la grille, les accords suivent),
   // sinon sur l'horloge absolue locale (le prochain accord vise seqNextAt + durée, pas « maintenant + durée »)
@@ -672,12 +766,10 @@ function seqStep() {
 
 document.getElementById("play").onclick = () => {
   if (!midiOut) { log("Pas de port TX sélectionné.", "ko"); return; }
-  const seq = parseSeq();
+  const seq = loadSeq();
   if (!seq) return;
-  let cum = 0; seq.forEach(s => { s.cum = cum; cum += s.beats; }); seqTotalBeats = cum;
   clearPlay(); if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; } chordOff(); seqNextAt = 0; seqOriginPulse = null; seqOriginBeats = null; lastStopIdx = null;
   log("=== ▶ Démarrer : (1) tempo imposé au clavier (trame TMP, ♩" + curBpm() + ") ; (2) armement Synchro&Break (ITW 20 60 08 = 01 — RECONFIRMÉ à chaque lancement) ; (3) envoi de la séquence ===", "info");
-  document.getElementById("prog").textContent = seq.map(s => chordLabel(s.chord) + "×" + s.beats).join("  ");
   sendTmpN(curBpm());
   sendSysexParam(0x20, 0x60, 0x08, 1, "SYNCHRO & BREAK = ON — le KN2000 se met en attente");
   synchroArmed = true; synBadge();
@@ -722,14 +814,7 @@ document.getElementById("stopPlay").onclick = () => {
 
 // La séquence est chargée dès la saisie (sans attendre ▶ Démarrer) : le transport FA/FB/FC du
 // clavier peut alors la lancer directement. ▶ Démarrer reste le mode complet (tempo TMP + Synchro&Break).
-document.getElementById("progInput").addEventListener("change", () => {
-  const s = parseSeq();
-  if (s && s.length) {
-    let cum = 0; s.forEach(e => { e.cum = cum; cum += e.beats; }); seqTotalBeats = cum;
-    seqList = s;
-    log("📋 Séquence chargée : " + s.length + " événement(s), " + cum + " temps — prête pour ▶ Démarrer ou le transport du clavier (FA Start).", "info");
-  }
-});
+document.getElementById("progInput").addEventListener("change", () => { loadSeq(); });
 
 initMidi();
 </script>
