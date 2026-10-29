@@ -30,7 +30,7 @@
 </head>
 <body>
 <header>
-  <span><b>KN2000 APC Live Test</b> v0.19 — Plus aucun DRQ tempo (20 00 25 muet, soupçonné de bloquer) : tempo IMPOSÉ au clavier par trame TMP au chargement et au démarrage</span>
+  <span><b>KN2000 APC Live Test</b> v0.20 — Armement Synchro&Break RECONFIRMÉ à chaque ▶ Démarrer (le Stop repasse l'état OFF au clavier) ; badge suit l'état réel</span>
   &nbsp; <span id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
@@ -102,7 +102,7 @@
       <button id="synRead">🔍 Lire l'état (DRQ)</button>
       <button id="synOff" title="Urgence seulement — le KN2000 part en vrac si on désarme en cours de route">Désarmer (08 = 00)</button>
     </div>
-    <div class="hint">⚔ Synchro&Break : armé UNE fois (badge en haut), l'outil ne le désarme plus jamais au Stop. Après un reset du clavier, clique « Armer » (ou ▶ Démarrer le réarme). « Lire l'état » envoie un DRQ 20 60 08.</div>
+    <div class="hint">⚔ Synchro&Break : l'ITW `20 60 08 = 01` est envoyé à CHAQUE ▶ Démarrer (le Stop repasse l'état OFF au clavier — info terrain) ; l'outil ne le désarme jamais de son côté (le bouton « Désarmer » est pour l'urgence). « Lire l'état » envoie un DRQ 20 60 08 ; le badge en haut suit armements, Stops reçus/émis et réponses ITR.</div>
 
     <h3>🎬 Déclenchements (CC 82, canal Control = 4)</h3>
     <div class="row">
@@ -127,7 +127,7 @@
       <button id="stopPlay">■ Stop</button>
       <label><input type="checkbox" id="repeat"> 🔁 Repeat (boucle tant que cochée ; décocher = jouer jusqu'à la fin puis stop)</label>
     </div>
-    <div class="hint">▶ Démarrer : (1) tempo IMPOSÉ au clavier (trame TMP, ♩ = BPM manuel ou dernier reçu) ; (2) ITW 20 60 08 = 01 envoyé SEULEMENT si le Synchro n'est pas déjà armé (badge ⚔ en haut) ; (3) la séquence part à ce tempo — le premier accord (Note On ch8) fait démarrer le clavier. Le tempo reste suivi en live (trame TMP) : la molette du clavier reste utilisable en cours de lecture. Au Stop, le Synchro reste armé.</div>
+    <div class="hint">▶ Démarrer : (1) tempo IMPOSÉ au clavier (trame TMP, ♩ = BPM manuel ou dernier reçu) ; (2) armement Synchro&Break ITW 20 60 08 = 01 — reconfirmé à chaque lancement car le Stop le repasse OFF ; (3) la séquence part à ce tempo — le premier accord (Note On ch8) fait démarrer le clavier. Le tempo reste suivi en live (trame TMP) : la molette du clavier reste utilisable en cours de lecture.</div>
     <div class="hint">2 formats acceptés : <b>tokens</b> <code>C4 F7-2 Gm7-2</code> (accord + noires) ou <b>grille ChordPro/JJazzLab</b> <code>| Am6 . . . | D7 . . . |</code> / <code>! Bb7 ! D7#5 !</code> — <code>.</code> tenue, <code>/</code> rejouer, <code>%</code> répète la mesure, <code>NC</code> silence, <code>~</code> plusieurs accords/cellule, <code>| 3/4 B7 |</code> chiffrage. Types : C, Cm, C7, CM7/7M, Cm7, Cm7b5, Cdim, Caug, C6, Csus4…</div>
     <div class="hint" id="prog" style="margin-top:4px"></div>
 
@@ -513,7 +513,7 @@ document.querySelectorAll(".cc82").forEach(b => b.onclick = () => {
 });
 document.getElementById("rtStart").onclick = () => send([0xFA], "FA = MIDI Start (temps réel, sans canal)");
 document.getElementById("rtCont").onclick = () => send([0xFB], "FB = MIDI Continue (temps réel, sans canal)");
-document.getElementById("rtStop").onclick = () => { send([0xFC], "FC = MIDI Stop (temps réel, sans canal)"); log("⏹ FC envoyé — le rythme doit s'arrêter si le KN2000 reçoit le Stop temps réel.", "info"); };
+document.getElementById("rtStop").onclick = () => { send([0xFC], "FC = MIDI Stop (temps réel, sans canal)"); synchroArmed = false; synBadge(); log("⏹ FC envoyé — le rythme doit s'arrêter si le KN2000 reçoit le Stop temps réel (l'état Synchro passe OFF côté clavier : ▶ Démarrer le réarmera).", "info"); };
 
 // ---------- Test 2 : progression — Démarrer (tempo TMP imposé → attente clavier → séquence) ----------
 let playTimers = [];
@@ -524,6 +524,7 @@ function sendRhythmStop() {
   const ch = parseInt(document.getElementById("chDrums").value) - 1;
   send([0xB0 | ch, 82, 0], "CC82 = Stop (canal Control " + (ch + 1) + ")");
   send([0xFC], "FC = MIDI Stop temps réel — carte d'implémentation : Stop reçu par le KN2000");
+  synchroArmed = false; synBadge(); // info terrain Yves 29/10 : le Stop repasse l'état Synchro&Break du clavier sur OFF
 }
 function seqStep() {
   const s = seqQueue && seqQueue[seqIdx];
@@ -551,11 +552,11 @@ document.getElementById("play").onclick = () => {
   const seq = parseSeq();
   if (!seq) return;
   clearPlay(); if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; } chordOff();
-  log("=== ▶ Démarrer : (1) tempo imposé au clavier (trame TMP, ♩" + curBpm() + ") ; (2) Synchro&Break si nécessaire ; (3) envoi de la séquence ===", "info");
+  log("=== ▶ Démarrer : (1) tempo imposé au clavier (trame TMP, ♩" + curBpm() + ") ; (2) armement Synchro&Break (ITW 20 60 08 = 01 — RECONFIRMÉ à chaque lancement) ; (3) envoi de la séquence ===", "info");
   document.getElementById("prog").textContent = seq.map(s => chordLabel(s.chord) + "×" + s.beats).join("  ");
   sendTmpN(curBpm());
-  if (synchroArmed === true) log("⚔ Synchro&Break déjà ON — pas de réarmement (il reste armé au clavier).", "info");
-  else { sendSysexParam(0x20, 0x60, 0x08, 1, "SYNCHRO & BREAK = ON — le KN2000 se met en attente"); synchroArmed = true; synBadge(); }
+  sendSysexParam(0x20, 0x60, 0x08, 1, "SYNCHRO & BREAK = ON — le KN2000 se met en attente");
+  synchroArmed = true; synBadge();
   seqQueue = seq; seqIdx = 0;
   playTimers.push(setTimeout(() => {
     log("▶ Séquence lancée @ ♩" + curBpm() + " — le premier accord (Note On ch" + (chChord() + 1) + ") fait démarrer le clavier. Tempo suivi en live (TMP)." + (document.getElementById("repeat").checked ? "  🔁 Repeat ON." : ""), "ok");
@@ -566,7 +567,7 @@ document.getElementById("stopPlay").onclick = () => {
   clearPlay(); if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; }
   seqQueue = null; chordOff();
   sendRhythmStop();
-  log("⏹ Stop — notes OFF, rythme arrêté (CC82 Stop ch Control + FC). Synchro&Break LAISSÉ ON (plus de désarmement : c'est lui qui mettait le clavier en vrac).", "info");
+  log("⏹ Stop — notes OFF, rythme arrêté (CC82 Stop ch Control + FC). L'état Synchro repasse OFF côté clavier (badge) : ▶ Démarrer le réarmera.", "info");
 };
 
 initMidi();
