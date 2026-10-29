@@ -33,6 +33,7 @@
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
   <button id="resetMidi">↻ Réinit. MIDI</button>
+  <label><input type="checkbox" id="rtLog"> Journal temps réel (F8/FA/FB/FC)</label>
 </header>
 <main>
   <div id="log"></div>
@@ -56,6 +57,14 @@
       <div id="bpm" style="font-size:30px;font-weight:bold;color:#7a4fd0;font-family:monospace;line-height:1.1">— BPM</div>
       <div id="bpmSrc" class="hint">Horloge MIDI : en attente — lance le rythme sur le clavier</div>
     </div>
+
+    <h3>🕐 Horloge & temps réel</h3>
+    <div class="row">
+      <button id="readRtc">🔍 Lire 20 04 02 / 03</button>
+      <button id="rtcOn">⏱ Activer temps réel (02=1)</button>
+      <button id="rtcOff">⏹ Désactiver (02=0)</button>
+    </div>
+    <div class="hint">20 04 02 = REAL TIME COMMAND ENABLE : doit être à 01 pour que le KN2000 émette l'horloge F8 et les Start/Stop. 20 04 03 = CLOCK SELECT (00=Internal, 01=MIDI).</div>
 
     <h3>🎹 Test 1 — canal de détection APC</h3>
     <div class="row">
@@ -224,6 +233,7 @@ function onMidiMsg(ev) {
   const st = ev.data[0] & 0xF0;
   if (st === 0xF8) {
     const t = performance.now();
+    if (document.getElementById("rtLog").checked) log("F8 clock — pulse " + pulse, "clock");
     // Lecture synchrone : chaque accord part exactement sur son pulse
     if (syncEvents) {
       const e = syncEvents[syncIdx];
@@ -240,7 +250,21 @@ function onMidiMsg(ev) {
     pulse = 0; lastF8 = 0; f8Times = []; lastF8At = performance.now();
     if (syncArmed) startSyncPlayback();
   }
+  else if (st === 0xFB) { log("MIDI Continue (FB)", "clock"); }
   else if (st === 0xFC) { log("MIDI Stop (FC) — rythme arrêté", "clock"); if (syncEvents) { chordOff(); syncEvents = null; log("Progression synchrone libérée (Stop reçu).", "info"); } }
+  else if (ev.data.length >= 2 && ev.data[0] === 0xF0 && ev.data[1] === 0x50 && ev.data[2] === 0x2C) {
+    // ITR : réponse de lecture directe — f0 50 2C 01 18 10 ADR(3) SIZ(3) données nibblisées CN CK f7
+    const d = ev.data;
+    const adr = hex([d[5], d[6], d[7]]);
+    const siz = (d[8] << 14) | (d[9] << 7) | d[10];
+    const raw = [];
+    for (let i = 11; i + 1 < d.length - 2 && raw.length < siz; i += 2) raw.push(((d[i] << 4) | d[i + 1]) & 0x7F);
+    const names = { "20 04 02": "REAL TIME COMMAND ENABLE", "20 04 03": "CLOCK SELECT", "20 0A 25": "APC INPUT" };
+    let extra = "";
+    if (adr === "20 04 02") extra = raw[0] === 1 ? " → temps réel ON (F8 émis)" : " → temps réel OFF (pas de F8 !)";
+    if (adr === "20 04 03") extra = raw[0] === 0 ? " → Internal" : " → MIDI (suivre horloge externe)";
+    log("ITR : " + adr + " = " + hex(raw) + (names[adr] ? "  (" + names[adr] + extra + ")" : ""), "ok");
+  }
   else if (ev.data.length >= 3 && st >= 0x80 && st < 0xF0) {
     if (sbArmed && st >= 0x90 && ev.data[2] > 0 && !syncEvents) startSbPlayback();
     log("RX ch" + ((ev.data[0] & 0x0F) + 1) + " : " + hex([...ev.data]), "info");
@@ -351,6 +375,19 @@ document.getElementById("sendApcIn").onclick = () => {
   const ck = body.reduce((a, b) => a ^ b, 0) & 0x7F;
   send([0xF0, ...body, ck, 0xF7], "ITW 20 0A 25 = " + val + " (APC INPUT)");
 };
+
+// ---------- Horloge & temps réel (20 04 02 / 03) ----------
+function sendDrq(a1, a2, a3, label) {
+  const body = [0x50, 0x2B, 0x01, 0x18, 0x10, a1, a2, a3, 0x00, 0x00, 0x01, 0x00];
+  const ck = body.reduce((x, y) => x ^ y, 0) & 0x7F;
+  return send([0xF0, ...body, ck, 0xF7], "DRQ " + hex([a1, a2, a3]) + " SIZ 1 (" + label + ")");
+}
+document.getElementById("readRtc").onclick = () => {
+  sendDrq(0x20, 0x04, 0x02, "RealTime enable");
+  sendDrq(0x20, 0x04, 0x03, "Clock select");
+};
+document.getElementById("rtcOn").onclick = () => sendSysexParam(0x20, 0x04, 0x02, 1, "REAL TIME COMMAND = ON");
+document.getElementById("rtcOff").onclick = () => sendSysexParam(0x20, 0x04, 0x02, 0, "REAL TIME COMMAND = OFF");
 
 // ---------- Mode APC (sysex 20 60 02) & déclenchements (CC 82) ----------
 document.querySelectorAll(".apcMode").forEach(b => b.onclick = () => {
