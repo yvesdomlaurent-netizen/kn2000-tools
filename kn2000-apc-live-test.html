@@ -255,10 +255,10 @@ function onMidiMsg(ev) {
   else if (ev.data.length >= 2 && ev.data[0] === 0xF0 && ev.data[1] === 0x50 && ev.data[2] === 0x2C) {
     // ITR : réponse de lecture directe — f0 50 2C 01 18 10 ADR(3) SIZ(3) données nibblisées CN CK f7
     const d = ev.data;
-    const adr = hex([d[5], d[6], d[7]]);
-    const siz = (d[8] << 14) | (d[9] << 7) | d[10];
+    const adr = hex([d[6], d[7], d[8]]);
+    const siz = (d[9] << 14) | (d[10] << 7) | d[11];
     const raw = [];
-    for (let i = 11; i + 1 < d.length - 2 && raw.length < siz; i += 2) raw.push(((d[i] << 4) | d[i + 1]) & 0x7F);
+    for (let i = 12; i + 1 < d.length - 2 && raw.length < siz; i += 2) raw.push(((d[i] << 4) | d[i + 1]) & 0x7F);
     const names = { "20 04 02": "REAL TIME COMMAND ENABLE", "20 04 03": "CLOCK SELECT", "20 0A 25": "APC INPUT" };
     let extra = "";
     if (adr === "20 04 02") extra = raw[0] === 1 ? " → temps réel ON (F8 émis)" : " → temps réel OFF (pas de F8 !)";
