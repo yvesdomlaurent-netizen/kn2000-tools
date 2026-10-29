@@ -25,6 +25,15 @@
   .editWrap { position: relative; }
   #mirror { position: absolute; inset: 0; z-index: 1; border: 1px solid transparent; padding: 8px; font-family: monospace; font-size: 15px; line-height: 1.45; white-space: pre-wrap; word-wrap: break-word; overflow: hidden; color: transparent; pointer-events: none; }
   #mirror .mhl { background: rgba(122, 79, 208, 0.3); border-radius: 5px; }
+  /* v0.35 — déroulé magnétophone : départ de la lecture à la mesure N */
+  .deck { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .deck button { padding: 4px 10px; }
+  .deckLbl { font-size: 13px; }
+  #startM { width: 64px; text-align: center; font-family: monospace; padding: 4px; }
+  #mCount { font-family: monospace; font-size: 14px; font-weight: bold; color: #1273b0; }
+  #tapeBar { position: relative; height: 14px; border: 1px solid #bbb; border-radius: 7px; background: #f3eefc; cursor: pointer; touch-action: none; }
+  #tapeFill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 7px; background: rgba(122, 79, 208, 0.45); pointer-events: none; }
+  #tapeHandle { position: absolute; top: -7px; left: 0; width: 20px; margin-left: -10px; text-align: center; font-size: 11px; color: #7a4fd0; user-select: none; pointer-events: none; }
   details { margin-top: 12px; background: #fff; border: 1px solid #e3e3e3; border-radius: 8px; padding: 6px 12px; font-size: 13px; }
   details summary { cursor: pointer; font-weight: 600; font-size: 13px; }
   details .row { margin: 8px 0 4px; }
@@ -36,7 +45,7 @@
 </head>
 <body>
 <header>
-  <span><b>🎼 APC Live KN2000</b> <span class="hint">v0.34 — surlignage pâle derrière le texte ; accord sus abrégé (Csus = Csus4) ; cellule inconnue = ligne rejetée (jamais de mesure amputée en silence)</span></span>
+  <span><b>🎼 APC Live KN2000</b> <span class="hint">v0.35 — déroulé magnétophone : départ de la lecture à la mesure choisie (champ, flèches ⏮◀▶⏭ ou bande glissante) + compteur de mesure</span></span>
   &nbsp; <span id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
@@ -82,7 +91,17 @@ Thème
       <label title="▶ Démarrer attend le prochain temps 1 (compteur F8 si l'horloge tourne ; sinon minuteur)"><input type="checkbox" id="syncStart"> 🎯 Départ calé</label>
       <label title="FA Start → lance la séquence (accord 1 calé sur le temps 1) ; FB Continue → reprend ; FC Stop → arrête"><input type="checkbox" id="xport" checked> 🎛 Transport clavier</label>
     </div>
-    <div class="hint">▶ Démarrer : (1) tempo imposé au clavier (trame TMP) ; (2) armement Synchro&Break ; (3) séquence — <b>si l'horloge F8 tourne, les accords sont pilotés par le COMPTEUR de pulses</b> : zéro dérive, un changement de tempo à la molette est suivi instantanément, le calage reste collé au compteur affiché (sinon secours au minuteur). <b>🎛 Transport clavier</b> : FA Start → séquence lancée depuis l'accord 1 pile sur le temps 1 ; FB Continue → reprise de la séquence arrêtée (accord interrompu rejoué) ; FC Stop → arrêt (notes OFF). <b>Saisie multi-lignes</b> : les accords OBLIGATOIREMENT entre <code>| … |</code> ; une ligne sans <code>|</code> = <b>titre de section</b> (non joué) ; <code>//</code> = commentaire ; <code>||</code> ouvre un bloc de répétition, <code>|| x2</code> le referme et le joue 2 fois ; la MESURE en cours est surlignée en violet pâle derrière le texte de la zone de saisie pendant la lecture. Voir <b>❓ Aide</b> ci-dessous pour tous les types d'accords. <b>🎵 Morceaux</b> : sélectionner un morceau charge sa séquence et <b>envoie sa config au KN2000</b> (tempo, rythme, APC, sons, volumes — aucun rappel Panel Memory : la config vit dans la page, morceau par morceau) ; <b>💾 Sauver morceau</b> capture la séquence affichée + les réglages COURANTS du clavier (lecture panel façon Panel Console) ; ⬇️ Export / ⬆️ Import pour tout emporter en JSON.</div>
+    <div class="row deck">
+      <span class="deckLbl">📼 Départ mesure</span>
+      <button id="mFirst" title="Première mesure">⏮</button>
+      <button id="mPrev" title="Mesure précédente">◀</button>
+      <input type="number" id="startM" min="1" max="999" value="1" title="N° de la mesure de départ : ▶ Démarrer part de là (les mesures précédentes ne sont pas envoyées) ; FA Start du clavier part toujours de la mesure 1">
+      <button id="mNext" title="Mesure suivante">▶</button>
+      <button id="mLast" title="Dernière mesure">⏭</button>
+      <span id="mCount">—</span>
+    </div>
+    <div class="row"><div id="tapeBar" title="Glisser la bande pour choisir la mesure de départ"><div id="tapeFill"></div><div id="tapeHandle">▼</div></div></div>
+    <div class="hint">▶ Démarrer : (1) tempo imposé au clavier (trame TMP) ; (2) armement Synchro&Break ; (3) séquence — <b>si l'horloge F8 tourne, les accords sont pilotés par le COMPTEUR de pulses</b> : zéro dérive, un changement de tempo à la molette est suivi instantanément, le calage reste collé au compteur affiché (sinon secours au minuteur). <b>🎛 Transport clavier</b> : FA Start → séquence lancée depuis l'accord 1 pile sur le temps 1 ; FB Continue → reprise de la séquence arrêtée (accord interrompu rejoué) ; FC Stop → arrêt (notes OFF). <b>📼 Départ mesure</b> : champ, flèches ⏮ ◀ ▶ ⏭ ou bande glissante — <b>▶ Démarrer part de la mesure choisie</b> (les mesures d'avant ne sont pas envoyées ; 🔁 Repeat y reboucle) ; le FA Start du clavier part toujours de la mesure 1 ; le compteur affiche la mesure en cours pendant la lecture. <b>Saisie multi-lignes</b> : les accords OBLIGATOIREMENT entre <code>| … |</code> ; une ligne sans <code>|</code> = <b>titre de section</b> (non joué) ; <code>//</code> = commentaire ; <code>||</code> ouvre un bloc de répétition, <code>|| x2</code> le referme et le joue 2 fois ; la MESURE en cours est surlignée en violet pâle derrière le texte de la zone de saisie pendant la lecture. Voir <b>❓ Aide</b> ci-dessous pour tous les types d'accords. <b>🎵 Morceaux</b> : sélectionner un morceau charge sa séquence et <b>envoie sa config au KN2000</b> (tempo, rythme, APC, sons, volumes — aucun rappel Panel Memory : la config vit dans la page, morceau par morceau) ; <b>💾 Sauver morceau</b> capture la séquence affichée + les réglages COURANTS du clavier (lecture panel façon Panel Console) ; ⬇️ Export / ⬆️ Import pour tout emporter en JSON.</div>
   </div>
 
   <details>
@@ -297,17 +316,32 @@ function mirrorRender() { // v0.33 : calque miroir — mêmes métriques que la 
   }
   mir.scrollTop = ta.scrollTop; // suit le défilement de la zone d'édition
 }
-function markChord(i) { // v0.33 : surligne LA MESURE ENTIÈRE de l'accord en cours, directement dans la zone de saisie
+function markChord(i) { // v0.33 : surligne LA MESURE ENTIÈRE de l'accord en cours — v0.35 : alimente aussi le compteur + la bande du deck
   const ev = (i >= 0 && seqList && i < seqList.length) ? seqList[i] : null;
   curRange = (ev && ev.mRange) ? ev.mRange.slice() : null;
   mirrorRender();
+  deckLive(ev);
+}
+function deckLive(ev) { // v0.35 : pendant la lecture — compteur « mesure n/total » + remplissage de la bande
+  const mc = document.getElementById("mCount"), tf = document.getElementById("tapeFill");
+  if (ev && ev.mNo && seqMeasures) {
+    mc.textContent = "mesure " + ev.mNo + "/" + seqMeasures;
+    tf.style.width = (ev.mNo * 100 / seqMeasures) + "%";
+  } else { tf.style.width = "0"; deckIdle(); }
+}
+function deckIdle() { // v0.35 : à l'arrêt — le compteur affiche la mesure de départ choisie et la poignée se positionne dessus
+  const el = document.getElementById("startM");
+  let n = parseInt(el.value); if (!n || n < 1) n = 1; if (seqMeasures && n > seqMeasures) n = seqMeasures;
+  document.getElementById("mCount").textContent = seqMeasures ? ("départ mesure " + n + "/" + seqMeasures) : "—";
+  document.getElementById("tapeHandle").style.left = (seqMeasures ? ((n - 0.5) * 100 / seqMeasures) : 0) + "%";
 }
 function loadSeq() { // parse + cum + rendu — appelé par ▶ Démarrer ET par la saisie
   const seq = parseSeq();
-  if (!seq) { curRange = null; mirrorRender(); return null; }
+  if (!seq) { curRange = null; mirrorRender(); deckIdle(); return null; }
   let cum = 0; seq.forEach(s => { s.cum = cum; cum += s.beats; }); seqTotalBeats = cum;
   seqList = seq;
   mirrorRender();
+  deckIdle();
   log("📋 Séquence chargée : " + seq.length + " événement(s), " + cum + " temps — prête pour ▶ Démarrer ou le transport du clavier (FA Start).", "info");
   return seq;
 }
@@ -319,7 +353,8 @@ function parseSeq() {
   //  • toute autre ligne  → TITRE DE SECTION (affiché, non joué) ; // = commentaire ignoré ; vide = séparateur
   const text = document.getElementById("progInput").value;
   const seq = [], disp = [];
-  let block = null;
+  let block = null, mesNo = 0; // v0.35 : mesNo = numérotation GLOBALE des mesures dans l'ordre du TEXTE (repère du déroulé magnétophone)
+  seqMeasures = 0; // reset : si le parse échoue, le deck ne montre pas un total périmé
   const flush = (it) => { // vers le bloc en cours, ou vers la séquence directement
     if (block) block.items.push(it);
     else {
@@ -354,19 +389,20 @@ function parseSeq() {
       const t2 = cleanL.replace(/\d*[|!]\d*/g, "|").replace(/:+/g, ""); // MÊME transformation que parseGridText → mêmes mesures dans le même ordre
       const bars = []; for (let k = 0; k < cleanL.length; k++) if (cleanL[k] === "|" || cleanL[k] === "!") bars.push(k);
       const parts = t2.split(/[|!]/);
-      const mRanges = []; // mesure i : du barreau ouvrant au barreau fermant INCLUS
+      const mRanges = []; // v0.35 : mesure i → [n° GLOBAL (position dans le texte), barreau ouvrant, barreau fermant INCLUS] — n° = repère du déroulé magnétophone
       for (let j = 0; j < parts.length; j++) {
         if (!parts[j].trim().length) continue;
-        mRanges.push([j === 0 ? 0 : bars[j - 1], j < bars.length ? bars[j] + 1 : cleanL.length]);
+        mRanges.push([++mesNo, j === 0 ? 0 : bars[j - 1], j < bars.length ? bars[j] + 1 : cleanL.length]);
       }
       for (const e of evs) {
         const r = (e.mIdx !== undefined && e.mIdx < mRanges.length) ? mRanges[e.mIdx] : null;
-        flush({ t: "ev", chord: e.chord, beats: e.beats, label: e.label, mRange: r ? [lineStart + r[0], lineStart + r[1]] : [lineStart, lineStart + line.length] });
+        flush({ t: "ev", chord: e.chord, beats: e.beats, label: e.label, mNo: r ? r[0] : null, mRange: r ? [lineStart + r[1], lineStart + r[2]] : [lineStart, lineStart + line.length] });
       }
       continue;
     }
     flush({ t: "title", text: line });
   }
+  seqMeasures = mesNo; // v0.35 : total des mesures du texte (compteur + bande du deck)
   if (block) {
     log("Bloc de répétition non refermé (|| sans || xN) — son contenu est joué une seule fois.", "info");
     for (const it of block.items) { if (it.t === "ev") { const ev = { ...it, i: seq.length }; seq.push(ev); disp.push(ev); } else disp.push(it); }
@@ -464,7 +500,7 @@ function onMidiMsg(ev) {
       if (document.getElementById("xport").checked && seqList) {
         if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; }
         seqOriginBeats = null; lastStopIdx = null;
-        seqQueue = seqList; seqIdx = 0; seqOriginPulse = pulse; // pulse = 0 au FA → accord 1 pile sur le temps 1
+        seqQueue = seqList; seqIdx = 0; seqStartIdx = 0; seqOriginPulse = pulse; // pulse = 0 au FA → accord 1 pile sur le temps 1
         log("▶ FA Start du clavier — séquence lancée depuis l'accord 1, calée sur le temps 1 ; les envois suivent le compteur F8.", "ok");
         seqPump();
       }
@@ -475,6 +511,7 @@ function onMidiMsg(ev) {
         seqQueue = seqList;
         const heldIdx = (lastStopIdx !== null && lastStopIdx > 0) ? lastStopIdx - 1 : -1; // accord qui tenait au Stop
         seqIdx = heldIdx + 1; // prochain accord attendu
+        seqStartIdx = 0;
         seqOriginPulse = pulse - (heldIdx >= 0 ? seqList[heldIdx].cum * ppq() : 0);
         if (heldIdx >= 0 && heldIdx < seqList.length) chordOn(seqList[heldIdx].chord); // re-frappe l'accord interrompu
         lastStopIdx = null;
@@ -657,7 +694,9 @@ function clearPlay() { playTimers.forEach(clearTimeout); playTimers = []; }
 let seqQueue = null, seqIdx = 0, seqTimer = null;
 let seqList = null;        // dernière séquence parsée — le transport FA/FB/FC du clavier peut la (re)lancer
 let seqTotalBeats = 0;     // durée totale de la séquence en noires
+let seqMeasures = 0;       // v0.35 : nombre de mesures de la grille (numérotation = texte) — compteur/bande du deck
 let seqOriginPulse = null; // mode compteur F8 : pulse du début de grille de la séquence (null = mode minuteur)
+let seqStartIdx = 0;      // v0.35 : index de l'accord de DÉPART (▶ Démarrer à la mesure N ; Repeat reboucle dessus ; FA/FB → 0)
 let lastStopIdx = null;    // index du prochain accord attendu au moment du dernier FC (pour FB Continue)
 function sendRhythmStop() {
   const ch = parseInt(document.getElementById("chDrums").value) - 1;
@@ -682,8 +721,9 @@ function seqPump() {
   }
   if (seqIdx >= seqQueue.length && pulse >= seqOriginPulse + seqTotalBeats * pp) {
     if (document.getElementById("repeat").checked) {
-      seqOriginPulse += seqTotalBeats * pp; seqIdx = 0;
-      log("🔁 Repeat — nouveau tour calé sur le compteur F8 (aucun temps mort).", "info");
+      seqOriginPulse += (seqTotalBeats - (seqQueue[seqStartIdx] ? seqQueue[seqStartIdx].cum : 0)) * pp; // v0.35 : la boucle revient à la MESURE DE DÉPART
+      seqIdx = seqStartIdx;
+      log("🔁 Repeat — nouveau tour calé sur le compteur F8, retour à la mesure de départ (aucun temps mort).", "info");
       seqPump();
     } else endSeqLocal();
   }
@@ -692,8 +732,8 @@ function seqStep() {
   const s = seqQueue && seqQueue[seqIdx];
   if (!s) {
     if (document.getElementById("repeat").checked) {
-      seqIdx = 0;
-      log("🔁 Repeat — retour immédiat à l'accord 1 (boucle sans temps mort, sans dérive).", "info");
+      seqIdx = seqStartIdx; // v0.35 : retour immédiat à la mesure de départ
+      log("🔁 Repeat — retour immédiat à la mesure de départ (boucle sans temps mort, sans dérive).", "info");
       seqStep(); // relance immédiate : aucun temps mort entre le dernier accord et le retour à l'accord 1
       return;
     }
@@ -728,7 +768,12 @@ document.getElementById("play").onclick = () => {
   sendTmpN(curBpm());
   sendSysexParam(0x20, 0x60, 0x08, 1, "SYNCHRO & BREAK = ON — le KN2000 se met en attente");
   synchroArmed = true; synBadge();
-  seqQueue = seq; seqList = seq; seqIdx = 0;
+  seqQueue = seq; seqList = seq;
+  const nStart = Math.max(1, parseInt(document.getElementById("startM").value) || 1); // v0.35 : mesure de départ choisie
+  seqIdx = firstIdxFromMeasure(seq, nStart);
+  if (nStart > 1 && seqIdx >= seq.length) { log("Mesure de départ " + nStart + " au-delà de la grille (" + (seqMeasures || "?") + " mesure(s)) — départ au dernier accord.", "ko"); seqIdx = Math.max(0, seq.length - 1); }
+  else if (nStart > 1) log("📼 Départ à la mesure " + nStart + " — les mesures précédentes ne sont pas envoyées (tempo et réglages panel inchangés).", "info");
+  seqStartIdx = seqIdx;
   playTimers.push(setTimeout(() => {
     if (lastF8At && performance.now() - lastF8At < 400) {
       // HORLOGE F8 ACTIVE : les envois d'accords sont pilotés par le COMPTEUR de pulses
@@ -772,6 +817,33 @@ document.getElementById("stopPlay").onclick = () => {
 document.getElementById("progInput").addEventListener("change", () => { loadSeq(); });
 document.getElementById("progInput").addEventListener("input", () => { mirrorRender(); }); // v0.33 : le miroir épouse le texte en cours d'édition
 document.getElementById("progInput").addEventListener("scroll", () => { document.getElementById("mirror").scrollTop = document.getElementById("progInput").scrollTop; });
+
+// ═══ v0.35 — Déroulé magnétophone : départ de la lecture à la mesure N ═══
+// ▶ Démarrer part de la mesure choisie (les mesures d'avant ne sont pas envoyées) ;
+// le FA Start du clavier part toujours de la mesure 1 (le clavier relance le morceau depuis le début).
+function firstIdxFromMeasure(seq, nStart) { // premier événement dont la mesure ≥ départ
+  const i = seq.findIndex(e => (e.mNo || 1) >= nStart);
+  return i < 0 ? seq.length : i;
+}
+document.getElementById("mFirst").onclick = () => { const el = document.getElementById("startM"); el.value = 1; deckIdle(); };
+document.getElementById("mPrev").onclick = () => { const el = document.getElementById("startM"); el.value = Math.max(1, (parseInt(el.value) || 1) - 1); deckIdle(); };
+document.getElementById("mNext").onclick = () => { const el = document.getElementById("startM"); el.value = Math.min(seqMeasures || 999, (parseInt(el.value) || 1) + 1); deckIdle(); };
+document.getElementById("mLast").onclick = () => { const el = document.getElementById("startM"); el.value = seqMeasures || 1; deckIdle(); };
+document.getElementById("startM").addEventListener("change", () => { const el = document.getElementById("startM"); let n = parseInt(el.value); if (!n || n < 1) n = 1; if (seqMeasures && n > seqMeasures) n = seqMeasures; el.value = n; deckIdle(); });
+(() => { // bande glissante : glisser positionne la mesure de départ
+  const bar = document.getElementById("tapeBar");
+  let drag = false;
+  const setFrom = (e) => {
+    if (!seqMeasures) return;
+    const r = bar.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - r.left) / Math.max(1, r.width)));
+    const n = Math.max(1, Math.min(seqMeasures, Math.round(ratio * seqMeasures) || 1));
+    document.getElementById("startM").value = n; deckIdle();
+  };
+  bar.addEventListener("pointerdown", (e) => { drag = true; setFrom(e); });
+  bar.addEventListener("pointermove", (e) => { if (drag) setFrom(e); });
+  window.addEventListener("pointerup", () => { drag = false; });
+})();
 
 // ══════════ v0.32 — MORCEAUX : liste, sélection, sauvegarde séquence + réglages panel ══════════
 // Principe (précision d'Yves) : PAS de rappel Panel Memory — la page CONSERVE le paramétrage
