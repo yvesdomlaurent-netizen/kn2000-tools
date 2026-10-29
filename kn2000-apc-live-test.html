@@ -30,7 +30,7 @@
 </head>
 <body>
 <header>
-  <span><b>KN2000 APC Live Test</b> v0.27 — BUG MAJEUR CORRIGÉ : le test des messages temps réel (st & 0xF0 === 0xF8) était toujours FAUX — la page jetait elle-même les F8/FA reçus ! Scan complet des octets + FA reçu = calage auto de la mesure</span>
+  <span><b>KN2000 APC Live Test</b> v0.28 — Simplification : horloge réelle F8/FA validée sur tous les navigateurs (Android Chrome, PC Edge/Firefox) ; démontage WebUSB et recalage batterie ; « 🎯 Caler » + trim conservés en secours</span>
   &nbsp; <span id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
@@ -76,16 +76,7 @@
         <button id="trimPlus" title="Décale le calage de +10 ms">+10 ms ▶</button>
         <span class="hint" id="trimVal">0 ms</span>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px">
-        <label><input type="checkbox" id="autoSync"> 🥁 Recalage auto sur la grosse caisse</label>
-        <label>note kick <input type="number" id="kickNote" min="0" max="127" style="width:55px" title="Numéro de la note grosse caisse — repéré par « Détecter » ou à la main depuis le journal batterie"></label>
-        <button id="learnKick">🥁 Détecter (8 s)</button>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px">
-        <button id="usbProbe" title="Ouvre l'interface USB-MIDI de la MiniFuse en USB brut (WebUSB) et lit les paquets : F8/FA/FC y figurent TOUJOURS. À tester sur Edge ou Chrome (pas Firefox).">⚡ Sonde horloge WebUSB</button>
-        <span class="hint" id="usbStatus">inactif — la pile MIDI du navigateur ne livre pas les F8/FA ; WebUSB lit l'USB brut de l'interface, sans installation</span>
-      </div>
-      <div class="hint">🕐 Horloge interne de mesure <b>mesure : temps : pulse</b> (24 pulses/noire), tenue au tempo TMP — le navigateur ne reçoit pas les F8/FA du KN2000 (filtrés par Chrome, MIDI-Ox les voit lui) donc la page tient sa position seule. « 🎯 Caler » : clique sur le temps 1 entendu. Le trim (±10 ms ou saisie directe) compense le réflexe du clic de Caler. Coche « 🎯 Départ calé » (Test 2) pour que ▶ Démarrer attende le prochain temps 1. <b>🥁 Recalage auto</b> : « Détecter » repère la grosse caisse (8 s d'écoute pendant que le rythme tourne) ; une fois la note kick connue et la case cochée, chaque frappe de kick proche d'un temps (n'importe lequel — robuste aux patterns 1, 2 ou 4 kicks/mesure) recale l'horloge en douceur (correction 40 %) — c'est ce qui absorbe le décalage après un changement de tempo. La séquence est alors planifiée sur la grille de l'horloge : les corrections se propagent aux accords. Après un changement de RYTHME (pattern différent), relance « Détecter ».</div>
+      <div class="hint">🕐 Horloge réelle du KN2000 : chaque F8 (horloge MIDI) estampille le tempo, chaque FA (Start) cale la position sur le vrai temps 1 — reçus sur tous tes navigateurs. « 🎯 Caler » (+ trim ±10 ms) reste en secours : clique sur le temps 1 entendu si tu lances la séquence sans rythme démarré. Coche « 🎯 Départ calé » (Test 2) pour que ▶ Démarrer attende le prochain temps 1 de l'horloge. Le journal batterie ch16 (ci-dessus) sert au diagnostic : chaque note y est estampillée mesure:temps:pulse.</div>
     </div>
 
     <h3>🕐 Horloge & temps réel</h3>
@@ -237,105 +228,11 @@ function posStr() {
   return p ? (p.meas + ":" + String(p.beat).padStart(2, "0") + ":" + String(p.tick).padStart(3, "0")) : "— : — : ———";
 }
 setInterval(() => { posEl.textContent = posStr(); }, 50);
-document.getElementById("caler").onclick = () => { barAnchor = performance.now(); log("🎯 Calage manuel — horloge interne : mesure 1, temps 1 (pulse 0). Le journal batterie ch16 va montrer si les temps 1 du clavier tombent dessus.", "ok"); };
+document.getElementById("caler").onclick = () => { barAnchor = performance.now(); log("🎯 Calage manuel — horloge : mesure 1, temps 1 (pulse 0). Utile sans rythme démarré ; avec rythme, les FA reçus recalent tout seuls.", "ok"); };
 document.getElementById("trimMoins").onclick = () => { syncTrim -= 10; trimUpdate(); };
 document.getElementById("trimPlus").onclick = () => { syncTrim += 10; trimUpdate(); };
 document.getElementById("trimIn").onchange = () => { syncTrim = parseInt(document.getElementById("trimIn").value) || 0; trimUpdate(); };
-// ---------- Sonde WebUSB : lecture directe de l'horloge brute de l'interface USB-MIDI ----------
-// La pile Web MIDI du navigateur ne livre JAMAIS les messages temps réel (F8/FA/FC — testé
-// Chrome, Edge, Firefox : aucun F8 reçu alors que MIDI-Ox les voit sur la même interface).
-// WebUSB parle directement à l'interface USB-MIDI (class 01, subclass 03) : les paquets
-// 4 octets contiennent les F8/FA/FC. Fonctionne sur Chrome/Edge desktop ET Chrome Android.
-let usbDev = null, usbActive = false, usbF8 = 0;
-function usbStatus(msg, bad) { document.getElementById("usbStatus").textContent = msg; }
-document.getElementById("usbProbe").onclick = async () => {
-  if (!navigator.usb) { log("⚡ WebUSB indisponible dans ce navigateur — utilise Edge ou Chrome (Firefox non supporté).", "ko"); return; }
-  if (usbActive) { usbActive = false; usbStatus("arrêté"); log("⚡ Sonde WebUSB arrêtée.", "info"); return; }
-  try {
-    usbDev = await navigator.usb.requestDevice({ filters: [{ classCode: 0x01, subclassCode: 0x03, protocolCode: 0x00 }] });
-    log("⚡ WebUSB : appareil sélectionné — " + (usbDev.productName || "?") + " (vendor 0x" + usbDev.vendorId.toString(16) + ", produit 0x" + usbDev.productId.toString(16) + ")", "ok");
-    await usbDev.open();
-    usbStatus("ouvert, recherche de l'interface USB-MIDI…");
-    // inventaire des interfaces
-    let ifaceNum = null, epIn = null, confVal = null;
-    for (const conf of usbDev.configurations) {
-      for (const i of conf.interfaces) {
-        const alt = i.alternates[0];
-        log("⚡ interface " + i.interfaceNumber + " : class " + alt.interfaceClass + " subclass " + alt.interfaceSubclass + (alt.endpoints.length ? " (" + alt.endpoints.map(e => e.direction).join(",") + ")" : ""), "info");
-        if (alt.interfaceClass === 1 && alt.interfaceSubclass === 3) {
-          ifaceNum = i.interfaceNumber; confVal = conf.configurationValue;
-          for (const a of i.alternates) for (const e of a.endpoints) if (e.direction === "in") epIn = e;
-        }
-      }
-    }
-    if (ifaceNum === null || !epIn) { log("⚡ Pas d'interface USB-MIDI (class 1 subclass 3) trouvée sur cet appareil.", "ko"); usbStatus("pas d'interface USB-MIDI"); return; }
-    await usbDev.selectConfiguration(confVal);
-    try { await usbDev.claimInterface(ifaceNum); }
-    catch (e) {
-      log("⚡ Échec du claim de l'interface " + ifaceNum + " : " + e.message + " — sur Windows, le driver MIDI de l'OS garde l'interface USB ; WebUSB ne peut pas la reprendre sur ce poste (l'info qu'on cherchait : il faudra alors le mini-relais natif sur desktop).", "ko");
-      usbStatus("interface USB occupée par l'OS");
-      return;
-    }
-    usbActive = true;
-    usbStatus("ACTIF — horloge brute en lecture (endpoint IN " + epIn.endpointNumber + ")");
-    log("⚡ Sonde WebUSB ACTIVE : lecture brute de l'USB-MIDI. Lance le rythme au clavier — les F8 doivent apparaître, et chaque FA recale l'horloge de mesure sur le vrai temps 1.", "ok");
-    usbLoop(epIn);
-  } catch (e) { log("⚡ WebUSB : " + e.message, "ko"); usbStatus("erreur : " + e.message); }
-};
-async function usbLoop(ep) {
-  while (usbActive && usbDev && usbDev.opened) {
-    try {
-      const res = await usbDev.transferIn(ep.endpointNumber, 64);
-      const d = new Uint8Array(res.data.buffer, res.data.byteOffset, res.data.byteLength);
-      for (let i = 0; i + 3 < d.length; i += 4) { // paquets USB-MIDI : 4 octets, CIN dans le nibble bas de l'octet 0
-        const cin = d[i] & 0x0F, b1 = d[i + 1];
-        if (cin === 0x0F) { // Single Byte = message temps réel : F8 horloge, FA start, FB continue, FC stop, FE sensing
-          if (b1 === 0xF8) {
-            usbF8++;
-            pulse++; updateBpm(performance.now()); lastF8 = performance.now();
-            if (document.getElementById("rtLog").checked) log("⚡ F8 (WebUSB) — pulse " + pulse, "clock");
-            if (usbF8 === 24 || usbF8 === 240) log("⚡ " + usbF8 + " pulses F8 reçus par WebUSB — l'horloge réelle du KN2000 est dans la page !", "ok");
-          } else if (b1 === 0xFA) {
-            log("⚡ FA Start réel (WebUSB) — rythme lancé : horloge de mesure CALÉE sur le vrai temps 1.", "ok");
-            if (document.getElementById("rtLog").checked) log("MIDI Start (FA) — rythme lancé", "clock");
-            pulse = 0; lastF8 = 0; f8Times = []; lastF8At = performance.now();
-            barAnchor = performance.now() - syncTrim; // FA = début de mesure réel → calage auto
-          } else if (b1 === 0xFB) { if (document.getElementById("rtLog").checked) log("⚡ FB Continue (WebUSB)", "clock"); }
-          else if (b1 === 0xFC) { log("⚡ FC Stop réel (WebUSB) — rythme arrêté.", "clock"); lastF8At = 0; }
-          else if (b1 === 0xFE) { /* active sensing : ignoré */ }
-        }
-      }
-    } catch (e) { usbActive = false; log("⚡ Lecture WebUSB interrompue : " + e.message, "ko"); usbStatus("interrompu"); }
-  }
-}
 function trimUpdate() { document.getElementById("trimIn").value = syncTrim; document.getElementById("trimVal").textContent = syncTrim + " ms"; log("🎚 Trim de calage : " + syncTrim + " ms — s'applique à la position affichée et au Départ calé (les accords partent d'autant plus tôt si négatif).", "info"); }
-// ---------- Recalage auto sur la grosse caisse (ch16) ----------
-let learning = null; // fenêtre d'écoute de 8 s : { until, events: [{n, t}], done }
-let lastKickAt = 0;
-const kickNoteEl = document.getElementById("kickNote");
-document.getElementById("learnKick").onclick = () => {
-  learning = { until: performance.now() + 8000, events: [], done: false };
-  log("🥁 Détection de la grosse caisse : j'écoute la batterie ch16 pendant 8 s — le rythme doit tourner.", "info");
-};
-function analyseKickLearning() {
-  const evts = learning.events; learning = null;
-  if (evts.length < 6) { log("🥁 Détection : pas assez de notes batterie reçues en 8 s (rythme lancé ? Drum Pattern Output ON ?).", "ko"); return; }
-  const by = {};
-  evts.forEach(e => { (by[e.n] = by[e.n] || []).push(e.t); });
-  const beatMs = 60000 / curBpm();
-  let best = null;
-  Object.entries(by).forEach(([n, ts]) => {
-    if (ts.length < 4) return;
-    const iv = []; for (let i = 1; i < ts.length; i++) iv.push(ts[i] - ts[i - 1]);
-    iv.sort((a, b) => a - b);
-    const med = iv[Math.floor(iv.length / 2)];
-    const score = Math.abs(med - 2 * beatMs) / beatMs; // kick typique toutes les 2 noires (temps 1 et 3)
-    if (!best || score < best.score) best = { n: +n, med, score, count: ts.length };
-  });
-  if (!best) { log("🥁 Détection : aucune note batterie récurrente trouvée.", "ko"); return; }
-  kickNoteEl.value = best.n;
-  log("🥁 Détection : grosse caisse probable = note " + best.n + " (" + best.count + " frappes, intervalle médian " + Math.round(best.med) + " ms ≈ " + (best.med / beatMs).toFixed(1) + " noires)." + (best.score < 0.3 ? " Vérifie dans le journal qu'elle tombe bien sur les temps 1 (x:01:000), puis coche « Recalage auto »." : " ⚠️ Intervalle pas très régulier — vérifie la note dans le journal avant de cocher « Recalage auto »."), best.score < 0.3 ? "ok" : "info");
-}
 let pulse = 0;
 const activeNotes = new Set();
 function ppq() { return Math.max(1, parseInt(document.getElementById("ppq").value) || 24); }
@@ -471,7 +368,7 @@ function onMidiMsg(ev) {
     else if (b === 0xFC) {
       log("MIDI Stop (FC) — rythme arrêté (RX temps réel)" + (seqQueue ? " — le KN2000 a probablement changé de rythme/tempo" : ""), "clock");
       if (seqQueue && document.getElementById("fcStop").checked) { chordOff(); if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; } seqQueue = null; log("Séquence locale libérée (FC reçu, case « FC reçu = stopper » cochée).", "info"); }
-      else if (seqQueue) log("▶ La séquence LOCALE CONTINUE à travers ce FC (case « FC reçu = stopper » décochée) — le tempo suivra via TMP et le recalage batterie.", "info");
+      else if (seqQueue) log("▶ La séquence LOCALE CONTINUE à travers ce FC (case « FC reçu = stopper » décochée) — le tempo suivra les F8 et le prochain FA recalera la mesure.", "info");
       lastF8At = 0;
     }
   }
@@ -516,31 +413,10 @@ function onMidiMsg(ev) {
     }
     if (!document.getElementById("hideNotes").checked) log("RX ch" + chN + " : " + hex([...ev.data]), "info");
     // Journal batterie ch16 : chaque note est estampillée de la position interne (mesure:temps:pulse)
-    if ((document.getElementById("drumLog").checked || document.getElementById("autoSync").checked) && st === 0x90 && ev.data[2] > 0 && (ev.data[0] & 0x0F) === 15) {
+    if (document.getElementById("drumLog").checked && st === 0x90 && ev.data[2] > 0 && (ev.data[0] & 0x0F) === 15) {
       const p = posInfo();
-      const n = ev.data[1], t = performance.now();
-      if (learning) {
-        if (t < learning.until) learning.events.push({ n, t });
-        else if (!learning.done) { learning.done = true; analyseKickLearning(); }
-      }
-      // Recalage auto : VERROU PAR TEMPS — chaque frappe de kick proche d'UN TEMPS QUELCONQUE
-      // (pas seulement le temps 1) recale l'horloge — robuste aux patterns 1, 2 ou 4 kicks/mesure.
-      // La phase de mesure (où est le temps 1) reste celle posée par « Caler » : le verrou ne
-      // déplace jamais l'anchor de plus d'une demi-noire, elle ne peut pas « tourner ».
-      if (document.getElementById("autoSync").checked && kickNoteEl.value !== "" && barAnchor !== null) {
-        if (parseInt(kickNoteEl.value) === n) {
-          if (lastKickAt && t - lastKickAt > 10000) log("🥁 La note kick " + n + " n'avait plus été frappée depuis " + Math.round((t - lastKickAt) / 1000) + " s — rythme changé ? Relance « 🥁 Détecter » si le pattern a changé.", "info");
-          lastKickAt = t;
-          const beatMs = 60000 / curBpm();
-          const pos = ((t - anchorEff()) % beatMs + beatMs) % beatMs;
-          const signed = pos > beatMs / 2 ? pos - beatMs : pos; // écart signé au temps le plus proche
-          if (Math.abs(signed) < beatMs * 0.3) {
-            barAnchor += signed * 0.4;
-            log("🥁 Recalage auto : dérive " + (signed > 0 ? "+" : "") + Math.round(signed) + " ms sur le temps → corrigée à 40 % (reste ~" + Math.round(Math.abs(signed) * 0.6) + " ms).", "info");
-          }
-        }
-      }
-      if (document.getElementById("drumLog").checked) log("🥁 RX ch16 : note " + n + (p ? " @ " + p.meas + ":" + String(p.beat).padStart(2, "0") + ":" + String(p.tick).padStart(3, "0") : " (horloge non calée)"), "info");
+      const n = ev.data[1];
+      log("🥁 RX ch16 : note " + n + (p ? " @ " + p.meas + ":" + String(p.beat).padStart(2, "0") + ":" + String(p.tick).padStart(3, "0") : " (horloge non calée)"), "info");
     }
   }
 }
@@ -726,7 +602,7 @@ function seqStep() {
   chordOn(s.chord);
   seqIdx++;
   // tempo live : recalculé à chaque accord — la molette tempo du clavier reste suivie (trame TMP)
-  // planification : sur la GRILLE de l'horloge interne si Départ calé (les recalages batterie se propagent aux accords),
+  // planification : sur la GRILLE de l'horloge si Départ calé (chaque FA recale la grille, les accords suivent),
   // sinon sur l'horloge absolue locale (le prochain accord vise seqNextAt + durée, pas « maintenant + durée »)
   const beatMs = 60000 / curBpm();
   let target;
@@ -762,7 +638,7 @@ document.getElementById("play").onclick = () => {
       const ms = performance.now() - anchorEff();
       seqOriginBeats = (Math.floor(ms / (4 * beatMs)) + 1) * 4; // prochain début de mesure, en noires depuis l'anchor
       const wait = seqOriginBeats * beatMs - ms;
-      log("🎯 Départ calé sur la mesure : " + Math.round(wait) + " ms d'attente jusqu'au prochain temps 1 (position " + posStr() + "). La séquence suivra la grille de l'horloge interne : les recalages batterie s'y propagent.", "info");
+      log("🎯 Départ calé sur la mesure : " + Math.round(wait) + " ms d'attente jusqu'au prochain temps 1 (position " + posStr() + "). La séquence suivra la grille de l'horloge.", "info");
       playTimers.push(setTimeout(startSeq, wait));
     } else { seqOriginBeats = null; startSeq(); }
   }, 500)); // laisse le temps au clavier d'ingérer le tempo TMP avant de partir
