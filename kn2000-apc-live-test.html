@@ -30,7 +30,7 @@
 </head>
 <body>
 <header>
-  <span><b>KN2000 APC Live Test</b> v0.24 — Recalage AUTO sur la grosse caisse ch16 (détection 8 s) + séquence planifiée sur la grille de mesure : absorbe le décalage après un changement de tempo</span>
+  <span><b>KN2000 APC Live Test</b> v0.25 — FC reçu du clavier ne casse PLUS la séquence (option) + verrou de phase par TEMPS (robuste au nombre de kicks par mesure)
   &nbsp; <span id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
@@ -81,7 +81,7 @@
         <label>note kick <input type="number" id="kickNote" min="0" max="127" style="width:55px" title="Numéro de la note grosse caisse — repéré par « Détecter » ou à la main depuis le journal batterie"></label>
         <button id="learnKick">🥁 Détecter (8 s)</button>
       </div>
-      <div class="hint">🕐 Horloge interne de mesure <b>mesure : temps : pulse</b> (24 pulses/noire), tenue au tempo TMP — le navigateur ne reçoit pas les F8/FA du KN2000 (filtrés par Chrome, MIDI-Ox les voit lui) donc la page tient sa position seule. « 🎯 Caler » : clique sur le temps 1 entendu. Le trim (±10 ms ou saisie directe) compense le réflexe du clic de Caler. Coche « 🎯 Départ calé » (Test 2) pour que ▶ Démarrer attende le prochain temps 1. <b>🥁 Recalage auto</b> : « Détecter » repère la grosse caisse (8 s d'écoute pendant que le rythme tourne) ; une fois la note kick connue et la case cochée, chaque frappe de kick sur un temps 1 recale l'horloge en douceur (correction 50 %) — c'est ce qui absorbe le décalage après un changement de tempo. La séquence est alors planifiée sur la grille de l'horloge : les corrections se propagent aux accords.</div>
+      <div class="hint">🕐 Horloge interne de mesure <b>mesure : temps : pulse</b> (24 pulses/noire), tenue au tempo TMP — le navigateur ne reçoit pas les F8/FA du KN2000 (filtrés par Chrome, MIDI-Ox les voit lui) donc la page tient sa position seule. « 🎯 Caler » : clique sur le temps 1 entendu. Le trim (±10 ms ou saisie directe) compense le réflexe du clic de Caler. Coche « 🎯 Départ calé » (Test 2) pour que ▶ Démarrer attende le prochain temps 1. <b>🥁 Recalage auto</b> : « Détecter » repère la grosse caisse (8 s d'écoute pendant que le rythme tourne) ; une fois la note kick connue et la case cochée, chaque frappe de kick proche d'un temps (n'importe lequel — robuste aux patterns 1, 2 ou 4 kicks/mesure) recale l'horloge en douceur (correction 40 %) — c'est ce qui absorbe le décalage après un changement de tempo. La séquence est alors planifiée sur la grille de l'horloge : les corrections se propagent aux accords. Après un changement de RYTHME (pattern différent), relance « Détecter ».</div>
     </div>
 
     <h3>🕐 Horloge & temps réel</h3>
@@ -144,6 +144,7 @@
       <button id="stopPlay">■ Stop</button>
       <label><input type="checkbox" id="repeat"> 🔁 Repeat (boucle tant que cochée ; décocher = jouer jusqu'à la fin puis stop)</label>
       <label><input type="checkbox" id="syncStart"> 🎯 Départ calé sur la mesure (attend le prochain temps 1 de l'horloge interne)</label>
+      <label><input type="checkbox" id="fcStop"> FC reçu du clavier = stopper la séquence (décoché : la séquence traverse un changement de rythme/tempo)</label>
     </div>
     <div class="hint">▶ Démarrer : (1) tempo IMPOSÉ au clavier (trame TMP, ♩ = BPM manuel ou dernier reçu) ; (2) armement Synchro&Break ITW 20 60 08 = 01 — reconfirmé à chaque lancement car le Stop le repasse OFF ; (3) la séquence part à ce tempo — le premier accord (Note On ch8) fait démarrer le clavier. Le tempo reste suivi en live (trame TMP) : la molette du clavier reste utilisable en cours de lecture.</div>
     <div class="hint">2 formats acceptés : <b>tokens</b> <code>C4 F7-2 Gm7-2</code> (accord + noires) ou <b>grille ChordPro/JJazzLab</b> <code>| Am6 . . . | D7 . . . |</code> / <code>! Bb7 ! D7#5 !</code> — <code>.</code> tenue, <code>/</code> rejouer, <code>%</code> répète la mesure, <code>NC</code> silence, <code>~</code> plusieurs accords/cellule, <code>| 3/4 B7 |</code> chiffrage. Types : C, Cm, C7, CM7/7M, Cm7, Cm7b5, Cdim, Caug, C6, Csus4…</div>
@@ -239,6 +240,7 @@ document.getElementById("trimIn").onchange = () => { syncTrim = parseInt(documen
 function trimUpdate() { document.getElementById("trimIn").value = syncTrim; document.getElementById("trimVal").textContent = syncTrim + " ms"; log("🎚 Trim de calage : " + syncTrim + " ms — s'applique à la position affichée et au Départ calé (les accords partent d'autant plus tôt si négatif).", "info"); }
 // ---------- Recalage auto sur la grosse caisse (ch16) ----------
 let learning = null; // fenêtre d'écoute de 8 s : { until, events: [{n, t}], done }
+let lastKickAt = 0;
 const kickNoteEl = document.getElementById("kickNote");
 document.getElementById("learnKick").onclick = () => {
   learning = { until: performance.now() + 8000, events: [], done: false };
@@ -389,8 +391,9 @@ function onMidiMsg(ev) {
   }
   else if (st === 0xFB) { log("MIDI Continue (FB)", "clock"); }
   else if (st === 0xFC) {
-    log("MIDI Stop (FC) — rythme arrêté (RX temps réel)", "clock");
-    if (seqQueue) { chordOff(); if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; } seqQueue = null; log("Séquence locale libérée (FC reçu du clavier).", "info"); }
+    log("MIDI Stop (FC) — rythme arrêté (RX temps réel)" + (seqQueue ? " — le KN2000 a probablement changé de rythme/tempo" : ""), "clock");
+    if (seqQueue && document.getElementById("fcStop").checked) { chordOff(); if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; } seqQueue = null; log("Séquence locale libérée (FC reçu, case « FC reçu = stopper » cochée).", "info"); }
+    else if (seqQueue) log("▶ La séquence LOCALE CONTINUE à travers ce FC (case « FC reçu = stopper » décochée) — le tempo suivra via TMP et le recalage batterie.", "info");
   }
   else if (ev.data.length >= 3 && ev.data[0] === 0xF0 && ev.data[1] === 0x50 && ev.data[2] === 0x25) {
     // Trame TMP (tempo) — validée console v1.0.13 : F0 50 25 DT1 DT2 … F7, émise par le KN2000 (ex. à chaque sélection de PM)
@@ -439,14 +442,21 @@ function onMidiMsg(ev) {
         if (t < learning.until) learning.events.push({ n, t });
         else if (!learning.done) { learning.done = true; analyseKickLearning(); }
       }
-      // Recalage auto : frappe de la grosse caisse proche d'un temps 1 → correction douce de l'anchor (50 %)
-      if (document.getElementById("autoSync").checked && parseInt(kickNoteEl.value) === n && barAnchor !== null) {
-        const beatMs = 60000 / curBpm(), barMs = 4 * beatMs;
-        const pos = ((t - anchorEff()) % barMs + barMs) % barMs;
-        const signed = pos > barMs / 2 ? pos - barMs : pos; // écart signé au temps 1 le plus proche
-        if (Math.abs(signed) < beatMs * 0.35) {
-          barAnchor += signed * 0.5;
-          log("🥁 Recalage auto : dérive " + (signed > 0 ? "+" : "") + Math.round(signed) + " ms sur le temps 1 → corrigée à 50 % (reste ~" + Math.round(Math.abs(signed) / 2) + " ms).", "info");
+      // Recalage auto : VERROU PAR TEMPS — chaque frappe de kick proche d'UN TEMPS QUELCONQUE
+      // (pas seulement le temps 1) recale l'horloge — robuste aux patterns 1, 2 ou 4 kicks/mesure.
+      // La phase de mesure (où est le temps 1) reste celle posée par « Caler » : le verrou ne
+      // déplace jamais l'anchor de plus d'une demi-noire, elle ne peut pas « tourner ».
+      if (document.getElementById("autoSync").checked && kickNoteEl.value !== "" && barAnchor !== null) {
+        if (parseInt(kickNoteEl.value) === n) {
+          if (lastKickAt && t - lastKickAt > 10000) log("🥁 La note kick " + n + " n'avait plus été frappée depuis " + Math.round((t - lastKickAt) / 1000) + " s — rythme changé ? Relance « 🥁 Détecter » si le pattern a changé.", "info");
+          lastKickAt = t;
+          const beatMs = 60000 / curBpm();
+          const pos = ((t - anchorEff()) % beatMs + beatMs) % beatMs;
+          const signed = pos > beatMs / 2 ? pos - beatMs : pos; // écart signé au temps le plus proche
+          if (Math.abs(signed) < beatMs * 0.3) {
+            barAnchor += signed * 0.4;
+            log("🥁 Recalage auto : dérive " + (signed > 0 ? "+" : "") + Math.round(signed) + " ms sur le temps → corrigée à 40 % (reste ~" + Math.round(Math.abs(signed) * 0.6) + " ms).", "info");
+          }
         }
       }
       if (document.getElementById("drumLog").checked) log("🥁 RX ch16 : note " + n + (p ? " @ " + p.meas + ":" + String(p.beat).padStart(2, "0") + ":" + String(p.tick).padStart(3, "0") : " (horloge non calée)"), "info");
