@@ -45,7 +45,7 @@
 </head>
 <body>
 <header>
-  <span><b>🎼 APC Live KN2000</b> <span class="hint">v0.35 — déroulé magnétophone : départ de la lecture à la mesure choisie (champ, flèches ⏮◀▶⏭ ou bande glissante) + compteur de mesure</span></span>
+  <span><b>🎼 APC Live KN2000</b> <span class="hint">v0.36 — correctif départ à la mesure : le premier accord part immédiatement (plus de silence d'un « cum » d'avance sur l'horloge F8)</span></span>
   &nbsp; <span id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
@@ -782,11 +782,14 @@ document.getElementById("play").onclick = () => {
       if (document.getElementById("syncStart").checked) {
         const measP = ppq() * 4;
         seqOriginPulse = (Math.floor(pulse / measP) + 1) * measP; // prochain temps 1 de mesure, en pulses
-        log("🎯 Départ calé : accord 1 au temps 1 de la prochaine mesure (compteur F8) — position " + posStr() + ". Envois pilotés par le compteur.", "info");
+        log("🎯 Départ calé : le premier accord joué part au temps 1 de la prochaine mesure (compteur F8) — position " + posStr() + ". Envois pilotés par le compteur.", "info");
       } else {
         seqOriginPulse = pulse;
         log("▶ Séquence lancée sur le compteur F8 (zéro dérive, tempo réel) — position " + posStr() + "." + (document.getElementById("repeat").checked ? "  🔁 Repeat ON." : ""), "ok");
       }
+      // v0.36 — CORRECTIF : départ à la mesure N → l'origine recule du cum des mesures sautées,
+      // sinon le premier accord de la mesure de départ attendait cum temps (silence) avant de partir.
+      seqOriginPulse -= (seqStartIdx > 0 && seqQueue[seqStartIdx] ? seqQueue[seqStartIdx].cum * ppq() : 0);
       seqPump();
     } else {
       // SECOURS sans horloge F8 : planification minuteur (le premier accord fait démarrer le clavier via Synchro&Break)
