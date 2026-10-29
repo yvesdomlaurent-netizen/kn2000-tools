@@ -30,7 +30,7 @@
 </head>
 <body>
 <header>
-  <span><b>KN2000 APC Live Test</b> v0.8 — voie directe : accords MIDI temps réel, zéro sysex à stocker</span>
+  <span><b>KN2000 APC Live Test</b> v0.9 — voie directe : accords MIDI temps réel, zéro sysex à stocker</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
   <button id="resetMidi">↻ Réinit. MIDI</button>
@@ -68,6 +68,14 @@
       <button id="rtcOff">⏹ Désactiver (02=0)</button>
     </div>
     <div class="hint">20 04 02 = REAL TIME COMMAND ENABLE : doit être à 01 pour que le KN2000 émette l'horloge F8 et les Start/Stop. 20 04 03 = CLOCK SELECT (00=Internal, 01=MIDI).</div>
+    <hr>
+    <h3>🎛 Mode Master — la page envoie l'horloge</h3>
+    <div class="row">
+      <button id="masterOn">🎛 Master : démarrer (F8 + Start au BPM choisi)</button>
+      <button id="masterOff">⏹ Arrêter l'horloge</button>
+      <label><input type="checkbox" id="setClockMidi" checked> + basculer Clock Select = MIDI (20 04 03 = 01)</label>
+    </div>
+    <div class="hint">Constat terrain : le KN2000 n'émet pas d'horloge (aucun F8/FA malgré Real Time ON). En Master, la page génère l'horloge F8 et le FA ; le KN2000 en Clock Select = MIDI <b>suit</b> l'horloge de la page → accords et rythme calés par construction. BPM = champ « BPM manuel ».</div>
 
     <h3>🎹 Test 1 — canal de détection APC</h3>
     <div class="row">
@@ -395,6 +403,39 @@ document.getElementById("readRtc").onclick = () => {
 document.getElementById("rtcOn").onclick = () => sendSysexParam(0x20, 0x04, 0x02, 1, "REAL TIME COMMAND = ON");
 document.getElementById("rtcOff").onclick = () => sendSysexParam(0x20, 0x04, 0x02, 0, "REAL TIME COMMAND = OFF");
 
+// ---------- Mode Master : la page génère l'horloge ----------
+let masterTimer = null, masterPulse = 0;
+function masterTick() {
+  if (syncEvents) {
+    const e = syncEvents[syncIdx];
+    if (e && masterPulse >= e.p) {
+      if (e.end) { chordOff(); log("=== Fin de la progression (Master) ===", "ok"); syncEvents = null; }
+      else { chordOn(e.chord); syncIdx++; }
+    }
+  }
+  masterPulse++;
+  pulse = masterPulse; // alimente l'affichage mesure/temps
+  if (midiOut) midiOut.send([0xF8]);
+}
+document.getElementById("masterOn").onclick = () => {
+  const bpm = parseFloat(document.getElementById("bpmMan").value) || 120;
+  if (!midiOut) { log("Pas de port TX sélectionné.", "ko"); return; }
+  const ev = buildSyncEvents();
+  if (!ev) return;
+  if (document.getElementById("setClockMidi").checked) sendSysexParam(0x20, 0x04, 0x03, 1, "CLOCK SELECT = MIDI (le KN2000 suivra la page)");
+  clearPlay(); chordOff();
+  syncEvents = ev; syncIdx = 0; masterPulse = 0;
+  midiOut.send([0xFA]);
+  masterTimer = setInterval(masterTick, 60000 / (bpm * 24));
+  log("🎛 Master ON @ " + bpm + " BPM — FA envoyé, horloge F8 en cours. La progression suit cette horloge. (Le rythme APC doit suivre s'il accepte l'horloge externe.)", "ok");
+};
+document.getElementById("masterOff").onclick = () => {
+  if (masterTimer) { clearInterval(masterTimer); masterTimer = null; }
+  if (midiOut) midiOut.send([0xFC]);
+  chordOff();
+  log("⏹ Master OFF — FC envoyé, horloge arrêtée." + (document.getElementById("setClockMidi").checked ? "" : " (Rappel : remettre Clock Select = Internal au clavier si besoin : bouton dans Horloge & temps réel ou lecture ci-dessus)"), "info");
+};
+
 // ---------- Mode APC (sysex 20 60 02) & déclenchements (CC 82) ----------
 document.querySelectorAll(".apcMode").forEach(b => b.onclick = () => {
   const v = +b.dataset.v;
@@ -440,7 +481,7 @@ document.getElementById("play").onclick = () => {
   });
   playTimers.push(setTimeout(() => log("=== Fin de la progression ===", "info"), t + 100));
 };
-document.getElementById("stopPlay").onclick = () => { clearPlay(); chordOff(); syncEvents = null; syncArmed = false; sbDisarm(null); log("Progression stoppée, notes OFF.", "info"); };
+document.getElementById("stopPlay").onclick = () => { clearPlay(); chordOff(); syncEvents = null; syncArmed = false; sbDisarm(null); if (masterTimer) { clearInterval(masterTimer); masterTimer = null; if (midiOut) midiOut.send([0xFC]); } log("Progression stoppée, notes OFF.", "info"); };
 
 document.getElementById("playSync").onclick = () => {
   // Valide la grille tout de suite, mais n'arme la lecture que sur le prochain MIDI Start
