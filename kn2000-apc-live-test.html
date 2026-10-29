@@ -30,7 +30,7 @@
 </head>
 <body>
 <header>
-  <span><b>KN2000 APC Live Test</b> v0.14 — lecture simplifiée : rqt tempo → clavier en attente (20 60 08) → séquence</span>
+  <span><b>KN2000 APC Live Test</b> v0.15 — Démarrer + Repeat, fin de séquence = arrêt du rythme (CC82 Stop)</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
   <button id="resetMidi">↻ Réinit. MIDI</button>
@@ -113,6 +113,7 @@
     <div class="row">
       <button id="play">▶ Démarrer (rqt tempo → clavier en attente → séquence)</button>
       <button id="stopPlay">■ Stop</button>
+      <label><input type="checkbox" id="repeat"> 🔁 Repeat (boucle tant que cochée ; décocher = jouer jusqu'à la fin puis stop)</label>
     </div>
     <div class="hint">▶ Démarrer : (1) DRQ 20 00 25 → tempo lu du clavier ; (2) ITW 20 60 08 = 01 → le KN2000 se met en attente (Synchro&Break) ; (3) la séquence part au tempo lu — le premier accord (Note On ch8) fait démarrer le clavier. Le tempo est suivi en live (trame TMP) : la molette du clavier reste utilisable en cours de lecture.</div>
     <div class="hint">2 formats acceptés : <b>tokens</b> <code>C4 F7-2 Gm7-2</code> (accord + noires) ou <b>grille ChordPro/JJazzLab</b> <code>| Am6 . . . | D7 . . . |</code> / <code>! Bb7 ! D7#5 !</code> — <code>.</code> tenue, <code>/</code> rejouer, <code>%</code> répète la mesure, <code>NC</code> silence, <code>~</code> plusieurs accords/cellule, <code>| 3/4 B7 |</code> chiffrage. Types : C, Cm, C7, CM7/7M, Cm7, Cm7b5, Cdim, Caug, C6, Csus4…</div>
@@ -165,7 +166,9 @@ async function initMidi() {
     rx.onchange = bind; tx.onchange = bind; bind();
     access.onstatechange = () => { fill(rx, [...access.inputs.values()], rx.value); fill(tx, [...access.outputs.values()], tx.value); bind(); };
     log("MIDI prêt — " + ins.length + " entrée(s), " + outs.length + " sortie(s).", "ok");
-    if (midiOut) { sendDrq(0x20, 0x00, 0x25, "Tempo (TMP 25)", 2); log("🔍 Tempo demandé au KN2000 au chargement (DRQ 20 00 25).", "info"); }
+    if (midiOut) { sendDrq(0x20, 0x00, 0x25, "Tempo (TMP 25)", 2); log("🔍 Tempo demandé au KN2000 au chargement (DRQ 20 00 25).", "info");
+      setTimeout(() => { if (measuredBpm === null) log("ℹ️ Pas de réponse tempo au DRQ 20 00 25 — le tempo sera pris à la première trame TMP du clavier (molette, sélection PM/rythme) ou au champ BPM manuel.", "info"); }, 1500);
+    }
   } catch (e) { log("Erreur accès MIDI : " + e.message, "ko"); }
 }
 document.getElementById("resetMidi").onclick = () => initMidi();
@@ -483,9 +486,25 @@ let playTimers = [];
 function clearPlay() { playTimers.forEach(clearTimeout); playTimers = []; }
 
 let seqQueue = null, seqIdx = 0, seqTimer = null;
+function sendRhythmStop() {
+  const ch = parseInt(document.getElementById("chDrums").value) - 1;
+  send([0xB0 | ch, 82, 0], "CC82 = Stop (canal DRUMS " + (ch + 1) + ") — fin du rythme APC");
+}
 function seqStep() {
   const s = seqQueue && seqQueue[seqIdx];
-  if (!s) { chordOff(); seqQueue = null; log("=== Fin de la progression ===", "ok"); return; }
+  if (!s) {
+    if (document.getElementById("repeat").checked) {
+      seqIdx = 0;
+      log("🔁 Repeat — retour à l'accord 1 (boucle)", "info");
+      seqTimer = setTimeout(seqStep, 60000 / curBpm());
+      return;
+    }
+    chordOff();
+    sendRhythmStop();
+    seqQueue = null;
+    log("=== Fin de la progression — notes OFF + rythme arrêté (CC82 Stop) ===", "ok");
+    return;
+  }
   chordOn(s.chord);
   seqIdx++;
   // tempo live : recalculé à chaque accord — la molette tempo du clavier reste suivie (trame TMP)
@@ -503,15 +522,17 @@ document.getElementById("play").onclick = () => {
   sendSysexParam(0x20, 0x60, 0x08, 1, "SYNCHRO & BREAK = ON — le KN2000 se met en attente");
   seqQueue = seq; seqIdx = 0;
   playTimers.push(setTimeout(() => {
-    log("▶ Séquence lancée @ ♩" + curBpm() + " — le premier accord (Note On ch" + (chChord() + 1) + ") fait démarrer le clavier. Tempo suivi en live (TMP).", "ok");
+    log("▶ Séquence lancée @ ♩" + curBpm() + " — le premier accord (Note On ch" + (chChord() + 1) + ") fait démarrer le clavier. Tempo suivi en live (TMP)." + (document.getElementById("repeat").checked ? "  🔁 Repeat ON." : ""), "ok");
     seqStep();
+    setTimeout(() => { if (measuredBpm === null) log("ℹ️ Pas de réponse au DRQ tempo : tempo = BPM manuel. Tourne la molette tempo du clavier (ou change de rythme/PM) pour que le KN2000 envoie sa trame TMP — la séquence se recalera.", "info"); }, 900);
   }, 500)); // laisse le temps au clavier de répondre (ITR tempo) avant de partir
 };
 document.getElementById("stopPlay").onclick = () => {
   clearPlay(); if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; }
   seqQueue = null; chordOff();
+  sendRhythmStop();
   sendSysexParam(0x20, 0x60, 0x08, 0, "SYNCHRO & BREAK = OFF");
-  log("⏹ Séquence stoppée — notes OFF, clavier désarmé (20 60 08 = 00).", "info");
+  log("⏹ Stop — notes OFF, rythme arrêté (CC82 Stop), clavier désarmé (20 60 08 = 00).", "info");
 };
 
 initMidi();
