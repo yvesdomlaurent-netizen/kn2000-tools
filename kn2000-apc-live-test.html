@@ -578,7 +578,6 @@ function chordNotes(c, baseOct) {
   return c.iv.map(i => 12 * (baseOct + 1) + c.root + i); // C3=48 → 12*(3+1)
 }
 // ---------- Notes et accords : primitives MIDI (canal accords configurable) ----------
-// ---------- Notes // ---------- Test 1 : accord Do & scan des canaux ---------- accords : primitives MIDI (canal accords configurable) ----------
 const chChord = () => parseInt(document.getElementById("chChord").value) - 1;
 function noteOn(ch, n, vel) { send([0x90 | ch, n & 0x7F, vel || 64]); activeNotes.add(ch * 128 + n); }
 function noteOff(ch, n) { send([0x80 | ch, n & 0x7F, 0]); activeNotes.delete(ch * 128 + n); }
