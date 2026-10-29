@@ -30,7 +30,7 @@
 </head>
 <body>
 <header>
-  <span><b>KN2000 APC Live Test</b> v0.26 — Sonde WebUSB : lecture directe de l'horloge brute F8/FA de l'interface USB-MIDI (contourne la pile MIDI du navigateur qui ne livre jamais le temps réel) — zéro installation, Android compris</span>
+  <span><b>KN2000 APC Live Test</b> v0.27 — BUG MAJEUR CORRIGÉ : le test des messages temps réel (st & 0xF0 === 0xF8) était toujours FAUX — la page jetait elle-même les F8/FA reçus ! Scan complet des octets + FA reçu = calage auto de la mesure</span>
   &nbsp; <span id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
@@ -450,23 +450,33 @@ setInterval(() => {
 
 function onMidiMsg(ev) {
   const st = ev.data[0] & 0xF0;
-  if (st === 0xF8) {
-    const t = performance.now();
-    if (document.getElementById("rtLog").checked) log("F8 clock — pulse " + pulse, "clock");
-    pulse++;
-    updateBpm(t);
-    lastF8 = t;
-  } else if (st === 0xFA) { // MIDI Start : repère du premier temps
-    log("MIDI Start (FA) — rythme lancé", "clock");
-    pulse = 0; lastF8 = 0; f8Times = []; lastF8At = performance.now();
+  // ⚠️ v0.27 — BUG CORRIGÉ : les temps réel sont des MONO-OCTETS ; l'ancien test
+  // (data[0] & 0xF0) === 0xF8 était TOUJOURS FAUX (0xF8 & 0xF0 = 0xF0) → les F8/FA
+  // reçus étaient jetés par la page elle-même. On scanne donc TOUS les octets de
+  // l'événement (ils peuvent aussi être coalescés dans un message plus long).
+  for (let i = 0; i < ev.data.length; i++) {
+    const b = ev.data[i];
+    if (b === 0xF8) {
+      const t = performance.now();
+      if (document.getElementById("rtLog").checked) log("F8 clock — pulse " + pulse, "clock");
+      pulse++;
+      updateBpm(t);
+      lastF8 = t; lastF8At = t;
+    } else if (b === 0xFA) { // MIDI Start : repère du premier temps — CALAGE AUTO de la mesure
+      log("MIDI Start (FA) — rythme lancé : horloge de mesure CALÉE sur le vrai temps 1.", "ok");
+      if (document.getElementById("rtLog").checked) log("MIDI Start (FA) — rythme lancé", "clock");
+      pulse = 0; lastF8 = 0; f8Times = []; lastF8At = performance.now();
+      barAnchor = performance.now() - syncTrim; // FA = début de mesure réel
+    } else if (b === 0xFB) { log("MIDI Continue (FB)", "clock"); }
+    else if (b === 0xFC) {
+      log("MIDI Stop (FC) — rythme arrêté (RX temps réel)" + (seqQueue ? " — le KN2000 a probablement changé de rythme/tempo" : ""), "clock");
+      if (seqQueue && document.getElementById("fcStop").checked) { chordOff(); if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; } seqQueue = null; log("Séquence locale libérée (FC reçu, case « FC reçu = stopper » cochée).", "info"); }
+      else if (seqQueue) log("▶ La séquence LOCALE CONTINUE à travers ce FC (case « FC reçu = stopper » décochée) — le tempo suivra via TMP et le recalage batterie.", "info");
+      lastF8At = 0;
+    }
   }
-  else if (st === 0xFB) { log("MIDI Continue (FB)", "clock"); }
-  else if (st === 0xFC) {
-    log("MIDI Stop (FC) — rythme arrêté (RX temps réel)" + (seqQueue ? " — le KN2000 a probablement changé de rythme/tempo" : ""), "clock");
-    if (seqQueue && document.getElementById("fcStop").checked) { chordOff(); if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; } seqQueue = null; log("Séquence locale libérée (FC reçu, case « FC reçu = stopper » cochée).", "info"); }
-    else if (seqQueue) log("▶ La séquence LOCALE CONTINUE à travers ce FC (case « FC reçu = stopper » décochée) — le tempo suivra via TMP et le recalage batterie.", "info");
-  }
-  else if (ev.data.length >= 3 && ev.data[0] === 0xF0 && ev.data[1] === 0x50 && ev.data[2] === 0x25) {
+  if (ev.data[0] >= 0xF8 && ev.data[0] <= 0xFF) return; // événement temps réel pur : pas d'autre analyse
+  if (ev.data.length >= 3 && ev.data[0] === 0xF0 && ev.data[1] === 0x50 && ev.data[2] === 0x25) {
     // Trame TMP (tempo) — validée console v1.0.13 : F0 50 25 DT1 DT2 … F7, émise par le KN2000 (ex. à chaque sélection de PM)
     const t = ev.data.length >= 6 ? (((ev.data[4] & 0x1f) << 4) | (ev.data[3] & 0x0f)) : null; // DT1 = 4 bits bas, DT2 = 5 bits hauts, ♩=40-300
     if (t !== null && t >= 40 && t <= 300) {
