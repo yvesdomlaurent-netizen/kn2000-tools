@@ -30,7 +30,7 @@
 </head>
 <body>
 <header>
-  <span><b>KN2000 APC Live Test</b> v0.20 — Armement Synchro&Break RECONFIRMÉ à chaque ▶ Démarrer (le Stop repasse l'état OFF au clavier) ; badge suit l'état réel</span>
+  <span><b>KN2000 APC Live Test</b> v0.21 — Repeat : retour à l'accord 1 SANS temps mort + planification sur horloge absolue (plus de dérive à chaque tour de boucle)</span>
   &nbsp; <span id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
@@ -526,13 +526,14 @@ function sendRhythmStop() {
   send([0xFC], "FC = MIDI Stop temps réel — carte d'implémentation : Stop reçu par le KN2000");
   synchroArmed = false; synBadge(); // info terrain Yves 29/10 : le Stop repasse l'état Synchro&Break du clavier sur OFF
 }
+let seqNextAt = 0; // horloge absolue du prochain accord — corrige la dérive des setTimeout en chaîne
 function seqStep() {
   const s = seqQueue && seqQueue[seqIdx];
   if (!s) {
     if (document.getElementById("repeat").checked) {
       seqIdx = 0;
-      log("🔁 Repeat — retour à l'accord 1 (boucle)", "info");
-      seqTimer = setTimeout(seqStep, 60000 / curBpm());
+      log("🔁 Repeat — retour immédiat à l'accord 1 (boucle sans temps mort, sans dérive).", "info");
+      seqStep(); // relance immédiate : aucun temps mort entre le dernier accord et le retour à l'accord 1
       return;
     }
     chordOff();
@@ -544,14 +545,19 @@ function seqStep() {
   chordOn(s.chord);
   seqIdx++;
   // tempo live : recalculé à chaque accord — la molette tempo du clavier reste suivie (trame TMP)
-  seqTimer = setTimeout(seqStep, s.beats * 60000 / curBpm());
+  // planification sur horloge absolue : le prochain accord vise seqNextAt + durée, pas « maintenant + durée »
+  const ms = s.beats * 60000 / curBpm();
+  const now = performance.now();
+  const target = (seqNextAt > now ? seqNextAt : now) + ms;
+  seqNextAt = target;
+  seqTimer = setTimeout(seqStep, Math.max(0, target - now));
 }
 
 document.getElementById("play").onclick = () => {
   if (!midiOut) { log("Pas de port TX sélectionné.", "ko"); return; }
   const seq = parseSeq();
   if (!seq) return;
-  clearPlay(); if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; } chordOff();
+  clearPlay(); if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; } chordOff(); seqNextAt = 0;
   log("=== ▶ Démarrer : (1) tempo imposé au clavier (trame TMP, ♩" + curBpm() + ") ; (2) armement Synchro&Break (ITW 20 60 08 = 01 — RECONFIRMÉ à chaque lancement) ; (3) envoi de la séquence ===", "info");
   document.getElementById("prog").textContent = seq.map(s => chordLabel(s.chord) + "×" + s.beats).join("  ");
   sendTmpN(curBpm());
