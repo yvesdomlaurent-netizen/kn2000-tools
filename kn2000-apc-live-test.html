@@ -16,15 +16,15 @@
   input[type=number] { width: 60px; }
   .row { margin: 6px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
   .hint { font-size: 11px; color: #888; }
-  .grid-input { width: 100%; box-sizing: border-box; font-family: monospace; padding: 8px; font-size: 15px; }
+  .grid-input { width: 100%; box-sizing: border-box; font-family: monospace; padding: 8px; font-size: 15px; line-height: 1.45; border: 1px solid #bbb; }
   #live { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 14px; }
   .bigscreen { display: flex; flex-wrap: wrap; align-items: center; gap: 28px; padding-bottom: 10px; border-bottom: 1px solid #eee; margin-bottom: 10px; }
   #pos { font-size: 42px; font-weight: bold; color: #1273b0; font-family: monospace; line-height: 1.05; }
   #bpm { font-size: 42px; font-weight: bold; color: #7a4fd0; font-family: monospace; line-height: 1.05; }
-  #prog { margin-top: 8px; line-height: 1.9; }
-  #prog .secTitle { font-weight: 700; color: #b35c00; margin: 8px 0 2px; font-size: 13px; }
-  #prog .chordCell { display: inline-block; padding: 2px 9px; margin: 2px; border: 1px solid #e2e2e2; border-radius: 6px; font-family: monospace; font-size: 14px; background: #fafafa; }
-  #prog .chordCell.on { background: #7a4fd0; border-color: #7a4fd0; color: #fff; font-weight: bold; }
+  /* v0.33 : surlignage de la mesure EN COURS directement dans la zone de saisie (calque miroir) */
+  .editWrap { position: relative; }
+  #mirror { position: absolute; inset: 0; border: 1px solid transparent; padding: 8px; font-family: monospace; font-size: 15px; line-height: 1.45; white-space: pre-wrap; word-wrap: break-word; overflow: hidden; color: transparent; pointer-events: none; }
+  #mirror .mhl { background: #7a4fd0; border-radius: 5px; }
   details { margin-top: 12px; background: #fff; border: 1px solid #e3e3e3; border-radius: 8px; padding: 6px 12px; font-size: 13px; }
   details summary { cursor: pointer; font-weight: 600; font-size: 13px; }
   details .row { margin: 8px 0 4px; }
@@ -36,7 +36,7 @@
 </head>
 <body>
 <header>
-  <span><b>🎼 APC Live KN2000</b> <span class="hint">v0.32 — morceaux : sélection, sauvegarde séquence + réglages panel (lecture/écriture du clavier) ; grille multi-lignes, surlignage de l'accord en cours</span></span>
+  <span><b>🎼 APC Live KN2000</b> <span class="hint">v0.33 — suivi de lecture : la MESURE en cours est surlignée en violet directement dans la zone de saisie</span></span>
   &nbsp; <span id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
@@ -67,14 +67,14 @@
       <label style="cursor:pointer" title="Importer des morceaux depuis un fichier JSON exporté (fusion par morceau)">⬆️ Import<input type="file" id="songImport" accept=".json,application/json" hidden></label>
       <span class="hint" id="songInfo"></span>
     </div>
-    <div class="row"><textarea class="grid-input" id="progInput" rows="10" spellcheck="false">// Ligne de texte = titre de section (non jouée) · // = commentaire · || ouvre un bloc, || xN le referme et le répète N fois
+    <div class="row"><div class="editWrap"><textarea class="grid-input" id="progInput" rows="10" spellcheck="false">// Ligne de texte = titre de section (non jouée) · // = commentaire · || ouvre un bloc, || xN le referme et le répète N fois
 Intro
 ||
 | C . . . | Am . . . |
 || x2
 
 Thème
-| F . . . | G7 . . . | C . . . | C . . . |</textarea></div>
+| F . . . | G7 . . . | C . . . | C . . . |</textarea><div id="mirror" aria-hidden="true"></div></div></div>
     <div class="row">
       <button id="play">▶ Démarrer</button>
       <button id="stopPlay">■ Stop</button>
@@ -82,8 +82,7 @@ Thème
       <label title="▶ Démarrer attend le prochain temps 1 (compteur F8 si l'horloge tourne ; sinon minuteur)"><input type="checkbox" id="syncStart"> 🎯 Départ calé</label>
       <label title="FA Start → lance la séquence (accord 1 calé sur le temps 1) ; FB Continue → reprend ; FC Stop → arrête"><input type="checkbox" id="xport" checked> 🎛 Transport clavier</label>
     </div>
-    <div class="hint" id="prog"></div>
-    <div class="hint">▶ Démarrer : (1) tempo imposé au clavier (trame TMP) ; (2) armement Synchro&Break ; (3) séquence — <b>si l'horloge F8 tourne, les accords sont pilotés par le COMPTEUR de pulses</b> : zéro dérive, un changement de tempo à la molette est suivi instantanément, le calage reste collé au compteur affiché (sinon secours au minuteur). <b>🎛 Transport clavier</b> : FA Start → séquence lancée depuis l'accord 1 pile sur le temps 1 ; FB Continue → reprise de la séquence arrêtée (accord interrompu rejoué) ; FC Stop → arrêt (notes OFF). <b>Saisie multi-lignes</b> : les accords OBLIGATOIREMENT entre <code>| … |</code> ; une ligne sans <code>|</code> = <b>titre de section</b> (non joué) ; <code>//</code> = commentaire ; <code>||</code> ouvre un bloc de répétition, <code>|| x2</code> le referme et le joue 2 fois ; l'accord en cours est surligné en violet pendant la lecture. Voir <b>❓ Aide</b> ci-dessous pour tous les types d'accords. <b>🎵 Morceaux</b> : sélectionner un morceau charge sa séquence et <b>envoie sa config au KN2000</b> (tempo, rythme, APC, sons, volumes — aucun rappel Panel Memory : la config vit dans la page, morceau par morceau) ; <b>💾 Sauver morceau</b> capture la séquence affichée + les réglages COURANTS du clavier (lecture panel façon Panel Console) ; ⬇️ Export / ⬆️ Import pour tout emporter en JSON.</div>
+    <div class="hint">▶ Démarrer : (1) tempo imposé au clavier (trame TMP) ; (2) armement Synchro&Break ; (3) séquence — <b>si l'horloge F8 tourne, les accords sont pilotés par le COMPTEUR de pulses</b> : zéro dérive, un changement de tempo à la molette est suivi instantanément, le calage reste collé au compteur affiché (sinon secours au minuteur). <b>🎛 Transport clavier</b> : FA Start → séquence lancée depuis l'accord 1 pile sur le temps 1 ; FB Continue → reprise de la séquence arrêtée (accord interrompu rejoué) ; FC Stop → arrêt (notes OFF). <b>Saisie multi-lignes</b> : les accords OBLIGATOIREMENT entre <code>| … |</code> ; une ligne sans <code>|</code> = <b>titre de section</b> (non joué) ; <code>//</code> = commentaire ; <code>||</code> ouvre un bloc de répétition, <code>|| x2</code> le referme et le joue 2 fois ; la MESURE en cours est surlignée en violet directement dans la zone de saisie pendant la lecture. Voir <b>❓ Aide</b> ci-dessous pour tous les types d'accords. <b>🎵 Morceaux</b> : sélectionner un morceau charge sa séquence et <b>envoie sa config au KN2000</b> (tempo, rythme, APC, sons, volumes — aucun rappel Panel Memory : la config vit dans la page, morceau par morceau) ; <b>💾 Sauver morceau</b> capture la séquence affichée + les réglages COURANTS du clavier (lecture panel façon Panel Console) ; ⬇️ Export / ⬆️ Import pour tout emporter en JSON.</div>
   </div>
 
   <details>
@@ -280,26 +279,35 @@ function chordLabel(c) { return c ? (NOTE_NAMES[c.root] + c.type) : "NC"; }
 
 let lastDisp = []; // structure d'affichage de la séquence chargée (titres + accords, blocs expansés)
 // ---------- Affichage de la séquence chargée (titres + accords) & surlignage de l'accord en cours ----------
-let lastMark = null;
-function renderSeq(disp) {
-  const el = document.getElementById("prog");
-  el.innerHTML = "";
-  for (const it of disp) {
-    if (it.t === "title") { const h = document.createElement("div"); h.className = "secTitle"; h.textContent = it.text; el.appendChild(h); }
-    else { const s = document.createElement("span"); s.className = "chordCell"; s.id = "ch" + it.i; s.textContent = (it.chord ? chordLabel(it.chord) : "NC") + (it.beats > 1 ? "×" + it.beats : ""); el.appendChild(s); }
+let curRange = null; // v0.33 : plage [début, fin] de la mesure en cours dans le texte de la zone de saisie
+function mirrorRender() { // v0.33 : calque miroir — mêmes métriques que la textarea, texte transparent, bande violette sur la mesure en cours
+  const ta = document.getElementById("progInput");
+  const mir = document.getElementById("mirror");
+  const txt = ta.value;
+  mir.textContent = "";
+  if (!curRange || curRange[0] < 0 || curRange[0] >= curRange[1] || curRange[1] > txt.length) {
+    mir.appendChild(document.createTextNode(txt));
+  } else {
+    const sp = document.createElement("span");
+    sp.className = "mhl";
+    sp.textContent = txt.slice(curRange[0], curRange[1]);
+    mir.appendChild(document.createTextNode(txt.slice(0, curRange[0])));
+    mir.appendChild(sp);
+    mir.appendChild(document.createTextNode(txt.slice(curRange[1])));
   }
+  mir.scrollTop = ta.scrollTop; // suit le défilement de la zone d'édition
 }
-function markChord(i) { // change la couleur de l'accord en cours pendant la lecture
-  if (lastMark) { lastMark.classList.remove("on"); lastMark = null; }
-  const el = document.getElementById("ch" + i);
-  if (el) { el.classList.add("on"); lastMark = el; }
+function markChord(i) { // v0.33 : surligne LA MESURE ENTIÈRE de l'accord en cours, directement dans la zone de saisie
+  const ev = (i >= 0 && seqList && i < seqList.length) ? seqList[i] : null;
+  curRange = (ev && ev.mRange) ? ev.mRange.slice() : null;
+  mirrorRender();
 }
 function loadSeq() { // parse + cum + rendu — appelé par ▶ Démarrer ET par la saisie
   const seq = parseSeq();
-  if (!seq) { document.getElementById("prog").innerHTML = ""; return null; }
+  if (!seq) { curRange = null; mirrorRender(); return null; }
   let cum = 0; seq.forEach(s => { s.cum = cum; cum += s.beats; }); seqTotalBeats = cum;
   seqList = seq;
-  renderSeq(lastDisp);
+  mirrorRender();
   log("📋 Séquence chargée : " + seq.length + " événement(s), " + cum + " temps — prête pour ▶ Démarrer ou le transport du clavier (FA Start).", "info");
   return seq;
 }
@@ -319,7 +327,9 @@ function parseSeq() {
       disp.push(it);
     }
   };
-  for (const raw of text.split(/\r?\n/)) {
+  const lines = []; let pos = 0; // v0.33 : offset de chaque ligne dans le texte complet (pour situer les mesures dans la zone d'édition)
+  for (const raw of text.split(/\r?\n/)) { lines.push([raw, pos]); pos += raw.length; if (pos < text.length) pos += (text[pos] === "\r" && text[pos + 1] === "\n") ? 2 : 1; }
+  for (const [raw, off] of lines) {
     const line = raw.trim();
     if (!line || line.startsWith("//")) continue;
     const mk = line.match(/^(\|\||!!)\s*(?:[x×]\s*(\d+))?$/);
@@ -338,7 +348,21 @@ function parseSeq() {
     if (/[|!]/.test(line)) {
       const evs = parseGridText(line, true);
       if (!evs) { log("Ligne de grille non reconnue : \"" + line + "\"", "ko"); return null; }
-      for (const e of evs) flush({ t: "ev", chord: e.chord, beats: e.beats, label: e.label });
+      // v0.33 : plage de CHAQUE mesure dans le texte brut → surlignage de la mesure en cours dans la zone de saisie
+      const lineStart = off + (raw.length - raw.trimStart().length);
+      const cleanL = line.replace(/\/\/.*$/, "");
+      const t2 = cleanL.replace(/\d*[|!]\d*/g, "|").replace(/:+/g, ""); // MÊME transformation que parseGridText → mêmes mesures dans le même ordre
+      const bars = []; for (let k = 0; k < cleanL.length; k++) if (cleanL[k] === "|" || cleanL[k] === "!") bars.push(k);
+      const parts = t2.split(/[|!]/);
+      const mRanges = []; // mesure i : du barreau ouvrant au barreau fermant INCLUS
+      for (let j = 0; j < parts.length; j++) {
+        if (!parts[j].trim().length) continue;
+        mRanges.push([j === 0 ? 0 : bars[j - 1], j < bars.length ? bars[j] + 1 : cleanL.length]);
+      }
+      for (const e of evs) {
+        const r = (e.mIdx !== undefined && e.mIdx < mRanges.length) ? mRanges[e.mIdx] : null;
+        flush({ t: "ev", chord: e.chord, beats: e.beats, label: e.label, mRange: r ? [lineStart + r[0], lineStart + r[1]] : [lineStart, lineStart + line.length] });
+      }
       continue;
     }
     flush({ t: "title", text: line });
@@ -356,11 +380,11 @@ function parseGridText(raw, quiet) {
   const t = raw.replace(/\/\/.*$/gm, "").replace(/\d*[|!]\d*/g, "|").replace(/:+/g, "");
   const measures = t.split(/[|!]/).map(m => m.trim()).filter(m => m.length);
   const markers = []; let totalBeats = 0, prevCells = null, lastChord = null;
-  for (const m of measures) {
+  measures.forEach((m, mi) => { // v0.33 : mi = index de la mesure (pour le surlignage dans la zone d'édition)
     let cells = m.split(/\s+/).filter(x => x.length);
     let expected = null;
     if (cells.length && /^\d+\/\d+$/.test(cells[0])) { expected = parseInt(cells[0]); cells.shift(); }
-    if (cells.length === 1 && cells[0] === "%") { if (prevCells) cells = prevCells.slice(); else continue; }
+    if (cells.length === 1 && cells[0] === "%") { if (prevCells) cells = prevCells.slice(); else return; }
     prevCells = cells;
     const measureLen = expected !== null ? expected : 4;
     if (cells.length > measureLen) cells = cells.slice(0, measureLen);
@@ -368,33 +392,33 @@ function parseGridText(raw, quiet) {
     for (const cell of cells) {
       const beat = totalBeats;
       if (cell === ".") { /* tenue de l'accord précédent */ }
-      else if (cell === "/") markers.push({ beat, kind: "re", label: "/" });
-      else if (cell === "%") markers.push({ beat, kind: "re", label: "%" }); // v0.31 : reprise de l'accord précédent en milieu de mesure (comme "/")
-      else if (/^nc$/i.test(cell)) markers.push({ beat, kind: "nc", label: "NC" });
+      else if (cell === "/") markers.push({ beat, kind: "re", label: "/", mIdx: mi });
+      else if (cell === "%") markers.push({ beat, kind: "re", label: "%", mIdx: mi }); // v0.31 : reprise de l'accord précédent en milieu de mesure (comme "/")
+      else if (/^nc$/i.test(cell)) markers.push({ beat, kind: "nc", label: "NC", mIdx: mi });
       else if (cell.includes("~")) {
         const parts = cell.split("~").filter(x => x.length);
         parts.forEach((pc, k) => {
           const c = parseChord(normChord(pc));
           if (!c) { log("Cellule non reconnue : \"" + pc + "\"", "ko"); return; }
-          markers.push({ beat: beat + k / parts.length, kind: "chord", c, label: pc });
+          markers.push({ beat: beat + k / parts.length, kind: "chord", c, label: pc, mIdx: mi });
         });
       } else {
         const c = parseChord(normChord(cell));
         if (!c) { log("Cellule non reconnue : \"" + cell + "\"", "ko"); return; }
-        markers.push({ beat, kind: "chord", c, label: cell });
+        markers.push({ beat, kind: "chord", c, label: cell, mIdx: mi });
       }
       totalBeats++;
     }
-  }
+  });
   const seq = [];
   markers.forEach((mk, i) => {
     const next = markers[i + 1];
     let dur = (next ? next.beat : totalBeats) - mk.beat;
     if (dur <= 0) dur = 1;
     const beats = Math.max(0.5, Math.round(dur * 2) / 2); // arrondi à la croche
-    if (mk.kind === "chord") { lastChord = mk.c; seq.push({ chord: mk.c, beats, label: mk.label }); }
-    else if (mk.kind === "re") seq.push({ chord: lastChord, beats, label: "/" });
-    else seq.push({ chord: null, beats, label: "NC" });
+    if (mk.kind === "chord") { lastChord = mk.c; seq.push({ chord: mk.c, beats, label: mk.label, mIdx: mk.mIdx }); }
+    else if (mk.kind === "re") seq.push({ chord: lastChord, label: "/", mIdx: mk.mIdx, beats });
+    else seq.push({ chord: null, beats, label: "NC", mIdx: mk.mIdx });
   });
   if (!quiet) log("Grille décodée : " + measures.length + " mesure(s), " + totalBeats + " temps — " + seq.length + " événement(s).", "info");
   return seq;
@@ -745,6 +769,8 @@ document.getElementById("stopPlay").onclick = () => {
 // La séquence est chargée dès la saisie (sans attendre ▶ Démarrer) : le transport FA/FB/FC du
 // clavier peut alors la lancer directement. ▶ Démarrer reste le mode complet (tempo TMP + Synchro&Break).
 document.getElementById("progInput").addEventListener("change", () => { loadSeq(); });
+document.getElementById("progInput").addEventListener("input", () => { mirrorRender(); }); // v0.33 : le miroir épouse le texte en cours d'édition
+document.getElementById("progInput").addEventListener("scroll", () => { document.getElementById("mirror").scrollTop = document.getElementById("progInput").scrollTop; });
 
 // ══════════ v0.32 — MORCEAUX : liste, sélection, sauvegarde séquence + réglages panel ══════════
 // Principe (précision d'Yves) : PAS de rappel Panel Memory — la page CONSERVE le paramétrage
@@ -908,6 +934,7 @@ renderSongs();
 if (curSongId && songById(curSongId).seq) selectSong(curSongId, false); // affiche la séquence du 1er morceau, sans envoi au chargement
 
 initMidi();
+mirrorRender(); // v0.33 : le calque miroir démarre synchronisé avec la séquence démo
 </script>
 </body>
 </html>
