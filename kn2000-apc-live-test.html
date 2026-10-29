@@ -30,7 +30,7 @@
 </head>
 <body>
 <header>
-  <span><b>KN2000 APC Live Test</b> v0.10 — voie directe : accords MIDI temps réel, zéro sysex à stocker</span>
+  <span><b>KN2000 APC Live Test</b> v0.11 — voie directe : accords MIDI temps réel, zéro sysex à stocker</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
   <button id="resetMidi">↻ Réinit. MIDI</button>
@@ -497,7 +497,7 @@ document.getElementById("play").onclick = () => {
   });
   playTimers.push(setTimeout(() => log("=== Fin de la progression ===", "info"), t + 100));
 };
-document.getElementById("stopPlay").onclick = () => { clearPlay(); chordOff(); syncEvents = null; syncArmed = false; sbDisarm(null); if (masterTimer) { clearInterval(masterTimer); masterTimer = null; if (midiOut) midiOut.send([0xFC]); } log("Progression stoppée, notes OFF.", "info"); };
+document.getElementById("stopPlay").onclick = () => { clearPlay(); chordOff(); syncEvents = null; syncArmed = false; sbDisarm(null); sbStop(null); if (masterTimer) { clearInterval(masterTimer); masterTimer = null; if (midiOut) midiOut.send([0xFC]); } log("Progression stoppée, notes OFF.", "info"); };
 
 document.getElementById("playSync").onclick = () => {
   // Valide la grille tout de suite, mais n'arme la lecture que sur le prochain MIDI Start
@@ -518,11 +518,25 @@ function startSbPlayback() {
   const ev = buildSyncEvents();
   if (!ev) return;
   clearPlay(); chordOff();
-  syncEvents = ev; syncIdx = 1;
-  const first = syncEvents[0];
-  if (first && !first.end) chordOn(first.chord); else syncIdx = 0;
+  sbStop(null);
   sbDisarm(null);
-  log("🚀 Synchro&Break : premier accord envoyé — le rythme (Synchro Start du KN2000) démarre et la suite suit l'horloge MIDI.", "ok");
+  sbSeq = ev; sbIdx = 0;
+  log("🚀 Synchro&Break : départ déclenché par la note jouée — accord 1 envoyé, la suite suit le tempo " + (measuredBpm ? "TMP ♩" + measuredBpm : "BPM manuel") + " (recalculé à chaque accord).", "ok");
+  sbPlayChord();
+}
+let sbTimer = null, sbSeq = null, sbIdx = 0;
+function sbStop(msg) {
+  if (sbTimer) { clearTimeout(sbTimer); sbTimer = null; }
+  if (msg) log(msg, "info");
+  sbSeq = null;
+}
+function sbPlayChord() {
+  const e = sbSeq && sbSeq[sbIdx];
+  if (!e || e.end) { chordOff(); sbStop("=== Fin de la progression (Synchro&Break) ==="); return; }
+  chordOn(e.chord);
+  const bpm = measuredBpm || parseFloat(document.getElementById("bpmMan").value) || 120;
+  sbIdx++;
+  sbTimer = setTimeout(sbPlayChord, e.chord.beats * 60000 / bpm);
 }
 sbBtn.onclick = () => {
   if (sbArmed) { sbDisarm("Synchro&Break désarmé."); return; }
