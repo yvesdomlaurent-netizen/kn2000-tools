@@ -30,7 +30,7 @@
 </head>
 <body>
 <header>
-  <span><b>KN2000 APC Live Test</b> v0.11 — voie directe : accords MIDI temps réel, zéro sysex à stocker</span>
+  <span><b>KN2000 APC Live Test</b> v0.12 — voie directe : accords MIDI temps réel, zéro sysex à stocker</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
   <button id="resetMidi">↻ Réinit. MIDI</button>
@@ -113,7 +113,7 @@
 
     <h3>🎼 Test 2 — progression d'accords</h3>
     <div class="row">
-      <input class="grid-input" id="progInput" value="C4 F2 G2 C4" spellcheck="false">
+      <input class="grid-input" id="progInput" value="| C . . . | Am . . . | F . . . | G7 . . . |" spellcheck="false">
     </div>
     <div class="row">
       <button id="play">▶ Jouer (minuteur libre, BPM mesuré sinon manuel)</button>
@@ -122,7 +122,7 @@
       <button id="stopPlay">■ Stop</button>
     </div>
     <div class="hint">Synchro&Break : arme la page, puis <b>joue une note au clavier</b> (avec SYNCHRO START activé au panneau du KN2000) — le premier accord part, le rythme démarre, et la grille suit l'horloge.</div>
-    <div class="hint">Format : <code>Accord+temps-de-noires</code>. Types : C, Cm, C7, CM7, Cm7, Cm7b5, Cdim, Caug, C6, Csus4, C7sus4, CM7b5, CmM7, C7#5, Cmb5, C6… Ex.: <code>Cm4 F7-2 Gm7-2 C4</code></div>
+    <div class="hint">2 formats acceptés : <b>tokens</b> <code>C4 F7-2 Gm7-2</code> (accord + noires) ou <b>grille ChordPro/JJazzLab</b> <code>| Am6 . . . | D7 . . . |</code> / <code>! Bb7 ! D7#5 !</code> — <code>.</code> tenue, <code>/</code> rejouer, <code>%</code> répète la mesure, <code>NC</code> silence, <code>~</code> plusieurs accords/cellule, <code>| 3/4 B7 |</code> chiffrage. Types : C, Cm, C7, CM7/7M, Cm7, Cm7b5, Cdim, Caug, C6, Csus4…</div>
     <div class="hint" id="prog" style="margin-top:4px"></div>
 
   </div>
@@ -193,23 +193,88 @@ function measureBeatInfo() {
 }
 
 function chordOn(c) {
+  if (!c) { chordOff(); log("♪ " + measureBeatInfo() + " — silence (NC)", "info"); return; }
   const notes = chordNotes(c, parseInt(document.getElementById("oct").value));
   chordOff();
   notes.forEach(n => noteOn(chChord(), n));
-  log("♪ " + measureBeatInfo() + " — accord : " + notes.map(n => ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"][n % 12].replace("#","♯") + (Math.floor(n/12)-1)).join(" "), "info");
+  log("♪ " + measureBeatInfo() + " — accord : " + notes.map(n => NOTE_NAMES[n % 12] + (Math.floor(n/12)-1)).join(" "), "info");
 }
 
-function buildSyncEvents() {
-  const toks = document.getElementById("progInput").value.trim().split(/\s+/);
-  const seq = [];
+// ---------- Analyse de la progression : 2 formats ----------
+// (1) tokens compacts : C4 Am4 F7-2 Gm7-2  (durée en noires)
+// (2) grille ChordPro/JJazzLab : | Am6 . . . | D7 . . . |  ou  ! Bb7 ! D7#5 !
+//     . = tenue, / = rejouer l'accord, % = répète la mesure, NC = silence, ~ = plusieurs accords/cellule, | 3/4 X | = chiffrage
+function normChord(tok) {
+  return tok.replace(/7M/, "M7").replace(/min7/, "m7").replace(/min/, "m").replace(/maj7/, "M7").replace(/maj/, "").replace(/ø/, "m7b5").replace(/°/, "dim");
+}
+const NOTE_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+function chordLabel(c) { return c ? (NOTE_NAMES[c.root] + c.type) : "NC"; }
+
+function parseSeq() {
+  const text = document.getElementById("progInput").value.trim();
+  if (/[|!]/.test(text)) return parseGridText(text);
+  const toks = text.split(/\s+/), seq = [];
   for (const t of toks) {
     const c = parseChord(t);
     if (!c) { log("Token non reconnu : \"" + t + "\"", "ko"); return null; }
-    seq.push(c);
+    seq.push({ chord: c, beats: c.beats, label: t });
   }
+  return seq;
+}
+
+function parseGridText(raw) {
+  const t = raw.replace(/\/\/.*$/gm, "").replace(/\d*[|!]\d*/g, "|").replace(/:+/g, "");
+  const measures = t.split(/[|!]/).map(m => m.trim()).filter(m => m.length);
+  const markers = []; let totalBeats = 0, prevCells = null, lastChord = null;
+  for (const m of measures) {
+    let cells = m.split(/\s+/).filter(x => x.length);
+    let expected = null;
+    if (cells.length && /^\d+\/\d+$/.test(cells[0])) { expected = parseInt(cells[0]); cells.shift(); }
+    if (cells.length === 1 && cells[0] === "%") { if (prevCells) cells = prevCells.slice(); else continue; }
+    prevCells = cells;
+    const measureLen = expected !== null ? expected : 4;
+    if (cells.length > measureLen) cells = cells.slice(0, measureLen);
+    while (cells.length < measureLen) cells.push(".");
+    for (const cell of cells) {
+      const beat = totalBeats;
+      if (cell === ".") { /* tenue de l'accord précédent */ }
+      else if (cell === "/") markers.push({ beat, kind: "re", label: "/" });
+      else if (/^nc$/i.test(cell)) markers.push({ beat, kind: "nc", label: "NC" });
+      else if (cell.includes("~")) {
+        const parts = cell.split("~").filter(x => x.length);
+        parts.forEach((pc, k) => {
+          const c = parseChord(normChord(pc));
+          if (!c) { log("Cellule non reconnue : \"" + pc + "\"", "ko"); return; }
+          markers.push({ beat: beat + k / parts.length, kind: "chord", c, label: pc });
+        });
+      } else {
+        const c = parseChord(normChord(cell));
+        if (!c) { log("Cellule non reconnue : \"" + cell + "\"", "ko"); return; }
+        markers.push({ beat, kind: "chord", c, label: cell });
+      }
+      totalBeats++;
+    }
+  }
+  const seq = [];
+  markers.forEach((mk, i) => {
+    const next = markers[i + 1];
+    let dur = (next ? next.beat : totalBeats) - mk.beat;
+    if (dur <= 0) dur = 1;
+    const beats = Math.max(0.5, Math.round(dur * 2) / 2); // arrondi à la croche
+    if (mk.kind === "chord") { lastChord = mk.c; seq.push({ chord: mk.c, beats, label: mk.label }); }
+    else if (mk.kind === "re") seq.push({ chord: lastChord, beats, label: "/" });
+    else seq.push({ chord: null, beats, label: "NC" });
+  });
+  log("Grille décodée : " + measures.length + " mesure(s), " + totalBeats + " temps — " + seq.length + " événement(s).", "info");
+  return seq;
+}
+
+function buildSyncEvents() {
+  const seq = parseSeq();
+  if (!seq) return null;
   const ev = [];
   let p = 0;
-  seq.forEach((c, i) => { ev.push({ p, chord: c, tok: toks[i] }); p += c.beats * ppq(); });
+  seq.forEach((s, i) => { ev.push({ p, chord: s.chord, tok: s.label }); p += s.beats * ppq(); });
   ev.push({ p, end: true });
   return ev;
 }
@@ -336,7 +401,7 @@ const CHORD_TYPES = {
 const ROOTS = { C:0, "C#":1, Db:1, D:2, "D#":3, Eb:3, E:4, F:5, "F#":6, Gb:6, G:7, "G#":8, Ab:8, A:9, "A#":10, Bb:10, B:11 };
 function parseChord(tok) {
   // Format : ROOT[TYPE][durée-noires] ex: C4, Fm7-2, G7 2
-  const m = tok.match(/^([A-G][#b]?)([A-Za-z0-9#b]*?)(?:[-:]?(\d+))?$/);
+  const m = tok.match(/^([A-G][#b]?)([A-Za-z0-9#b]*)(?:[-:]?(\d+))?$/);
   if (!m) return null;
   const root = ROOTS[m[1]];
   let type = m[2], beats = m[3] ? parseInt(m[3]) : 4;
@@ -473,26 +538,21 @@ document.getElementById("play").onclick = () => {
   syncEvents = null; syncArmed = false; // éviter conflit avec la lecture synchrone
   const ch = chChord(), oct = parseInt(document.getElementById("oct").value);
   const bpm = measuredBpm || parseFloat(document.getElementById("bpmMan").value);
-  const toks = document.getElementById("progInput").value.trim().split(/\s+/);
-  const seq = [];
-  for (const t of toks) {
-    const c = parseChord(t);
-    if (!c) { log("Token non reconnu : \"" + t + "\"", "ko"); return; }
-    seq.push(c);
-  }
-  log("=== Lecture de " + seq.length + " accords @ " + bpm + " BPM (canal " + (ch + 1) + ", C" + oct + " fondamental) ===");
-  document.getElementById("prog").textContent = seq.map(c => (c.root ? ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"][c.root] : "C") + c.type + "×" + c.beats).join("  ");
+  const seq = parseSeq();
+  if (!seq) return;
+  log("=== Lecture de " + seq.length + " événement(s) @ " + bpm + " BPM (canal " + (ch + 1) + ", C" + oct + " fondamental) ===");
+  document.getElementById("prog").textContent = seq.map(s => chordLabel(s.chord) + "×" + s.beats).join("  ");
   clearPlay(); stopAllNotes(ch);
   const beatMs = 60000 / bpm;
   let t = 0;
-  seq.forEach((c, i) => {
-    const notes = chordNotes(c, oct);
+  seq.forEach((s, i) => {
+    const notes = s.chord ? chordNotes(s.chord, oct) : null;
     playTimers.push(setTimeout(() => {
-      log("♪ Accord " + (i + 1) + " : " + hex(notes) + " (" + toks[i] + ")", "info");
-      notes.forEach(n => noteOn(ch, n));
+      if (notes) { log("♪ Accord " + (i + 1) + " : " + hex(notes) + " (" + s.label + ")", "info"); notes.forEach(n => noteOn(ch, n)); }
+      else log("♪ " + (i + 1) + " : silence (" + s.label + ")", "info");
     }, t));
-    const dur = c.beats * beatMs;
-    playTimers.push(setTimeout(() => notes.forEach(n => noteOff(ch, n)), t + dur - Math.min(60, dur * 0.05)));
+    const dur = s.beats * beatMs;
+    playTimers.push(setTimeout(() => notes && notes.forEach(n => noteOff(ch, n)), t + dur - Math.min(60, dur * 0.05)));
     t += dur;
   });
   playTimers.push(setTimeout(() => log("=== Fin de la progression ===", "info"), t + 100));
