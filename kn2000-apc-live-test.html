@@ -30,7 +30,8 @@
 </head>
 <body>
 <header>
-  <span><b>KN2000 APC Live Test</b> v0.17 — Stop : FC temps réel (carte d'implémentation) + boutons FA/FB/FC et log TX visible</span>
+  <span><b>KN2000 APC Live Test</b> v0.18 — Synchro&Break persistant (armé une fois, PLUS JAMAIS désarmé par l'outil) + badge d'état</span>
+  &nbsp; <span id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
   <button id="resetMidi">↻ Réinit. MIDI</button>
@@ -96,6 +97,12 @@
       <button class="apcMode" data-v="3">Pianist</button>
       <span class="hint">sysex : 00=Off, 01=OneFinger, 02=Fingered, 03=Pianist</span>
     </div>
+    <div class="row">
+      <button id="synOn">⚔ Armer Synchro&Break (20 60 08 = 01)</button>
+      <button id="synRead">🔍 Lire l'état (DRQ)</button>
+      <button id="synOff" title="Urgence seulement — le KN2000 part en vrac si on désarme en cours de route">Désarmer (08 = 00)</button>
+    </div>
+    <div class="hint">⚔ Synchro&Break : armé UNE fois (badge en haut), l'outil ne le désarme plus jamais au Stop. Après un reset du clavier, clique « Armer » (ou ▶ Démarrer le réarme). « Lire l'état » envoie un DRQ 20 60 08.</div>
 
     <h3>🎬 Déclenchements (CC 82, canal Control = 4)</h3>
     <div class="row">
@@ -120,7 +127,7 @@
       <button id="stopPlay">■ Stop</button>
       <label><input type="checkbox" id="repeat"> 🔁 Repeat (boucle tant que cochée ; décocher = jouer jusqu'à la fin puis stop)</label>
     </div>
-    <div class="hint">▶ Démarrer : (1) DRQ 20 00 25 → tempo lu du clavier ; (2) ITW 20 60 08 = 01 → le KN2000 se met en attente (Synchro&Break) ; (3) la séquence part au tempo lu — le premier accord (Note On ch8) fait démarrer le clavier. Le tempo est suivi en live (trame TMP) : la molette du clavier reste utilisable en cours de lecture.</div>
+    <div class="hint">▶ Démarrer : (1) DRQ 20 00 25 → tempo lu du clavier ; (2) ITW 20 60 08 = 01 envoyé SEULEMENT si le Synchro n'est pas déjà armé (badge ⚔ en haut) ; (3) la séquence part au tempo lu — le premier accord (Note On ch8) fait démarrer le clavier. Le tempo est suivi en live (trame TMP) : la molette du clavier reste utilisable en cours de lecture. Au Stop, le Synchro reste armé.</div>
     <div class="hint">2 formats acceptés : <b>tokens</b> <code>C4 F7-2 Gm7-2</code> (accord + noires) ou <b>grille ChordPro/JJazzLab</b> <code>| Am6 . . . | D7 . . . |</code> / <code>! Bb7 ! D7#5 !</code> — <code>.</code> tenue, <code>/</code> rejouer, <code>%</code> répète la mesure, <code>NC</code> silence, <code>~</code> plusieurs accords/cellule, <code>| 3/4 B7 |</code> chiffrage. Types : C, Cm, C7, CM7/7M, Cm7, Cm7b5, Cdim, Caug, C6, Csus4…</div>
     <div class="hint" id="prog" style="margin-top:4px"></div>
 
@@ -181,6 +188,14 @@ document.getElementById("resetMidi").onclick = () => initMidi();
 // ---------- Horloge MIDI : lecture du tempo (F8) ----------
 const bpmEl = document.getElementById("bpm"), bpmSrc = document.getElementById("bpmSrc");
 let lastF8 = 0, f8Times = [], measuredBpm = null;
+let synchroArmed = null; // null = inconnu, true = ON (20 60 08 = 01), false = OFF
+function synBadge() {
+  const b = document.getElementById("synBadge");
+  const v = synchroArmed;
+  b.textContent = v === true ? "⚔ Synchro : ON" : (v === false ? "⚔ Synchro : OFF" : "⚔ Synchro : ?");
+  b.style.color = v === true ? "#0a7a0a" : (v === false ? "#c00" : "#555");
+}
+synBadge();
 let pulse = 0;
 const activeNotes = new Set();
 function ppq() { return Math.max(1, parseInt(document.getElementById("ppq").value) || 24); }
@@ -331,7 +346,7 @@ function onMidiMsg(ev) {
     let extra = "";
     if (adr === "20 04 02") extra = raw[0] === 1 ? " → temps réel ON (F8 émis)" : " → temps réel OFF (pas de F8 !)";
     if (adr === "20 04 03") extra = raw[0] === 0 ? " → Internal" : " → MIDI (suivre horloge externe)";
-    if (adr === "20 60 08") extra = raw[0] === 1 ? " → ON (Synchro&Break armé au clavier)" : " → OFF";
+    if (adr === "20 60 08") { extra = raw[0] === 1 ? " → ON (Synchro&Break armé au clavier)" : " → OFF"; synchroArmed = raw[0] === 1; synBadge(); }
     if (adr === "20 00 25" && raw.length >= 2) {
       const t1 = (raw[1] << 7) | raw[0], t2 = (raw[0] << 7) | raw[1]; // DT1 LSB + DT2 MSB (9 bits) — les 2 sens testés
       const t = (t1 >= 40 && t1 <= 300) ? t1 : ((t2 >= 40 && t2 <= 300) ? t2 : null);
@@ -490,6 +505,9 @@ document.querySelectorAll(".apcMode").forEach(b => b.onclick = () => {
   const names = { 0: "Off", 1: "OneFinger", 2: "Fingered", 3: "Pianist" };
   sendSysexParam(0x20, 0x60, 0x02, v, "APC TYPE = " + names[v]);
 });
+document.getElementById("synOn").onclick = () => { sendSysexParam(0x20, 0x60, 0x08, 1, "SYNCHRO & BREAK = ON — le KN2000 se met en attente"); synchroArmed = true; synBadge(); };
+document.getElementById("synOff").onclick = () => { sendSysexParam(0x20, 0x60, 0x08, 0, "SYNCHRO & BREAK = OFF"); synchroArmed = false; synBadge(); };
+document.getElementById("synRead").onclick = () => sendDrq(0x20, 0x60, 0x08, "SYNCHRO & BREAK (état)", 1);
 document.querySelectorAll(".cc82").forEach(b => b.onclick = () => {
   const ch = parseInt(document.getElementById("chDrums").value) - 1, v = +b.dataset.v;
   const names = { 0: "Stop", 1: "Fill In 1", 2: "Ending", 3: "Intro", 5: "Fill In 2", 7: "Count Intro" };
@@ -535,10 +553,11 @@ document.getElementById("play").onclick = () => {
   const seq = parseSeq();
   if (!seq) return;
   clearPlay(); if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; } chordOff();
-  log("=== ▶ Démarrer : (1) rqt tempo DRQ 20 00 25 ; (2) clavier en attente ITW 20 60 08 = 01 ; (3) envoi de la séquence ===", "info");
+  log("=== ▶ Démarrer : (1) rqt tempo DRQ 20 00 25 ; (2) Synchro&Break si nécessaire ; (3) envoi de la séquence ===", "info");
   document.getElementById("prog").textContent = seq.map(s => chordLabel(s.chord) + "×" + s.beats).join("  ");
   sendDrq(0x20, 0x00, 0x25, "Tempo (TMP 25)", 2);
-  sendSysexParam(0x20, 0x60, 0x08, 1, "SYNCHRO & BREAK = ON — le KN2000 se met en attente");
+  if (synchroArmed === true) log("⚔ Synchro&Break déjà ON — pas de réarmement (il reste armé au clavier).", "info");
+  else { sendSysexParam(0x20, 0x60, 0x08, 1, "SYNCHRO & BREAK = ON — le KN2000 se met en attente"); synchroArmed = true; synBadge(); }
   seqQueue = seq; seqIdx = 0;
   playTimers.push(setTimeout(() => {
     log("▶ Séquence lancée @ ♩" + curBpm() + " — le premier accord (Note On ch" + (chChord() + 1) + ") fait démarrer le clavier. Tempo suivi en live (TMP)." + (document.getElementById("repeat").checked ? "  🔁 Repeat ON." : ""), "ok");
@@ -550,8 +569,7 @@ document.getElementById("stopPlay").onclick = () => {
   clearPlay(); if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; }
   seqQueue = null; chordOff();
   sendRhythmStop();
-  sendSysexParam(0x20, 0x60, 0x08, 0, "SYNCHRO & BREAK = OFF");
-  log("⏹ Stop — notes OFF, rythme arrêté (CC82 Stop, canal Control " + document.getElementById("chDrums").value + "), clavier désarmé (20 60 08 = 00).", "info");
+  log("⏹ Stop — notes OFF, rythme arrêté (CC82 Stop ch Control + FC). Synchro&Break LAISSÉ ON (plus de désarmement : c'est lui qui mettait le clavier en vrac).", "info");
 };
 
 initMidi();
