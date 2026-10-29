@@ -5,47 +5,69 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>KN2000 APC Live Test</title>
 <style>
-  html, body { height: 100%; margin: 0; }
-  body { display: flex; flex-direction: column; font-family: system-ui, sans-serif; background: #fafafa; }
-  header { border-bottom: 1px solid #ddd; padding: 6px 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; background: #222; color: #eee; }
-  header label { color: #ddd; font-size: 12px; }
+  html, body { margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #fafafa; color: #222; max-width: 980px; margin: 0 auto; padding: 0 10px 16px; }
+  header { background: #222; color: #eee; padding: 8px 12px; margin: 0 -10px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   header b { color: #ffd; }
+  header .hint, header label { color: #ccc; font-size: 12px; }
   header select, header button { font: inherit; }
-  main { flex: 1; display: flex; overflow: hidden; }
-  #log { flex: 1; overflow-y: auto; padding: 6px 10px; font-family: monospace; font-size: 12px; }
-  #log p { margin: 0; white-space: pre-wrap; word-break: break-all; }
-  #log .ok { color: #0a7d18; } #log .ko { color: #c01818; } #log .info { color: #555; } #log .clock { color: #7a4fd0; }
-  #side { width: 360px; border-left: 1px solid #ddd; padding: 10px; overflow-y: auto; font-size: 13px; background: #fff; }
-  #side h3 { margin: 14px 0 6px; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 2px; }
-  #side h3:first-child { margin-top: 0; }
-  button { padding: 4px 10px; cursor: pointer; margin: 2px 2px; }
+  button { padding: 4px 10px; cursor: pointer; margin: 2px; }
   label { display: inline-block; font-size: 12px; color: #333; margin: 2px 6px 2px 0; }
   input[type=number] { width: 60px; }
-  #bpm { font-size: 26px; font-weight: bold; color: #7a4fd0; font-family: monospace; }
-  .row { margin: 4px 0; }
-  .grid-input { width: 100%; box-sizing: border-box; font-family: monospace; }
+  .row { margin: 6px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
   .hint { font-size: 11px; color: #888; }
-  #prog { white-space: nowrap; }
+  .grid-input { width: 100%; box-sizing: border-box; font-family: monospace; padding: 8px; font-size: 15px; }
+  #live { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 14px; }
+  .bigscreen { display: flex; flex-wrap: wrap; align-items: center; gap: 28px; padding-bottom: 10px; border-bottom: 1px solid #eee; margin-bottom: 10px; }
+  #pos { font-size: 42px; font-weight: bold; color: #1273b0; font-family: monospace; line-height: 1.05; }
+  #bpm { font-size: 42px; font-weight: bold; color: #7a4fd0; font-family: monospace; line-height: 1.05; }
+  #prog { white-space: nowrap; font-family: monospace; font-size: 15px; color: #333; margin-top: 6px; }
+  details { margin-top: 12px; background: #fff; border: 1px solid #e3e3e3; border-radius: 8px; padding: 6px 12px; font-size: 13px; }
+  details summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+  details .row { margin: 8px 0 4px; }
+  #log { background: #0b0f13; border: 1px solid #234; border-radius: 8px; padding: 10px; height: 220px; overflow-y: auto; font-family: monospace; font-size: 12px; margin-top: 14px; }
+  #log p { margin: 0; white-space: pre-wrap; word-break: break-all; }
+  #log .ok { color: #7fdba0; } #log .ko { color: #ff8a80; } #log .info { color: #9ab; } #log .clock { color: #b591ff; }
+  #logBtn.warn { background: #a33; color: #fff; }
 </style>
 </head>
 <body>
 <header>
-  <span><b>KN2000 APC Live Test</b> v0.29 — Écran MIDI-Ox : position mesure:temps:pulse COMPTÉE sur les F8 réels (FA = remise à 1:01:000) ; tempo exclusivement via la trame TMP (fini le jitter de mesure sur les intervalles F8)</span>
+  <span><b>🎼 APC Live KN2000</b> <span class="hint">v0.30 — accords pilotés par le compteur F8 (zéro dérive) ; transport du clavier (FA/FB/FC)</span></span>
   &nbsp; <span id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
   <button id="resetMidi">↻ Réinit. MIDI</button>
-  <button id="clear">🧹 Vider le log</button>
-  <label><input type="checkbox" id="rtLog"> Journal temps réel (F8/FA/FB/FC)</label>
-  <label><input type="checkbox" id="hideNotes" checked> Masquer les notes RX</label>
-  <label><input type="checkbox" id="ccLog" checked> Journal CC/PC RX</label>
-  <label><input type="checkbox" id="drumLog" checked> Journal batterie ch16</label>
+  <span style="flex:1"></span>
+  <button id="logBtn">📄 Journal</button>
+  <button id="clear">🧹 Vider</button>
 </header>
 <main>
-  <div id="log"></div>
-  <div id="side">
+  <!-- ═══════ AU CENTRE : la séquence à jouer ═══════ -->
+  <div id="live">
+    <div class="bigscreen">
+      <div id="pos" title="Position comptée sur les F8 réels (écran MIDI-Ox) — FA = remise à 1:01:000, figée à l'arrêt">— : — : ———</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div id="bpm" title="Tempo fait foi via la trame TMP (molette suivie en direct)">— BPM</div>
+        <button id="bpmUp" title="Tempo +1 → envoyé au KN2000 (trame TMP)">＋</button>
+        <button id="bpmDn" title="Tempo −1 → envoyé au KN2000 (trame TMP)">－</button>
+      </div>
+    </div>
+    <div id="bpmSrc" class="hint">Tempo : IMPOSÉ au clavier (trame TMP) au chargement et au démarrage ; mis à jour si le KN2000 annonce un changement (trame TMP) ; boutons ± pour ajuster en direct.</div>
+    <div class="row"><input class="grid-input" id="progInput" value="| C . . . | Am . . . | F . . . | G7 . . . |" spellcheck="false"></div>
+    <div class="row">
+      <button id="play">▶ Démarrer</button>
+      <button id="stopPlay">■ Stop</button>
+      <label title="Boucle tant que cochée ; décocher = jouer jusqu'à la fin puis stop"><input type="checkbox" id="repeat"> 🔁 Repeat</label>
+      <label title="▶ Démarrer attend le prochain temps 1 (compteur F8 si l'horloge tourne ; sinon Caler)"><input type="checkbox" id="syncStart"> 🎯 Départ calé</label>
+      <label title="FA Start → lance la séquence (accord 1 calé sur le temps 1) ; FB Continue → reprend ; FC Stop → arrête"><input type="checkbox" id="xport" checked> 🎛 Transport clavier</label>
+    </div>
+    <div class="hint" id="prog"></div>
+    <div class="hint">▶ Démarrer : (1) tempo imposé au clavier (trame TMP) ; (2) armement Synchro&Break ; (3) séquence — <b>si l'horloge F8 tourne, les accords sont pilotés par le COMPTEUR de pulses</b> : zéro dérive, un changement de tempo à la molette est suivi instantanément, le calage reste collé au compteur affiché (sinon secours au minuteur). <b>🎛 Transport clavier</b> : FA Start → séquence lancée depuis l'accord 1 pile sur le temps 1 ; FB Continue → reprise de la séquence arrêtée (accord interrompu rejoué) ; FC Stop → arrêt (notes OFF). <b>Formats</b> : tokens <code>C4 F7-2 Gm7-2</code> ou grille <code>| Am6 . . . | D7 . . . |</code> / <code>! Bb7 ! D7#5 !</code> — <code>.</code> tenue, <code>/</code> rejouer, <code>%</code> répète la mesure, <code>NC</code> silence, <code>~</code> plusieurs accords/cellule, <code>| 3/4 B7 |</code> chiffrage. Types : C, Cm, C7, CM7/7M, Cm7, Cm7b5, Cdim, Caug, C6, Csus4…</div>
+  </div>
 
-    <h3>⚙️ Canaux & tempo</h3>
+  <details>
+    <summary>⚙️ Canaux & réglages</summary>
     <div class="row">
       <label>Canal accords (cible) <input type="number" id="chChord" value="8" min="1" max="16" title="Basic Channel de la part CHORD = candidat n°1"></label>
       <label>Canal Control CC82 <input type="number" id="chDrums" value="4" min="1" max="16" title="Réglage CONTROL du KN2000 = canal des CC82 (Info terrain Yves : 4)"></label>
@@ -59,35 +81,27 @@
       <label>Pulses/noire <input type="number" id="ppq" value="24" min="1" max="96"></label>
       <span class="hint">24 = standard MIDI (comptage de la position). Si la position avance 2× trop lent/vite, essaie 48 ou 12.</span>
     </div>
-    <div class="row" id="bpmRow" style="border:1px solid #ddd;border-radius:6px;padding:6px;background:#f5f0ff">
-      <div style="display:flex;align-items:center;gap:8px">
-        <div id="bpm" style="font-size:30px;font-weight:bold;color:#7a4fd0;font-family:monospace;line-height:1.1">— BPM</div>
-        <button id="bpmUp" title="Tempo +1 → envoyé au KN2000 (trame TMP)">＋</button>
-        <button id="bpmDn" title="Tempo −1 → envoyé au KN2000 (trame TMP)">－</button>
-      </div>
-      <div id="bpmSrc" class="hint">Tempo : IMPOSÉ au clavier (trame TMP) au chargement et au démarrage ; mis à jour si le KN2000 annonce un changement (trame TMP) ; boutons ± pour ajuster en direct.</div>
+  </details>
+  <details>
+    <summary>🕐 Horloge & calage (secours : Caler, trim) — temps réel 20 04 02/03</summary>
+    <div class="row">
+      <button id="caler" title="Clique AU MOMENT où tu entends le temps 1 du clavier (secours, sans rythme démarré) : l'horloge se cale sur mesure 1 temps 1">🎯 Caler maintenant</button>
+      <button id="trimMoins" title="Décale le calage de −10 ms">◀ −10 ms</button>
+      <input type="number" id="trimIn" value="0" step="5" min="-500" max="500" title="Calage fin en ms : compense ton réflexe de clic sur « Caler » (clic trop tardif = valeur négative). À ♩120, 1 pulse ≈ 21 ms.">
+      <button id="trimPlus" title="Décale le calage de +10 ms">+10 ms ▶</button>
+      <span class="hint" id="trimVal">0 ms</span>
     </div>
-    <div class="row" style="border:1px solid #ddd;border-radius:6px;padding:6px;background:#eef6ff">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <div id="pos" style="font-size:30px;font-weight:bold;color:#1273b0;font-family:monospace;line-height:1.1">— : — : ———</div>
-        <button id="caler" title="Clique AU MOMENT où tu entends le temps 1 du clavier (secours, sans rythme démarré) : l'horloge se cale sur mesure 1 temps 1">🎯 Caler maintenant</button>
-        <button id="trimMoins" title="Décale le calage de −10 ms">◀ −10 ms</button>
-        <input type="number" id="trimIn" value="0" step="5" min="-500" max="500" title="Calage fin en ms : compense ton réflexe de clic sur « Caler » (clic trop tardif = valeur négative). À ♩120, 1 pulse ≈ 21 ms.">
-        <button id="trimPlus" title="Décale le calage de +10 ms">+10 ms ▶</button>
-        <span class="hint" id="trimVal">0 ms</span>
-      </div>
-      <div class="hint">🕐 Écran MIDI-Ox : la position <b>mesure : temps : pulse</b> est COMPTÉE sur les F8 réels (24 pulses/noire) — mise à jour à chaque F8, figée quand le rythme s'arrête ; chaque FA (Start) remet le compteur à 1:01:000 (vrai temps 1). Le <b>tempo</b> fait foi via la trame TMP : affiché tel qu'annoncé par le KN2000 (molette suivie en direct), jamais mesuré sur les intervalles de F8 (ça jitter). « 🎯 Caler » (+ trim ±10 ms) reste en secours si tu lances la séquence sans rythme démarré. Coche « 🎯 Départ calé » (Test 2) pour que ▶ Démarrer attende le prochain temps 1. Le journal batterie ch16 (ci-dessus) est estampillé avec cette même position.</div>
-    </div>
-
-    <h3>🕐 Horloge & temps réel</h3>
+    <div class="hint">Position <b>mesure : temps : pulse</b> comptée sur les F8 réels, figée à l'arrêt, remise à 1:01:000 à chaque FA (vrai temps 1) ; tempo fait foi via la trame TMP. « Caler » + trim : secours pour lancer la séquence sans rythme démarré.</div>
     <div class="row">
       <button id="readRtc">🔍 Lire 20 04 02 / 03</button>
       <button id="rtcOn">⏱ Activer temps réel (02=1)</button>
       <button id="rtcOff">⏹ Désactiver (02=0)</button>
     </div>
-    <div class="hint">20 04 02 = REAL TIME COMMAND ENABLE (01 = ON). 20 04 03 = CLOCK SELECT (00=Internal, 01=MIDI) — lecture seule.<br>🎹 <b>Tempo</b> : PLUS AUCUN DRQ 20 00 25 (jamais de réponse, soupçonné de bloquer le clavier) — le tempo est IMPOSÉ par la trame TMP (F0 50 25 DT1 DT2 F7) au chargement et avant chaque démarrage (♩ du champ BPM manuel) ; si le KN2000 annonce ses changements (trame TMP), l'affichage suit.</div>
+    <div class="hint">20 04 02 = REAL TIME COMMAND ENABLE (01 = ON). 20 04 03 = CLOCK SELECT (00=Internal, 01=MIDI) — lecture seule. Plus aucun DRQ 20 00 25 (jamais de réponse) — le tempo passe par la trame TMP (F0 50 25 DT1 DT2 F7).</div>
+  </details>
 
-    <h3>🎹 Test 1 — canal de détection APC</h3>
+  <details>
+    <summary>🎹 Test 1 — canal de détection APC</summary>
     <div class="row">
       <button id="hitC">▶ Accord Do (C-E-G) sur canal cible</button>
     </div>
@@ -100,8 +114,9 @@
       <button id="sendApcIn">Envoyer (ITW)</button>
       <span class="hint">à essayer (0/1/2…) si aucun canal ne répond</span>
     </div>
-
-    <h3>🧭 Mode APC (sysex 20 60 02)</h3>
+  </details>
+  <details>
+    <summary>🧭 Mode APC & Synchro&Break (20 60 02 / 20 60 08)</summary>
     <div class="row">
       <button class="apcMode" data-v="0">Off</button>
       <button class="apcMode" data-v="1">OneFinger</button>
@@ -114,9 +129,11 @@
       <button id="synRead">🔍 Lire l'état (DRQ)</button>
       <button id="synOff" title="Urgence seulement — le KN2000 part en vrac si on désarme en cours de route">Désarmer (08 = 00)</button>
     </div>
-    <div class="hint">⚔ Synchro&Break : l'ITW `20 60 08 = 01` est envoyé à CHAQUE ▶ Démarrer (le Stop repasse l'état OFF au clavier — info terrain) ; l'outil ne le désarme jamais de son côté (le bouton « Désarmer » est pour l'urgence). « Lire l'état » envoie un DRQ 20 60 08 ; le badge en haut suit armements, Stops reçus/émis et réponses ITR.</div>
+    <div class="hint">⚔ L'ITW `20 60 08 = 01` est envoyé à CHAQUE ▶ Démarrer (le Stop repasse l'état OFF au clavier) ; l'outil ne désarme jamais de son côté (bouton « Désarmer » = urgence). Le badge suit armements, Stops et réponses ITR.</div>
+  </details>
 
-    <h3>🎬 Déclenchements (CC 82, canal Control = 4)</h3>
+  <details>
+    <summary>🎬 Déclenchements (CC 82, canal Control = 4) & messages temps réel manuels</summary>
     <div class="row">
       <button class="cc82" data-v="3">Intro</button>
       <button class="cc82" data-v="7">Count Intro</button>
@@ -129,39 +146,36 @@
       <button id="rtStop">⏹ FC Stop</button>
     </div>
     <div class="hint">CC82 sur le canal Control (ch4). FA/FB/FC = messages temps réel MIDI SANS canal — la carte d'implémentation KN2000 indique Start/Stop/Continue reçus ET émis. Tout est journalisé en « TX : … ».</div>
+  </details>
 
-    <h3>🎼 Test 2 — progression d'accords</h3>
+  <details>
+    <summary>📡 Journalisation RX (options du journal)</summary>
     <div class="row">
-      <input class="grid-input" id="progInput" value="| C . . . | Am . . . | F . . . | G7 . . . |" spellcheck="false">
+      <label><input type="checkbox" id="rtLog"> Journal temps réel (F8/FA/FB/FC)</label>
+      <label><input type="checkbox" id="hideNotes" checked> Masquer les notes RX</label>
+      <label><input type="checkbox" id="ccLog" checked> Journal CC/PC RX</label>
+      <label><input type="checkbox" id="drumLog" checked> Journal batterie ch16 (estampillé mesure:temps:pulse)</label>
     </div>
-    <div class="row">
-      <button id="play">▶ Démarrer (tempo TMP imposé → clavier en attente → séquence)</button>
-      <button id="stopPlay">■ Stop</button>
-      <label><input type="checkbox" id="repeat"> 🔁 Repeat (boucle tant que cochée ; décocher = jouer jusqu'à la fin puis stop)</label>
-      <label><input type="checkbox" id="syncStart"> 🎯 Départ calé sur la mesure (attend le prochain temps 1 de l'horloge)</label>
-      <label><input type="checkbox" id="fcStop"> FC reçu du clavier = stopper la séquence (décoché : la séquence traverse un changement de rythme/tempo)</label>
-    </div>
-    <div class="hint">▶ Démarrer : (1) tempo IMPOSÉ au clavier (trame TMP, ♩ = BPM manuel ou dernier reçu) ; (2) armement Synchro&Break ITW 20 60 08 = 01 — reconfirmé à chaque lancement car le Stop le repasse OFF ; (3) la séquence part à ce tempo — le premier accord (Note On ch8) fait démarrer le clavier. Le tempo reste suivi en live (trame TMP) : la molette du clavier reste utilisable en cours de lecture.</div>
-    <div class="hint">2 formats acceptés : <b>tokens</b> <code>C4 F7-2 Gm7-2</code> (accord + noires) ou <b>grille ChordPro/JJazzLab</b> <code>| Am6 . . . | D7 . . . |</code> / <code>! Bb7 ! D7#5 !</code> — <code>.</code> tenue, <code>/</code> rejouer, <code>%</code> répète la mesure, <code>NC</code> silence, <code>~</code> plusieurs accords/cellule, <code>| 3/4 B7 |</code> chiffrage. Types : C, Cm, C7, CM7/7M, Cm7, Cm7b5, Cdim, Caug, C6, Csus4…</div>
-    <div class="hint" id="prog" style="margin-top:4px"></div>
-
-  </div>
+  </details>
 </main>
+
+<div id="log" hidden></div>
 <script>
 "use strict";
 
-// ---------- Journal ----------
+// ---------- Journal (protocole console : replié en bas de page, bouton avec pastille rouge si erreur) ----------
 const logEl = document.getElementById("log");
+const logBtn = document.getElementById("logBtn");
 function log(msg, cls) {
   const p = document.createElement("p");
   p.className = cls || "";
   p.textContent = msg;
   logEl.appendChild(p);
   logEl.scrollTop = logEl.scrollHeight;
+  if (cls === "ko" && logEl.hidden) logBtn.classList.add("warn");
 }
-document.addEventListener("DOMContentLoaded", () => { document.getElementById("clear").onclick = () => { logEl.innerHTML = ""; }; });
-const clearBtn = document.getElementById("clear");
-if (clearBtn) clearBtn.onclick = () => { logEl.innerHTML = ""; };
+logBtn.onclick = () => { logEl.hidden = !logEl.hidden; logBtn.classList.remove("warn"); logEl.scrollTop = logEl.scrollHeight; };
+document.getElementById("clear").onclick = () => { logEl.innerHTML = ""; };
 function hex(a) { return a.map(x => x.toString(16).padStart(2, "0").toUpperCase()).join(" "); }
 
 // ---------- MIDI ----------
@@ -349,17 +363,43 @@ function onMidiMsg(ev) {
       updateBpm(t);
       lastF8At = t;
       posEl.textContent = posStr(); // écran MIDI-Ox : position mise à jour à CHAQUE F8
+      seqPump(); // envois d'accords pilotés par le COMPTEUR (v0.30)
     } else if (b === 0xFA) { // MIDI Start : repère du premier temps — CALAGE AUTO de la mesure
       log("MIDI Start (FA) — rythme lancé : compteur remis à 1:01:000, horloge CALÉE sur le vrai temps 1.", "ok");
       if (document.getElementById("rtLog").checked) log("MIDI Start (FA) — rythme lancé", "clock");
       pulse = 0; lastF8At = performance.now();
       barAnchor = performance.now() - syncTrim; // FA = début de mesure réel
       posEl.textContent = posStr();
-    } else if (b === 0xFB) { log("MIDI Continue (FB)", "clock"); }
+      // 🎛 TRANSPORT clavier : FA = (re)départ de la séquence — accord 1 calé sur CE temps 1
+      if (document.getElementById("xport").checked && seqList) {
+        if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; }
+        seqOriginBeats = null; lastStopIdx = null;
+        seqQueue = seqList; seqIdx = 0; seqOriginPulse = pulse; // pulse = 0 au FA → accord 1 pile sur le temps 1
+        log("▶ FA Start du clavier — séquence lancée depuis l'accord 1, calée sur le temps 1 ; les envois suivent le compteur F8.", "ok");
+        seqPump();
+      }
+    } else if (b === 0xFB) { // MIDI Continue : reprise de la séquence arrêtée par le dernier FC
+      if (document.getElementById("xport").checked && seqList && !seqQueue) {
+        if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; }
+        seqOriginBeats = null;
+        seqQueue = seqList;
+        const heldIdx = (lastStopIdx !== null && lastStopIdx > 0) ? lastStopIdx - 1 : -1; // accord qui tenait au Stop
+        seqIdx = heldIdx + 1; // prochain accord attendu
+        seqOriginPulse = pulse - (heldIdx >= 0 ? seqList[heldIdx].cum * ppq() : 0);
+        if (heldIdx >= 0 && heldIdx < seqList.length) chordOn(seqList[heldIdx].chord); // re-frappe l'accord interrompu
+        lastStopIdx = null;
+        log("▶ FB Continue du clavier — séquence reprise à l'événement " + (seqIdx + 1) + "/" + seqList.length + " ; grille suivie sur le compteur F8.", "ok");
+        seqPump();
+      } else log("MIDI Continue (FB)", "clock");
+    }
     else if (b === 0xFC) {
-      log("MIDI Stop (FC) — rythme arrêté (RX temps réel)" + (seqQueue ? " — le KN2000 a probablement changé de rythme/tempo" : ""), "clock");
-      if (seqQueue && document.getElementById("fcStop").checked) { chordOff(); if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; } seqQueue = null; log("Séquence locale libérée (FC reçu, case « FC reçu = stopper » cochée).", "info"); }
-      else if (seqQueue) log("▶ La séquence LOCALE CONTINUE à travers ce FC (case « FC reçu = stopper » décochée) — le tempo suivra la trame TMP et le prochain FA recalera la mesure.", "info");
+      log("MIDI Stop (FC) — rythme arrêté (RX temps réel)", "clock");
+      if (document.getElementById("xport").checked && seqQueue) {
+        lastStopIdx = seqIdx; // mémorisé pour une éventuelle reprise FB Continue
+        if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; }
+        seqQueue = null; seqOriginPulse = null; seqOriginBeats = null; chordOff();
+        log("⏹ FC Stop du clavier — séquence ARRÊTÉE à l'événement " + (lastStopIdx + 1) + " (notes OFF, séquence libérée). FB Continue la reprendra ; FA la relancera depuis l'accord 1.", "info");
+      }
       lastF8At = 0;
     }
   }
@@ -567,6 +607,10 @@ let playTimers = [];
 function clearPlay() { playTimers.forEach(clearTimeout); playTimers = []; }
 
 let seqQueue = null, seqIdx = 0, seqTimer = null;
+let seqList = null;        // dernière séquence parsée — le transport FA/FB/FC du clavier peut la (re)lancer
+let seqTotalBeats = 0;     // durée totale de la séquence en noires
+let seqOriginPulse = null; // mode compteur F8 : pulse du début de grille de la séquence (null = mode minuteur)
+let lastStopIdx = null;    // index du prochain accord attendu au moment du dernier FC (pour FB Continue)
 function sendRhythmStop() {
   const ch = parseInt(document.getElementById("chDrums").value) - 1;
   send([0xB0 | ch, 82, 0], "CC82 = Stop (canal Control " + (ch + 1) + ")");
@@ -575,6 +619,27 @@ function sendRhythmStop() {
 }
 let seqNextAt = 0; // horloge absolue du prochain accord — corrige la dérive des setTimeout en chaîne
 let seqOriginBeats = null; // si Départ calé : position en noires de la séquence sur la grille de l'horloge
+function endSeqLocal() {
+  chordOff(); sendRhythmStop(); seqQueue = null; seqOriginPulse = null; seqOriginBeats = null; lastStopIdx = null;
+  log("=== Fin de la progression — notes OFF + rythme arrêté (CC82 Stop, canal Control " + document.getElementById("chDrums").value + ") ===", "ok");
+}
+function seqPump() {
+  // v0.30 : envois d'accords PILOTÉS PAR LE COMPTEUR F8 — chaque accord part quand le compteur
+  // atteint sa position cible (cum en noires × pulses/noire + origine). Zéro dérive par
+  // construction : le tempo réel du flux F8 est suivi instantanément, calage = compteur affiché.
+  if (!seqQueue || seqOriginPulse === null) return;
+  const pp = ppq();
+  while (seqIdx < seqQueue.length && pulse >= seqOriginPulse + seqQueue[seqIdx].cum * pp) {
+    const s = seqQueue[seqIdx++]; chordOn(s.chord);
+  }
+  if (seqIdx >= seqQueue.length && pulse >= seqOriginPulse + seqTotalBeats * pp) {
+    if (document.getElementById("repeat").checked) {
+      seqOriginPulse += seqTotalBeats * pp; seqIdx = 0;
+      log("🔁 Repeat — nouveau tour calé sur le compteur F8 (aucun temps mort).", "info");
+      seqPump();
+    } else endSeqLocal();
+  }
+}
 function seqStep() {
   const s = seqQueue && seqQueue[seqIdx];
   if (!s) {
@@ -584,10 +649,7 @@ function seqStep() {
       seqStep(); // relance immédiate : aucun temps mort entre le dernier accord et le retour à l'accord 1
       return;
     }
-    chordOff();
-    sendRhythmStop();
-    seqQueue = null;
-    log("=== Fin de la progression — notes OFF + rythme arrêté (CC82 Stop, canal Control " + document.getElementById("chDrums").value + ") ===", "ok");
+    endSeqLocal();
     return;
   }
   chordOn(s.chord);
@@ -612,34 +674,62 @@ document.getElementById("play").onclick = () => {
   if (!midiOut) { log("Pas de port TX sélectionné.", "ko"); return; }
   const seq = parseSeq();
   if (!seq) return;
-  clearPlay(); if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; } chordOff(); seqNextAt = 0;
+  let cum = 0; seq.forEach(s => { s.cum = cum; cum += s.beats; }); seqTotalBeats = cum;
+  clearPlay(); if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; } chordOff(); seqNextAt = 0; seqOriginPulse = null; seqOriginBeats = null; lastStopIdx = null;
   log("=== ▶ Démarrer : (1) tempo imposé au clavier (trame TMP, ♩" + curBpm() + ") ; (2) armement Synchro&Break (ITW 20 60 08 = 01 — RECONFIRMÉ à chaque lancement) ; (3) envoi de la séquence ===", "info");
   document.getElementById("prog").textContent = seq.map(s => chordLabel(s.chord) + "×" + s.beats).join("  ");
   sendTmpN(curBpm());
   sendSysexParam(0x20, 0x60, 0x08, 1, "SYNCHRO & BREAK = ON — le KN2000 se met en attente");
   synchroArmed = true; synBadge();
-  seqQueue = seq; seqIdx = 0;
+  seqQueue = seq; seqList = seq; seqIdx = 0;
   playTimers.push(setTimeout(() => {
-    const startSeq = () => {
-      log("▶ Séquence lancée @ ♩" + curBpm() + " — le premier accord (Note On ch" + (chChord() + 1) + ") fait démarrer le clavier. Tempo suivi en live (TMP)." + (document.getElementById("repeat").checked ? "  🔁 Repeat ON." : ""), "ok");
-      seqStep();
-    };
-    if (document.getElementById("syncStart").checked && barAnchor !== null) {
-      const beatMs = 60000 / curBpm();
-      const ms = performance.now() - anchorEff();
-      seqOriginBeats = (Math.floor(ms / (4 * beatMs)) + 1) * 4; // prochain début de mesure, en noires depuis l'anchor
-      const wait = seqOriginBeats * beatMs - ms;
-      log("🎯 Départ calé sur la mesure : " + Math.round(wait) + " ms d'attente jusqu'au prochain temps 1 (position " + posStr() + "). La séquence suivra la grille de l'horloge.", "info");
-      playTimers.push(setTimeout(startSeq, wait));
-    } else { seqOriginBeats = null; startSeq(); }
+    if (lastF8At && performance.now() - lastF8At < 400) {
+      // HORLOGE F8 ACTIVE : les envois d'accords sont pilotés par le COMPTEUR de pulses
+      // (v0.30) — zéro dérive : un changement de tempo à la molette est suivi instantanément,
+      // le calage des accords EST le compteur affiché.
+      if (document.getElementById("syncStart").checked) {
+        const measP = ppq() * 4;
+        seqOriginPulse = (Math.floor(pulse / measP) + 1) * measP; // prochain temps 1 de mesure, en pulses
+        log("🎯 Départ calé : accord 1 au temps 1 de la prochaine mesure (compteur F8) — position " + posStr() + ". Envois pilotés par le compteur.", "info");
+      } else {
+        seqOriginPulse = pulse;
+        log("▶ Séquence lancée sur le compteur F8 (zéro dérive, tempo réel) — position " + posStr() + "." + (document.getElementById("repeat").checked ? "  🔁 Repeat ON." : ""), "ok");
+      }
+      seqPump();
+    } else {
+      // SECOURS sans horloge F8 : planification minuteur (le premier accord fait démarrer le clavier via Synchro&Break)
+      const startSeq = () => {
+        log("▶ Séquence lancée @ ♩" + curBpm() + " — le premier accord (Note On ch" + (chChord() + 1) + ") fait démarrer le clavier. Tempo suivi en live (TMP)." + (document.getElementById("repeat").checked ? "  🔁 Repeat ON." : ""), "ok");
+        seqStep();
+      };
+      if (document.getElementById("syncStart").checked && barAnchor !== null) {
+        const beatMs = 60000 / curBpm();
+        const ms = performance.now() - anchorEff();
+        seqOriginBeats = (Math.floor(ms / (4 * beatMs)) + 1) * 4; // prochain début de mesure, en noires depuis l'anchor
+        const wait = seqOriginBeats * beatMs - ms;
+        log("🎯 Départ calé sur la mesure : " + Math.round(wait) + " ms d'attente jusqu'au prochain temps 1 (position " + posStr() + "). La séquence suivra la grille de l'horloge.", "info");
+        playTimers.push(setTimeout(startSeq, wait));
+      } else { seqOriginBeats = null; startSeq(); }
+    }
   }, 500)); // laisse le temps au clavier d'ingérer le tempo TMP avant de partir
 };
 document.getElementById("stopPlay").onclick = () => {
   clearPlay(); if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; }
-  seqQueue = null; chordOff(); seqOriginBeats = null;
+  seqQueue = null; chordOff(); seqOriginBeats = null; seqOriginPulse = null; lastStopIdx = null;
   sendRhythmStop();
   log("⏹ Stop — notes OFF, rythme arrêté (CC82 Stop ch Control + FC). L'état Synchro repasse OFF côté clavier (badge) : ▶ Démarrer le réarmera.", "info");
 };
+
+// La séquence est chargée dès la saisie (sans attendre ▶ Démarrer) : le transport FA/FB/FC du
+// clavier peut alors la lancer directement. ▶ Démarrer reste le mode complet (tempo TMP + Synchro&Break).
+document.getElementById("progInput").addEventListener("change", () => {
+  const s = parseSeq();
+  if (s && s.length) {
+    let cum = 0; s.forEach(e => { e.cum = cum; cum += e.beats; }); seqTotalBeats = cum;
+    seqList = s;
+    log("📋 Séquence chargée : " + s.length + " événement(s), " + cum + " temps — prête pour ▶ Démarrer ou le transport du clavier (FA Start).", "info");
+  }
+});
 
 initMidi();
 </script>
