@@ -33,7 +33,9 @@
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
   <button id="resetMidi">↻ Réinit. MIDI</button>
+  <button id="clear">🧹 Vider le log</button>
   <label><input type="checkbox" id="rtLog"> Journal temps réel (F8/FA/FB/FC)</label>
+  <label><input type="checkbox" id="hideNotes" checked> Masquer les notes RX (échos)</label>
 </header>
 <main>
   <div id="log"></div>
@@ -127,6 +129,9 @@ function log(msg, cls) {
   logEl.appendChild(p);
   logEl.scrollTop = logEl.scrollHeight;
 }
+document.addEventListener("DOMContentLoaded", () => { document.getElementById("clear").onclick = () => { logEl.innerHTML = ""; }; });
+const clearBtn = document.getElementById("clear");
+if (clearBtn) clearBtn.onclick = () => { logEl.innerHTML = ""; };
 function hex(a) { return a.map(x => x.toString(16).padStart(2, "0").toUpperCase()).join(" "); }
 
 // ---------- MIDI ----------
@@ -267,7 +272,7 @@ function onMidiMsg(ev) {
   }
   else if (ev.data.length >= 3 && st >= 0x80 && st < 0xF0) {
     if (sbArmed && st >= 0x90 && ev.data[2] > 0 && !syncEvents) startSbPlayback();
-    log("RX ch" + ((ev.data[0] & 0x0F) + 1) + " : " + hex([...ev.data]), "info");
+    if (!document.getElementById("hideNotes").checked) log("RX ch" + ((ev.data[0] & 0x0F) + 1) + " : " + hex([...ev.data]), "info");
   }
 }
 
