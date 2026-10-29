@@ -30,7 +30,7 @@
 </head>
 <body>
 <header>
-  <span><b>KN2000 APC Live Test</b> v0.15 — Démarrer + Repeat, fin de séquence = arrêt du rythme (CC82 Stop)</span>
+  <span><b>KN2000 APC Live Test</b> v0.16 — Stop corrigé : CC82 sur le canal Control du clavier (ch4)</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
   <button id="resetMidi">↻ Réinit. MIDI</button>
@@ -45,7 +45,7 @@
     <h3>⚙️ Canaux & tempo</h3>
     <div class="row">
       <label>Canal accords (cible) <input type="number" id="chChord" value="8" min="1" max="16" title="Basic Channel de la part CHORD = candidat n°1"></label>
-      <label>Canal DRUMS (CC82) <input type="number" id="chDrums" value="16" min="1" max="16"></label>
+      <label>Canal Control CC82 <input type="number" id="chDrums" value="4" min="1" max="16" title="Réglage CONTROL du KN2000 = canal des CC82 (Info terrain Yves : 4)"></label>
       <label>Canal ACCOMP1 (CC80) <input type="number" id="chAcc1" value="1" min="1" max="16"></label>
     </div>
     <div class="row">
@@ -96,7 +96,7 @@
       <span class="hint">sysex : 00=Off, 01=OneFinger, 02=Fingered, 03=Pianist</span>
     </div>
 
-    <h3>🎬 Déclenchements (CC 82, canal DRUMS)</h3>
+    <h3>🎬 Déclenchements (CC 82, canal Control = 4)</h3>
     <div class="row">
       <button class="cc82" data-v="3">Intro</button>
       <button class="cc82" data-v="7">Count Intro</button>
@@ -478,7 +478,7 @@ document.querySelectorAll(".apcMode").forEach(b => b.onclick = () => {
 document.querySelectorAll(".cc82").forEach(b => b.onclick = () => {
   const ch = parseInt(document.getElementById("chDrums").value) - 1, v = +b.dataset.v;
   const names = { 0: "Stop", 1: "Fill In 1", 2: "Ending", 3: "Intro", 5: "Fill In 2", 7: "Count Intro" };
-  send([0xB0 | ch, 82, v], "CC82 = " + names[v]);
+  send([0xB0 | ch, 82, v], "CC82 = " + names[v] + " (canal " + (ch + 1) + ")");
 });
 
 // ---------- Test 2 : progression — Démarrer (rqt tempo → attente clavier → séquence) ----------
@@ -488,7 +488,7 @@ function clearPlay() { playTimers.forEach(clearTimeout); playTimers = []; }
 let seqQueue = null, seqIdx = 0, seqTimer = null;
 function sendRhythmStop() {
   const ch = parseInt(document.getElementById("chDrums").value) - 1;
-  send([0xB0 | ch, 82, 0], "CC82 = Stop (canal DRUMS " + (ch + 1) + ") — fin du rythme APC");
+  send([0xB0 | ch, 82, 0], "CC82 = Stop (canal Control " + (ch + 1) + ") — fin du rythme APC");
 }
 function seqStep() {
   const s = seqQueue && seqQueue[seqIdx];
@@ -502,7 +502,7 @@ function seqStep() {
     chordOff();
     sendRhythmStop();
     seqQueue = null;
-    log("=== Fin de la progression — notes OFF + rythme arrêté (CC82 Stop) ===", "ok");
+    log("=== Fin de la progression — notes OFF + rythme arrêté (CC82 Stop, canal Control " + document.getElementById("chDrums").value + ") ===", "ok");
     return;
   }
   chordOn(s.chord);
@@ -532,7 +532,7 @@ document.getElementById("stopPlay").onclick = () => {
   seqQueue = null; chordOff();
   sendRhythmStop();
   sendSysexParam(0x20, 0x60, 0x08, 0, "SYNCHRO & BREAK = OFF");
-  log("⏹ Stop — notes OFF, rythme arrêté (CC82 Stop), clavier désarmé (20 60 08 = 00).", "info");
+  log("⏹ Stop — notes OFF, rythme arrêté (CC82 Stop, canal Control " + document.getElementById("chDrums").value + "), clavier désarmé (20 60 08 = 00).", "info");
 };
 
 initMidi();
