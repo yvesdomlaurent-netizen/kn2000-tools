@@ -30,7 +30,7 @@
 </head>
 <body>
 <header>
-  <span><b>KN2000 APC Live Test</b> v0.22 — Horloge interne de mesure (mesure:temps:pulse) + « 🎯 Caler » + trim ±ms de latence + journal batterie ch16 + départ calé sur la mesure</span>
+  <span><b>KN2000 APC Live Test</b> v0.23 — Trim de calage rendu tangible (±10 ms + saisie directe en ms) ; Départ calé validé terrain (accords réguliers sur longue séquence)</span>
   &nbsp; <span id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
@@ -71,11 +71,12 @@
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <div id="pos" style="font-size:22px;font-weight:bold;color:#1273b0;font-family:monospace;line-height:1.1">— : — : ———</div>
         <button id="caler" title="Clique AU MOMENT où tu entends le temps 1 du clavier : l'horloge interne se cale sur mesure 1 temps 1">🎯 Caler maintenant</button>
-        <button id="trimMoins" title="Décale le calage de −5 ms (affiné une fois pour toutes selon la latence de ta chaîne)">◀ −5 ms</button>
-        <button id="trimPlus" title="Décale le calage de +5 ms">+5 ms ▶</button>
-        <span class="hint" id="trimVal">calage 0 ms</span>
+        <button id="trimMoins" title="Décale le calage de −10 ms">◀ −10 ms</button>
+        <input type="number" id="trimIn" value="0" step="5" min="-500" max="500" title="Calage fin en ms : compense ton réflexe de clic sur « Caler » (clic trop tardif = valeur négative). À ♩120, 1 pulse ≈ 21 ms.">
+        <button id="trimPlus" title="Décale le calage de +10 ms">+10 ms ▶</button>
+        <span class="hint" id="trimVal">0 ms</span>
       </div>
-      <div class="hint">🕐 Horloge interne de mesure <b>mesure : temps : pulse</b> (24 pulses/noire), tenue au tempo TMP — le navigateur ne reçoit pas les F8/FA du KN2000 (filtrés par Chrome, MIDI-Ox les voit lui) donc la page tient sa position seule. « 🎯 Caler » : clique sur le temps 1 entendu. Le trim ± compense la latence une bonne fois. Coche « 🎯 Départ calé » (Test 2) pour que ▶ Démarrer attende le prochain temps 1. Le journal batterie ch16 affiche la position de chaque note reçue → vérifie si la grosse caisse (temps 1) suit un pattern stable.</div>
+      <div class="hint">🕐 Horloge interne de mesure <b>mesure : temps : pulse</b> (24 pulses/noire), tenue au tempo TMP — le navigateur ne reçoit pas les F8/FA du KN2000 (filtrés par Chrome, MIDI-Ox les voit lui) donc la page tient sa position seule. « 🎯 Caler » : clique sur le temps 1 entendu. Le trim (±10 ms ou saisie directe) compense le réflexe du clic de Caler : il décale la position ET le Départ calé — négatif = accords envoyés plus tôt. Coche « 🎯 Départ calé » (Test 2) pour que ▶ Démarrer attende le prochain temps 1. Le journal batterie ch16 affiche la position de chaque note reçue → vérifie si la grosse caisse (temps 1) suit un pattern stable.</div>
     </div>
 
     <h3>🕐 Horloge & temps réel</h3>
@@ -227,8 +228,10 @@ function posStr() {
 }
 setInterval(() => { posEl.textContent = posStr(); }, 50);
 document.getElementById("caler").onclick = () => { barAnchor = performance.now(); log("🎯 Calage manuel — horloge interne : mesure 1, temps 1 (pulse 0). Le journal batterie ch16 va montrer si les temps 1 du clavier tombent dessus.", "ok"); };
-document.getElementById("trimMoins").onclick = () => { syncTrim -= 5; document.getElementById("trimVal").textContent = "calage " + syncTrim + " ms"; };
-document.getElementById("trimPlus").onclick = () => { syncTrim += 5; document.getElementById("trimVal").textContent = "calage " + syncTrim + " ms"; };
+document.getElementById("trimMoins").onclick = () => { syncTrim -= 10; trimUpdate(); };
+document.getElementById("trimPlus").onclick = () => { syncTrim += 10; trimUpdate(); };
+document.getElementById("trimIn").onchange = () => { syncTrim = parseInt(document.getElementById("trimIn").value) || 0; trimUpdate(); };
+function trimUpdate() { document.getElementById("trimIn").value = syncTrim; document.getElementById("trimVal").textContent = syncTrim + " ms"; log("🎚 Trim de calage : " + syncTrim + " ms — s'applique à la position affichée et au Départ calé (les accords partent d'autant plus tôt si négatif).", "info"); }
 let pulse = 0;
 const activeNotes = new Set();
 function ppq() { return Math.max(1, parseInt(document.getElementById("ppq").value) || 24); }
