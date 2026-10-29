@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KN2000 APC Live Test</title>
+<style>
+  html, body { height: 100%; margin: 0; }
+  body { display: flex; flex-direction: column; font-family: system-ui, sans-serif; background: #fafafa; }
+  header { border-bottom: 1px solid #ddd; padding: 6px 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; background: #222; color: #eee; }
+  header b { color: #ffd; }
+  header select, header button { font: inherit; }
+  main { flex: 1; display: flex; overflow: hidden; }
+  #log { flex: 1; overflow-y: auto; padding: 6px 10px; font-family: monospace; font-size: 12px; }
+  #log p { margin: 0; white-space: pre-wrap; word-break: break-all; }
+  #log .ok { color: #0a7d18; } #log .ko { color: #c01818; } #log .info { color: #555; } #log .clock { color: #7a4fd0; }
+  #side { width: 360px; border-left: 1px solid #ddd; padding: 10px; overflow-y: auto; font-size: 13px; background: #fff; }
+  #side h3 { margin: 14px 0 6px; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 2px; }
+  #side h3:first-child { margin-top: 0; }
+  button { padding: 4px 10px; cursor: pointer; margin: 2px 2px; }
+  label { display: inline-block; font-size: 12px; color: #333; margin: 2px 6px 2px 0; }
+  input[type=number] { width: 60px; }
+  #bpm { font-size: 26px; font-weight: bold; color: #7a4fd0; font-family: monospace; }
+  .row { margin: 4px 0; }
+  .grid-input { width: 100%; box-sizing: border-box; font-family: monospace; }
+  .hint { font-size: 11px; color: #888; }
+  #prog { white-space: nowrap; }
+</style>
+</head>
+<body>
+<header>
+  <span><b>KN2000 APC Live Test</b> v0.1 — voie directe : accords MIDI temps réel, zéro sysex à stocker</span>
+  &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
+  TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
+  <button id="resetMidi">↻ Réinit. MIDI</button>
+</header>
+<main>
+  <div id="log"></div>
+  <div id="side">
+
+    <h3>⚙️ Canaux & tempo</h3>
+    <div class="row">
+      <label>Canal accords (cible) <input type="number" id="chChord" value="8" min="1" max="16" title="Basic Channel de la part CHORD = candidat n°1"></label>
+      <label>Canal DRUMS (CC82) <input type="number" id="chDrums" value="16" min="1" max="16"></label>
+      <label>Canal ACCOMP1 (CC80) <input type="number" id="chAcc1" value="1" min="1" max="16"></label>
+    </div>
+    <div class="row">
+      <label>Octave fondamentale : C<input type="number" id="oct" value="3" min="1" max="6"> (C3=48)</label>
+      <label>BPM manuel <input type="number" id="bpmMan" value="120" min="40" max="300"></label>
+    </div>
+    <div class="row">
+      <span id="bpm">—</span> <span class="hint" id="bpmSrc">BPM lu sur l'horloge MIDI (F8) — lance le rythme sur le clavier pour l'activer</span>
+    </div>
+
+    <h3>🎹 Test 1 — canal de détection APC</h3>
+    <div class="row">
+      <button id="hitC">▶ Accord Do (C-E-G) sur canal cible</button>
+    </div>
+    <div class="row">
+      <button id="scan">🔍 Scan canaux 1→16 (2 s chacun)</button>
+      <button id="stopScan">■ Stop scan</button>
+    </div>
+    <div class="row">
+      <label>Sysex 20 0A 25 (APC INPUT) = <input type="number" id="apcIn" value="0" min="0" max="127"></label>
+      <button id="sendApcIn">Envoyer (ITW)</button>
+      <span class="hint">à essayer (0/1/2…) si aucun canal ne répond</span>
+    </div>
+
+    <h3>🧭 Mode APC (CC 80, canal ACCOMP1)</h3>
+    <div class="row">
+      <button class="apcMode" data-v="0">Off</button>
+      <button class="apcMode" data-v="1">Fingered</button>
+      <button class="apcMode" data-v="2">OneFinger</button>
+      <button class="apcMode" data-v="3">Pianist</button>
+    </div>
+
+    <h3>🎬 Déclenchements (CC 82, canal DRUMS)</h3>
+    <div class="row">
+      <button class="cc82" data-v="3">Intro</button>
+      <button class="cc82" data-v="7">Count Intro</button>
+      <button class="cc82" data-v="1">Fill In 1</button>
+      <button class="cc82" data-v="5">Fill In 2</button>
+      <button class="cc82" data-v="2">Ending</button>
+      <button class="cc82" data-v="0">Stop</button>
+    </div>
+
+    <h3>🎼 Test 2 — progression d'accords</h3>
+    <div class="row">
+      <input class="grid-input" id="progInput" value="C4 F2 G2 C4" spellcheck="false">
+    </div>
+    <div class="row">
+      <button id="play">▶ Jouer (BPM mesuré si dispo, sinon manuel)</button>
+      <button id="stopPlay">■ Stop</button>
+    </div>
+    <div class="hint">Format : <code>Accord+temps-de-noires</code>. Types : C, Cm, C7, CM7, Cm7, Cm7b5, Cdim, Caug, C6, Csus4, C7sus4, CM7b5, CmM7, C7#5, Cmb5, C6… Ex.: <code>Cm4 F7-2 Gm7-2 C4</code></div>
+    <div class="hint" id="prog" style="margin-top:4px"></div>
+
+  </div>
+</main>
+<script>
+"use strict";
+
+// ---------- Journal ----------
+const logEl = document.getElementById("log");
+function log(msg, cls) {
+  const p = document.createElement("p");
+  p.className = cls || "";
+  p.textContent = msg;
+  logEl.appendChild(p);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function hex(a) { return a.map(x => x.toString(16).padStart(2, "0").toUpperCase()).join(" "); }
+
+// ---------- MIDI ----------
+let midiIn = null, midiOut = null;
+const rx = document.getElementById("rx"), tx = document.getElementById("tx");
+async function initMidi() {
+  try {
+    const access = await navigator.requestMIDIAccess({ sysex: true });
+    function fill(sel, list, def) {
+      const prev = sel.value;
+      sel.innerHTML = "";
+      list.forEach(p => {
+        const o = document.createElement("option");
+        o.value = p.id; o.textContent = p.name || p.id;
+        sel.appendChild(o);
+      });
+      if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+      else if (def) sel.value = def;
+    }
+    const ins = [...access.inputs.values()], outs = [...access.outputs.values()];
+    fill(rx, ins, ins[0] && ins[0].id);
+    fill(tx, outs, outs[0] && outs[0].id);
+    const bind = () => {
+      midiIn = access.inputs.get(rx.value) || null;
+      midiOut = access.outputs.get(tx.value) || null;
+      if (midiIn) midiIn.onmidimessage = onMidiMsg;
+    };
+    rx.onchange = bind; tx.onchange = bind; bind();
+    access.onstatechange = () => { fill(rx, [...access.inputs.values()], rx.value); fill(tx, [...access.outputs.values()], tx.value); bind(); };
+    log("MIDI prêt — " + ins.length + " entrée(s), " + outs.length + " sortie(s).", "ok");
+  } catch (e) { log("Erreur accès MIDI : " + e.message, "ko"); }
+}
+document.getElementById("resetMidi").onclick = () => initMidi();
+
+// ---------- Horloge MIDI : lecture du tempo (F8) ----------
+const bpmEl = document.getElementById("bpm"), bpmSrc = document.getElementById("bpmSrc");
+let lastF8 = 0, f8Times = [], measuredBpm = null;
+function onMidiMsg(ev) {
+  const st = ev.data[0] & 0xF0;
+  if (st === 0xF8) {
+    const t = performance.now();
+    if (lastF8) {
+      f8Times.push(t - lastF8);
+      if (f8Times.length > 96) f8Times.shift();
+      if (f8Times.length >= 24) {
+        const med = f8Times.slice().sort((a,b)=>a-b)[Math.floor(f8Times.length/2)];
+        measuredBpm = Math.round(60000 / (med * 24) * 10) / 10;
+        bpmEl.textContent = measuredBpm + " BPM";
+        bpmSrc.textContent = "BPM mesuré sur l'horloge MIDI (24 F8/noire)";
+      }
+    }
+    lastF8 = t;
+  } else if (st === 0xFA) { log("MIDI Start (FA) — rythme lancé", "clock"); lastF8 = 0; f8Times = []; }
+  else if (st === 0xFC) { log("MIDI Stop (FC)", "clock"); }
+  else if (ev.data.length >= 3 && st >= 0x80 && st < 0xF0) {
+    log("RX ch" + ((ev.data[0] & 0x0F) + 1) + " : " + hex([...ev.data]), "info");
+  }
+}
+
+function send(bytes, what) {
+  if (!midiOut) { log("Pas de port TX sélectionné.", "ko"); return false; }
+  midiOut.send(bytes);
+  if (what) log("TX : " + hex(bytes) + "  (" + what + ")");
+  return true;
+}
+
+// ---------- Accords : table validée (chantier séquenceur) ----------
+const CHORD_TYPES = {
+  "":      [0,4,7],
+  "M":     [0,4,7],
+  "m":     [0,3,7],
+  "M7":    [0,4,7,11],
+  "7":     [0,4,7,10],
+  "m7":    [0,3,7,10],
+  "m7b5":  [0,3,6,10],
+  "dim":   [0,3,6,9],
+  "aug":   [0,4,8],
+  "aug7":  [0,4,8,10],
+  "7#5":   [0,4,8,10],
+  "6":     [0,4,7,9],
+  "m6":    [0,3,7,9],
+  "sus4":  [0,5,7],
+  "7sus4": [0,5,7,10],
+  "mM7":   [0,3,7,11],
+  "mM7b5": [0,3,6,11],
+  "M7b5":  [0,4,6,11],
+  "b5":    [0,4,6],
+  "mb5":   [0,3,6]
+};
+const ROOTS = { C:0, "C#":1, Db:1, D:2, "D#":3, Eb:3, E:4, F:5, "F#":6, Gb:6, G:7, "G#":8, Ab:8, A:9, "A#":10, Bb:10, B:11 };
+function parseChord(tok) {
+  // Format : ROOT[TYPE][durée-noires] ex: C4, Fm7-2, G7 2
+  const m = tok.match(/^([A-G][#b]?)([A-Za-z0-9#b]*?)(?:[-:]?(\d+))?$/);
+  if (!m) return null;
+  const root = ROOTS[m[1]];
+  let type = m[2], beats = m[3] ? parseInt(m[3]) : 4;
+  // retire les chiffres de durée avalés par le type (ex: "C4" → type "" bats 4)
+  const trail = type.match(/(\d+)$/);
+  if (trail && !CHORD_TYPES.hasOwnProperty(type)) { beats = parseInt(trail[1]); type = type.slice(0, -trail[1].length); }
+  // ordre de correspondance : tenter suffixes les plus longs d'abord
+  if (!CHORD_TYPES.hasOwnProperty(type)) {
+    const keys = Object.keys(CHORD_TYPES).filter(k => k).sort((a,b)=>b.length-a.length);
+    for (const k of keys) if (type.startsWith(k)) { beats = beats || 4; type = k; break; }
+    if (!CHORD_TYPES.hasOwnProperty(type)) return null;
+  }
+  if (root === undefined) return null;
+  return { root, type, beats, iv: CHORD_TYPES[type] };
+}
+function chordNotes(c, baseOct) {
+  return c.iv.map(i => 12 * (baseOct + 1) + c.root + i); // C3=48 → 12*(3+1)
+}
+
+// ---------- Test 1 : accord Do & scan des canaux ----------
+const chChord = () => parseInt(document.getElementById("chChord").value) - 1;
+function noteOn(ch, n, vel) { send([0x90 | ch, n & 0x7F, vel || 64]); }
+function noteOff(ch, n) { send([0x80 | ch, n & 0x7F, 0]); }
+
+document.getElementById("hitC").onclick = () => {
+  const ch = chChord(), notes = [48, 52, 55];
+  log("--- Test : accord Do (C3-E3-G3) sur canal " + (ch + 1) + " ---");
+  notes.forEach(n => noteOn(ch, n));
+  setTimeout(() => notes.forEach(n => noteOff(ch, n)), 2000);
+};
+
+let scanTimer = null;
+document.getElementById("scan").onclick = () => {
+  if (scanTimer) return;
+  log("=== SCAN : j'envoie Do majeur 2 s sur chaque canal 1→16. Écoute où l'APC répond ! ===", "info");
+  let ch = 0;
+  const step = () => {
+    if (ch > 15 || !scanTimer) return;
+    const notes = [48, 52, 55];
+    log("--- Canal " + (ch + 1) + " : Do (C-E-G) ---", "info");
+    notes.forEach(n => noteOn(ch, n));
+    scanTimer = setTimeout(() => {
+      notes.forEach(n => noteOff(ch, n));
+      ch++;
+      if (ch <= 15) scanTimer = setTimeout(step, 300); else { scanTimer = null; log("=== Fin de scan ===", "info"); }
+    }, 2000);
+  };
+  scanTimer = setTimeout(step, 0);
+};
+document.getElementById("stopScan").onclick = () => { clearTimeout(scanTimer); scanTimer = null; log("Scan interrompu.", "info"); };
+
+// ---------- Sysex 20 0A 25 (APC INPUT) via ITW ----------
+document.getElementById("sendApcIn").onclick = () => {
+  const val = parseInt(document.getElementById("apcIn").value) & 0x7F;
+  // f0 50 2C 01 18 10 ADR(3) SIZ(3) data-nibblisée CN CK f7 — SIZ compte les octets originaux
+  const body = [0x50, 0x2C, 0x01, 0x18, 0x10, 0x20, 0x0A, 0x25, 0x00, 0x00, 0x01, (val >> 4) & 0x0F, val & 0x0F, 0x00];
+  const ck = body.reduce((a, b) => a ^ b, 0) & 0x7F;
+  send([0xF0, ...body, ck, 0xF7], "ITW 20 0A 25 = " + val + " (APC INPUT)");
+};
+
+// ---------- Mode APC (CC 80) & déclenchements (CC 82) ----------
+document.querySelectorAll(".apcMode").forEach(b => b.onclick = () => {
+  const ch = parseInt(document.getElementById("chAcc1").value) - 1, v = +b.dataset.v;
+  const names = { 0: "Off", 1: "Fingered", 2: "OneFinger", 3: "Pianist" };
+  send([0xB0 | ch, 80, v], "CC80 APC = " + names[v]);
+});
+document.querySelectorAll(".cc82").forEach(b => b.onclick = () => {
+  const ch = parseInt(document.getElementById("chDrums").value) - 1, v = +b.dataset.v;
+  const names = { 0: "Stop", 1: "Fill In 1", 2: "Ending", 3: "Intro", 5: "Fill In 2", 7: "Count Intro" };
+  send([0xB0 | ch, 82, v], "CC82 = " + names[v]);
+});
+
+// ---------- Test 2 : progression ----------
+let playTimers = [];
+function clearPlay() { playTimers.forEach(clearTimeout); playTimers = []; }
+function stopAllNotes(ch) { for (let n = 0; n < 128; n++) noteOff(ch, n); }
+
+document.getElementById("play").onclick = () => {
+  const ch = chChord(), oct = parseInt(document.getElementById("oct").value);
+  const bpm = measuredBpm || parseFloat(document.getElementById("bpmMan").value);
+  const toks = document.getElementById("progInput").value.trim().split(/\s+/);
+  const seq = [];
+  for (const t of toks) {
+    const c = parseChord(t);
+    if (!c) { log("Token non reconnu : \"" + t + "\"", "ko"); return; }
+    seq.push(c);
+  }
+  log("=== Lecture de " + seq.length + " accords @ " + bpm + " BPM (canal " + (ch + 1) + ", C" + oct + " fondamental) ===");
+  document.getElementById("prog").textContent = seq.map(c => (c.root ? ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"][c.root] : "C") + c.type + "×" + c.beats).join("  ");
+  clearPlay(); stopAllNotes(ch);
+  const beatMs = 60000 / bpm;
+  let t = 0;
+  seq.forEach((c, i) => {
+    const notes = chordNotes(c, oct);
+    playTimers.push(setTimeout(() => {
+      log("♪ Accord " + (i + 1) + " : " + hex(notes) + " (" + toks[i] + ")", "info");
+      notes.forEach(n => noteOn(ch, n));
+    }, t));
+    const dur = c.beats * beatMs;
+    playTimers.push(setTimeout(() => notes.forEach(n => noteOff(ch, n)), t + dur - Math.min(60, dur * 0.05)));
+    t += dur;
+  });
+  playTimers.push(setTimeout(() => log("=== Fin de la progression ===", "info"), t + 100));
+};
+document.getElementById("stopPlay").onclick = () => { clearPlay(); stopAllNotes(chChord()); log("Progression stoppée, notes OFF.", "info"); };
+
+initMidi();
+</script>
+</body>
+</html>
