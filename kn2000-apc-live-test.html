@@ -36,7 +36,7 @@
 </head>
 <body>
 <header>
-  <span><b>🎼 APC Live KN2000</b> <span class="hint">v0.31 — grille multi-lignes : titres de section, blocs || … || xN ; accord en cours surligné ; accords obligatoirement entre | |</span></span>
+  <span><b>🎼 APC Live KN2000</b> <span class="hint">v0.32 — morceaux : sélection, sauvegarde séquence + réglages panel (lecture/écriture du clavier) ; grille multi-lignes, surlignage de l'accord en cours</span></span>
   &nbsp; <span id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
@@ -57,6 +57,16 @@
       </div>
     </div>
     <div id="bpmSrc" class="hint">Tempo : IMPOSÉ au clavier (trame TMP) au chargement et au démarrage ; mis à jour si le KN2000 annonce un changement (trame TMP) ; boutons ± pour ajuster en direct.</div>
+    <div class="row" id="songBar" style="flex-wrap:wrap;align-items:center;gap:6px">
+      <b>🎵 Morceau :</b>
+      <select id="songSel" style="max-width:340px" title="Sélectionner un morceau : charge sa séquence dans la zone de saisie et ENVOIE ses réglages au clavier (tempo, rythme, APC, sons, volumes…). ♪ = séquence sauvegardée."></select>
+      <button id="songAdd" title="Ajouter un morceau à la liste (titre demandé)">➕ Nouveau</button>
+      <button id="songSave" title="Sauvegarder dans ce morceau : la séquence affichée + les réglages COURANTS du clavier (lus par DRQ, façon Panel Console)">💾 Sauver morceau</button>
+      <button id="songDel" title="Retirer ce morceau de la liste sauvegardée">🗑️</button>
+      <button id="songExport" title="Exporter tous les morceaux (séquences + réglages) en fichier JSON — sauvegarde / transfert">⬇️ Export</button>
+      <label style="cursor:pointer" title="Importer des morceaux depuis un fichier JSON exporté (fusion par morceau)">⬆️ Import<input type="file" id="songImport" accept=".json,application/json" hidden></label>
+      <span class="hint" id="songInfo"></span>
+    </div>
     <div class="row"><textarea class="grid-input" id="progInput" rows="10" spellcheck="false">// Ligne de texte = titre de section (non jouée) · // = commentaire · || ouvre un bloc, || xN le referme et le répète N fois
 Intro
 ||
@@ -69,11 +79,11 @@ Thème
       <button id="play">▶ Démarrer</button>
       <button id="stopPlay">■ Stop</button>
       <label title="Boucle tant que cochée ; décocher = jouer jusqu'à la fin puis stop"><input type="checkbox" id="repeat"> 🔁 Repeat</label>
-      <label title="▶ Démarrer attend le prochain temps 1 (compteur F8 si l'horloge tourne ; sinon Caler)"><input type="checkbox" id="syncStart"> 🎯 Départ calé</label>
+      <label title="▶ Démarrer attend le prochain temps 1 (compteur F8 si l'horloge tourne ; sinon minuteur)"><input type="checkbox" id="syncStart"> 🎯 Départ calé</label>
       <label title="FA Start → lance la séquence (accord 1 calé sur le temps 1) ; FB Continue → reprend ; FC Stop → arrête"><input type="checkbox" id="xport" checked> 🎛 Transport clavier</label>
     </div>
     <div class="hint" id="prog"></div>
-    <div class="hint">▶ Démarrer : (1) tempo imposé au clavier (trame TMP) ; (2) armement Synchro&Break ; (3) séquence — <b>si l'horloge F8 tourne, les accords sont pilotés par le COMPTEUR de pulses</b> : zéro dérive, un changement de tempo à la molette est suivi instantanément, le calage reste collé au compteur affiché (sinon secours au minuteur). <b>🎛 Transport clavier</b> : FA Start → séquence lancée depuis l'accord 1 pile sur le temps 1 ; FB Continue → reprise de la séquence arrêtée (accord interrompu rejoué) ; FC Stop → arrêt (notes OFF). <b>Saisie multi-lignes</b> : les accords OBLIGATOIREMENT entre <code>| … |</code> ; une ligne sans <code>|</code> = <b>titre de section</b> (non joué) ; <code>//</code> = commentaire ; <code>||</code> ouvre un bloc de répétition, <code>|| x2</code> le referme et le joue 2 fois ; l'accord en cours est surligné en violet pendant la lecture. Voir <b>❓ Aide</b> ci-dessous pour tous les types d'accords.</div>
+    <div class="hint">▶ Démarrer : (1) tempo imposé au clavier (trame TMP) ; (2) armement Synchro&Break ; (3) séquence — <b>si l'horloge F8 tourne, les accords sont pilotés par le COMPTEUR de pulses</b> : zéro dérive, un changement de tempo à la molette est suivi instantanément, le calage reste collé au compteur affiché (sinon secours au minuteur). <b>🎛 Transport clavier</b> : FA Start → séquence lancée depuis l'accord 1 pile sur le temps 1 ; FB Continue → reprise de la séquence arrêtée (accord interrompu rejoué) ; FC Stop → arrêt (notes OFF). <b>Saisie multi-lignes</b> : les accords OBLIGATOIREMENT entre <code>| … |</code> ; une ligne sans <code>|</code> = <b>titre de section</b> (non joué) ; <code>//</code> = commentaire ; <code>||</code> ouvre un bloc de répétition, <code>|| x2</code> le referme et le joue 2 fois ; l'accord en cours est surligné en violet pendant la lecture. Voir <b>❓ Aide</b> ci-dessous pour tous les types d'accords. <b>🎵 Morceaux</b> : sélectionner un morceau charge sa séquence et <b>envoie sa config au KN2000</b> (tempo, rythme, APC, sons, volumes — aucun rappel Panel Memory : la config vit dans la page, morceau par morceau) ; <b>💾 Sauver morceau</b> capture la séquence affichée + les réglages COURANTS du clavier (lecture panel façon Panel Console) ; ⬇️ Export / ⬆️ Import pour tout emporter en JSON.</div>
   </div>
 
   <details>
@@ -110,39 +120,6 @@ Thème
     <div class="row">
       <label>Pulses/noire <input type="number" id="ppq" value="24" min="1" max="96"></label>
       <span class="hint">24 = standard MIDI (comptage de la position). Si la position avance 2× trop lent/vite, essaie 48 ou 12.</span>
-    </div>
-  </details>
-  <details>
-    <summary>🕐 Horloge & calage (secours : Caler, trim) — temps réel 20 04 02/03</summary>
-    <div class="row">
-      <button id="caler" title="Clique AU MOMENT où tu entends le temps 1 du clavier (secours, sans rythme démarré) : l'horloge se cale sur mesure 1 temps 1">🎯 Caler maintenant</button>
-      <button id="trimMoins" title="Décale le calage de −10 ms">◀ −10 ms</button>
-      <input type="number" id="trimIn" value="0" step="5" min="-500" max="500" title="Calage fin en ms : compense ton réflexe de clic sur « Caler » (clic trop tardif = valeur négative). À ♩120, 1 pulse ≈ 21 ms.">
-      <button id="trimPlus" title="Décale le calage de +10 ms">+10 ms ▶</button>
-      <span class="hint" id="trimVal">0 ms</span>
-    </div>
-    <div class="hint">Position <b>mesure : temps : pulse</b> comptée sur les F8 réels, figée à l'arrêt, remise à 1:01:000 à chaque FA (vrai temps 1) ; tempo fait foi via la trame TMP. « Caler » + trim : secours pour lancer la séquence sans rythme démarré.</div>
-    <div class="row">
-      <button id="readRtc">🔍 Lire 20 04 02 / 03</button>
-      <button id="rtcOn">⏱ Activer temps réel (02=1)</button>
-      <button id="rtcOff">⏹ Désactiver (02=0)</button>
-    </div>
-    <div class="hint">20 04 02 = REAL TIME COMMAND ENABLE (01 = ON). 20 04 03 = CLOCK SELECT (00=Internal, 01=MIDI) — lecture seule. Plus aucun DRQ 20 00 25 (jamais de réponse) — le tempo passe par la trame TMP (F0 50 25 DT1 DT2 F7).</div>
-  </details>
-
-  <details>
-    <summary>🎹 Test 1 — canal de détection APC</summary>
-    <div class="row">
-      <button id="hitC">▶ Accord Do (C-E-G) sur canal cible</button>
-    </div>
-    <div class="row">
-      <button id="scan">🔍 Scan canaux 1→16 (2 s chacun)</button>
-      <button id="stopScan">■ Stop scan</button>
-    </div>
-    <div class="row">
-      <label>Sysex 20 0A 25 (APC INPUT) = <input type="number" id="apcIn" value="0" min="0" max="127"></label>
-      <button id="sendApcIn">Envoyer (ITW)</button>
-      <span class="hint">à essayer (0/1/2…) si aucun canal ne répond</span>
     </div>
   </details>
   <details>
@@ -255,8 +232,8 @@ synBadge();
 // ---------- Horloge de mesure (mesure:temps:pulse) ----------
 // POSITION COMPTÉE sur les F8 réels (comme la fenêtre MIDI Sync de MIDI-Ox) : chaque F8 avance
 // le compteur de pulses, chaque FA (Start) le remet à 1:01:000. Le TEMPO fait foi via la trame
-// TMP (pas de mesure sur les intervalles F8 : ça jitter). « Caler » manuel + trim restent en
-// secours (séquence sans rythme démarré → interpolation au tempo TMP).
+// TMP (pas de mesure sur les intervalles F8 : ça jitter). Le FA recale seul le début de mesure
+// (secours minuteur si le rythme n'est pas démarré — interpolation au tempo TMP).
 let barAnchor = null, syncTrim = 0; // anchor = instant du dernier « mesure 1 temps 1 » calé
 const posEl = document.getElementById("pos");
 function anchorEff() { return barAnchor === null ? null : barAnchor + syncTrim; }
@@ -278,11 +255,6 @@ function posStr() {
   return p ? (p.meas + ":" + String(p.beat).padStart(2, "0") + ":" + String(p.tick).padStart(3, "0")) : "— : — : ———";
 }
 setInterval(() => { posEl.textContent = posStr(); }, 50);
-document.getElementById("caler").onclick = () => { barAnchor = performance.now(); log("🎯 Calage manuel — horloge : mesure 1, temps 1 (pulse 0). Utile sans rythme démarré ; avec rythme, les FA reçus recalent tout seuls.", "ok"); };
-document.getElementById("trimMoins").onclick = () => { syncTrim -= 10; trimUpdate(); };
-document.getElementById("trimPlus").onclick = () => { syncTrim += 10; trimUpdate(); };
-document.getElementById("trimIn").onchange = () => { syncTrim = parseInt(document.getElementById("trimIn").value) || 0; trimUpdate(); };
-function trimUpdate() { document.getElementById("trimIn").value = syncTrim; document.getElementById("trimVal").textContent = syncTrim + " ms"; log("🎚 Trim de calage : " + syncTrim + " ms — s'applique à la position affichée et au Départ calé (les accords partent d'autant plus tôt si négatif).", "info"); }
 let pulse = 0;
 const activeNotes = new Set();
 function ppq() { return Math.max(1, parseInt(document.getElementById("ppq").value) || 24); }
@@ -514,6 +486,7 @@ function onMidiMsg(ev) {
     const siz = (d[9] << 14) | (d[10] << 7) | d[11];
     const raw = [];
     for (let i = 12; i + 1 < d.length - 2 && raw.length < siz; i += 2) raw.push(((d[i] << 4) | d[i + 1]) & 0x7F);
+    if (panelCap) panelCap.params[adr] = raw.slice(); // v0.32 : capture pour la sauvegarde du morceau (lecture panel)
     const names = { "20 04 02": "REAL TIME COMMAND ENABLE", "20 04 03": "CLOCK SELECT", "20 00 25": "TEMPO (TMP)", "20 0A 25": "APC INPUT", "20 60 08": "SYNCHRO & BREAK" };
     let extra = "";
     if (adr === "20 04 02") extra = raw[0] === 1 ? " → temps réel ON (F8 émis)" : " → temps réel OFF (pas de F8 !)";
@@ -604,8 +577,8 @@ function parseChord(tok) {
 function chordNotes(c, baseOct) {
   return c.iv.map(i => 12 * (baseOct + 1) + c.root + i); // C3=48 → 12*(3+1)
 }
-
-// ---------- Test 1 : accord Do & scan des canaux ----------
+// ---------- Notes et accords : primitives MIDI (canal accords configurable) ----------
+// ---------- Notes // ---------- Test 1 : accord Do & scan des canaux ---------- accords : primitives MIDI (canal accords configurable) ----------
 const chChord = () => parseInt(document.getElementById("chChord").value) - 1;
 function noteOn(ch, n, vel) { send([0x90 | ch, n & 0x7F, vel || 64]); activeNotes.add(ch * 128 + n); }
 function noteOff(ch, n) { send([0x80 | ch, n & 0x7F, 0]); activeNotes.delete(ch * 128 + n); }
@@ -614,55 +587,13 @@ function chordOff() {
   activeNotes.clear();
 }
 
-document.getElementById("hitC").onclick = () => {
-  const ch = chChord(), notes = [48, 52, 55];
-  log("--- Test : accord Do (C3-E3-G3) sur canal " + (ch + 1) + " ---");
-  notes.forEach(n => noteOn(ch, n));
-  setTimeout(() => notes.forEach(n => noteOff(ch, n)), 2000);
-};
-
-let scanTimer = null;
-document.getElementById("scan").onclick = () => {
-  if (scanTimer) return;
-  log("=== SCAN : j'envoie Do majeur 2 s sur chaque canal 1→16. Écoute où l'APC répond ! ===", "info");
-  let ch = 0;
-  const step = () => {
-    if (ch > 15 || !scanTimer) return;
-    const notes = [48, 52, 55];
-    log("--- Canal " + (ch + 1) + " : Do (C-E-G) ---", "info");
-    notes.forEach(n => noteOn(ch, n));
-    scanTimer = setTimeout(() => {
-      notes.forEach(n => noteOff(ch, n));
-      ch++;
-      if (ch <= 15) scanTimer = setTimeout(step, 300); else { scanTimer = null; log("=== Fin de scan ===", "info"); }
-    }, 2000);
-  };
-  scanTimer = setTimeout(step, 0);
-};
-document.getElementById("stopScan").onclick = () => { clearTimeout(scanTimer); scanTimer = null; log("Scan interrompu.", "info"); };
-
-// ---------- Sysex 20 0A 25 (APC INPUT) via ITW ----------
-document.getElementById("sendApcIn").onclick = () => {
-  const val = parseInt(document.getElementById("apcIn").value) & 0x7F;
-  // f0 50 2C 01 18 10 ADR(3) SIZ(3) data-nibblisée CN CK f7 — SIZ compte les octets originaux
-  const body = [0x50, 0x2C, 0x01, 0x18, 0x10, 0x20, 0x0A, 0x25, 0x00, 0x00, 0x01, (val >> 4) & 0x0F, val & 0x0F, 0x00];
-  const ck = body.reduce((a, b) => a ^ b, 0) & 0x7F;
-  send([0xF0, ...body, ck, 0xF7], "ITW 20 0A 25 = " + val + " (APC INPUT)");
-};
-
-// ---------- Horloge & temps réel (20 04 02 / 03) ----------
+// ---------- DRQ : demande de lecture sysex (sauvegarde des réglages du morceau) ----------
 function sendDrq(a1, a2, a3, label, siz) {
   siz = siz || 1;
   const body = [0x50, 0x2B, 0x01, 0x18, 0x10, a1, a2, a3, (siz >> 14) & 0x7F, (siz >> 7) & 0x7F, siz & 0x7F, 0x00];
   const ck = body.reduce((x, y) => x ^ y, 0) & 0x7F;
   return send([0xF0, ...body, ck, 0xF7], "DRQ " + hex([a1, a2, a3]) + " SIZ " + siz + " (" + label + ")");
 }
-document.getElementById("readRtc").onclick = () => {
-  sendDrq(0x20, 0x04, 0x02, "RealTime enable");
-  sendDrq(0x20, 0x04, 0x03, "Clock select");
-};
-document.getElementById("rtcOn").onclick = () => sendSysexParam(0x20, 0x04, 0x02, 1, "REAL TIME COMMAND = ON");
-document.getElementById("rtcOff").onclick = () => sendSysexParam(0x20, 0x04, 0x02, 0, "REAL TIME COMMAND = OFF");
 
 // ---------- Tempo : affichage + boutons ± (trame TMP vers le KN2000) ----------
 function curBpm() { return Math.round(measuredBpm || parseFloat(document.getElementById("bpmMan").value) || 120); }
@@ -815,6 +746,167 @@ document.getElementById("stopPlay").onclick = () => {
 // La séquence est chargée dès la saisie (sans attendre ▶ Démarrer) : le transport FA/FB/FC du
 // clavier peut alors la lancer directement. ▶ Démarrer reste le mode complet (tempo TMP + Synchro&Break).
 document.getElementById("progInput").addEventListener("change", () => { loadSeq(); });
+
+// ══════════ v0.32 — MORCEAUX : liste, sélection, sauvegarde séquence + réglages panel ══════════
+// Principe (précision d'Yves) : PAS de rappel Panel Memory — la page CONSERVE le paramétrage
+// de chaque morceau (séquence + réglages panel LUS sur le clavier) et l'ENVOIE au KN2000 à
+// la sélection : « je charge un morceau et le KN2000 reçoit sa config de notre page ».
+const SONGS_KEY = "kn2000-apc-songs-v1";
+const PM_NAMES = ["—"]; for (const L of "ABC") for (let i = 1; i <= 8; i++) PM_NAMES.push(L + i);
+const SETLIST = 
+[["Misirlou","0","0"],["Nights in White Satin","0","0"],["HEY JUDE","0","1"],["(Sittin' On) The Dock of the Bay","0","2"],["Wind of Change","0","3"],["Only You","0","4"],["Alice","0","5"],["Wicked Game","0","6"],["Blue Hotel","0","7"],["La Dernière Séance","0","8"],["Wonderful Tonight","0","9"],["Kilimandjaro","0","10"],["The Gréât Pretender","0","11"],["Ces Idées La","0","12"],["Wish You Were Here","0","13"],["Derrière L'amour","0","14"],["Oh Darling","0","15"],["Encore Et Encore","0","16"],["Gabrielle","0","17"],["La Dame De Haute Savoie","0","18"],["Je Vais Craquer Bientôt","0","19"],["Quand t'es dans le désert","0","20"],["Green River","0","21"],["Have You Ever Seen The Rain","0","22"],["Keep on Running","0","23"],["Gimme Some Lovin'","0","24"],["Sweet Home Chicago","0","25"],["Rehab","0","26"],["Faut Que Je Me Tire Ailleurs","0","27"],["The Letter","0","28"],["Soul Man","0","29"],["Get Ready","0","30"],["Retiens La Nuit","0","31"],["I WANT TO KNOW WHAT LOVE IS","0","32"],["Le Sud","0","33"],["La Bombe Humaine","0","34"],["Tu Peux Préparer Le Café Noir","0","35"],["Toujours Un Coin Qui Me Rapelle","0","36"],["Sarbacane","0","37"],["Bye bye prêcheur","0","38"],["La Bamba","0","39"],["I Ve Got A Woman","0","40"],["Proud Mary","0","41"],["Layla","0","42"],["Let It Be","0","43"],["When A Blind Man Cries","0","44"],["Couleur Menthe A L Eau","0","45"],["Hold On I M Comin","0","46"],["Les Mots Bleus","0","47"],["Succès Fou","0","48"],["C Est Ma Priere","0","49"],["Rien Qu Une Larme","0","50"],["Toute La Musique Que J Aime","0","51"],["Encore Un Matin","0","52"],["Les Cactus","0","53"],["Eteins La Lumiere","0","54"],["Da Doo Ron Ron","0","55"],["La Leçon De Twist","0","56"],["Chante (Les Forbans)","0","57"],["Let S Twist Again","0","58"],["Blue Suede Shoes","0","59"],["Teddy Bear","0","60"],["That S Alright Mama","0","61"],["I Saw Her Standing There","0","62"],["C Est Lundi","0","63"],["Voir 56 Doublon","0","64"],["Da Doo Ron Ron En La","0","65"],["Dont Be Cruel","0","66"],["Great Balls Of Fire","0","67"],["Carole","0","68"],["C Est Un Rockeur","0","69"],["Hygiaphone","0","70"],["L Aigle Noir","0","71"],["Si J Avais Un Marteau","0","72"],["Non Non Rien N A Change","0","73"],["Walk Of Life","0","74"],["Dont Let Me Be Misunderstood","0","75"],["Suzie Q","0","76"],["Sur La Route","0","77"],["Excuses Moi Partenaire","0","78"],["LECHE-BOTTES BLUES","0","79"],["Casser La Voix","0","80"],["You Keep Me Hangin On","0","81"],["Marcia Baila","0","82"],["J T Emmene Au Vent","0","83"],["J't'emmene au vent","0","83"],["leves ton ful de la","0","84"],["Flip flap","0","85"],["knock on wood","0","86"],["helene","0","87"],["sorry seems tobe","0","88"],["on se retrouvera","0","89"],["Pas de Boogie Woogie","0","90"],["wooly bully","0","91"],["judy in disguise with glasses","0","92"],["San Francisco","0","94"],["san fran la maison bleue","0","95"],["Crazy Little thing called love","0","96"],["Unchain My Heart (Powell/Sharp)","0","97"],["Footloose","0","98"],["Lili voulait aller danser","0","99"],["a credit et en stereo","0","100"],["si tu veux m essayer","0","101"],["sur la route de Menphis","0","102"],["crazy little thing called love 2","0","103"],["born to be wild","0","105"],["Temps a nouveau","0","105"],["oh les filles","0","106"],["on veut des legendes","0","107"],["et la voix d elvis","0","108"],["origines","0","109"],["Pour toi","0","110"],["vous etes chez vous","0","111"],["une fille a aimer","0","112"],["Marylene","0","113"],["Laisse moi une chance","0","114"],["Une autre histoire","0","115"],["it s a man man world","0","116"],["listen to the music","0","117"],["crocodile rock","0","118"],["l amour ne suffit pas","0","119"],["suzette","0","119"],["le chanteur","0","120"],["Un, deux, trois","0","120"],["I Can See Clearly Now","0","121"],["Les elucubrations","0","122"],["in the midnight hour","0","123"],["still lovin you","0","124"],["joue pas de rockn roll","0","125"],["Le Jour se Lève","0","126"],["Le Loir et Cher","0","127"],["Can't buy Me Love","0","128"],["babylone","0","129"],["Compocosme","0","150"],["L Averse de Confettis","0","151"],["L'amour ne suffit pas","0","152"]]
+;
+
+// Adresses lues à la sauvegarde (méthode Panel Console : DRQ → réponses ITR capturées),
+// puis réécrites telles quelles (ITW 2C) à la sélection du morceau. Le TEMPO suit la trame TMP.
+const PANEL_READS = [
+  [0x20,0x60,0x00,2,"Rythme"], [0x20,0x60,0x02,1,"APC type"], [0x20,0x60,0x03,1,"APC mémoire"],
+  [0x20,0x00,0x02,1,"Transpose"], [0x20,0x10,0x00,2,"Son RIGHT 1"], [0x20,0x11,0x00,2,"Son RIGHT 2"], [0x20,0x12,0x00,2,"Son LEFT"],
+  [0x20,0x10,0x02,1,"Vol RIGHT 1"], [0x20,0x11,0x02,1,"Vol RIGHT 2"], [0x20,0x12,0x02,1,"Vol LEFT"], [0x20,0x1F,0x02,1,"Vol batterie"],
+  [0x20,0x20,0x02,1,"Vol APC1"], [0x20,0x21,0x02,1,"Vol APC2"], [0x20,0x22,0x02,1,"Vol APC3"], [0x20,0x23,0x02,1,"Vol APC4"], [0x20,0x24,0x02,1,"Vol APC5"], [0x20,0x25,0x02,1,"Vol APC6"], [0x20,0x26,0x02,1,"Vol APC7"],
+  [0x20,0x08,0x10,1,"Réverb totale"], [0x20,0x0A,0x0C,1,"APC mode enable"]
+];
+let songs = null, curSongId = null, panelCap = null; // panelCap : collecteur pendant la lecture panel
+
+function songsLoad() {
+  let st = null;
+  try { st = JSON.parse(localStorage.getItem(SONGS_KEY) || "null"); } catch (e) { st = null; }
+  if (!st || !Array.isArray(st.songs)) {
+    // Premier chargement : on sème la liste du groupe (à compléter morceau par morceau)
+    st = { songs: SETLIST.map(r => ({ id: "ms-" + r[2], title: r[0], pm: r[1], msid: r[2], seq: null, panel: null })) };
+    try { localStorage.setItem(SONGS_KEY, JSON.stringify(st)); } catch (e) {}
+  }
+  return st;
+}
+function songsSave() { try { localStorage.setItem(SONGS_KEY, JSON.stringify(songs)); } catch (e) { log("Écriture localStorage impossible : " + e.message, "ko"); } }
+function songById(id) { return songs.songs.find(s => s.id === id) || null; }
+function renderSongs() {
+  const sel = document.getElementById("songSel");
+  sel.innerHTML = "";
+  for (const s of songs.songs) {
+    const o = document.createElement("option");
+    o.value = s.id;
+    o.textContent = (s.seq ? "♪ " : "· ") + ((s.pm > 0) ? PM_NAMES[s.pm] + " — " : "") + s.title;
+    if (s.id === curSongId) o.selected = true;
+    sel.appendChild(o);
+  }
+  songInfo();
+}
+function songInfo() {
+  const el = document.getElementById("songInfo"), s = songById(curSongId);
+  if (!s) { el.textContent = ""; return; }
+  const b = [];
+  if (s.seq) b.push("séquence ✓ (" + s.seq.split(/\r?\n/).filter(l => l.trim() && !l.trim().startsWith("//")).length + " lignes)");
+  if (s.panel) b.push("réglages panel ✓ (♩" + (s.panel.tempo || "?") + (s.panel.savedAt ? ", " + s.panel.savedAt : "") + ")");
+  el.textContent = b.join(" · ") || "rien de sauvegardé — 💾 Sauver morceau capturera séquence + réglages";
+}
+function selectSong(id, envoi) {
+  const s = songById(id);
+  if (!s) return;
+  curSongId = id;
+  document.getElementById("songSel").value = id;
+  if (s.seq) { document.getElementById("progInput").value = s.seq; loadSeq(); }
+  songInfo();
+  if (s.panel && envoi !== false) restorePanel(s.panel);
+  log("🎵 Morceau : « " + s.title + " »" + (s.seq ? " — séquence chargée" : " (pas encore de séquence sauvegardée)") + (s.panel ? (envoi === false ? " ; réglages panel disponibles" : " ; réglages panel ENVOYÉS au KN2000") : " ; pas encore de réglages sauvegardés — 💾 Sauver morceau les capturera"), "info");
+}
+document.getElementById("songSel").onchange = () => selectSong(document.getElementById("songSel").value, true);
+
+// Lecture du panel courant (façon Panel Console) : DRQ sur chaque adresse, les réponses ITR
+// sont capturées par le hook panelCap dans onMidiMsg ; tempo = trame TMP (jamais de DRQ 25).
+function readPanel() {
+  const out = { tempo: curBpm(), params: {}, savedAt: new Date().toLocaleString("fr-FR") };
+  panelCap = out;
+  log("💾 Lecture du panel courant du KN2000 (DRQ ×" + PANEL_READS.length + ") — tempo ♩" + out.tempo + " (trame TMP).", "info");
+  for (const r of PANEL_READS) sendDrq(r[0], r[1], r[2], r[4], r[3]);
+  return new Promise(res => setTimeout(() => {
+    panelCap = null;
+    const got = Object.keys(out.params).length;
+    if (got) log("💾 Panel lu : " + got + "/" + PANEL_READS.length + " réglage(s) reçu(s).", "ok");
+    else log("⚠️ Aucune réponse du KN2000 (branché ? port RX ?) — seuls la séquence et le tempo ♩" + out.tempo + " sont sauvegardés.", "ko");
+    res(out);
+  }, 1200));
+}
+// ITW multi-octets : f0 50 2C 01 18 10 ADR(3) SIZ(3) DT-nibblisé CN CK f7
+function sendItw(adr, dt) {
+  const body = [0x50, 0x2C, 0x01, 0x18, 0x10, adr[0], adr[1], adr[2], (dt.length >> 14) & 0x7F, (dt.length >> 7) & 0x7F, dt.length & 0x7F];
+  for (const b of dt) body.push((b >> 4) & 0x0F, b & 0x0F);
+  body.push(0x00);
+  const ck = body.reduce((a, b) => a ^ b, 0) & 0x7F;
+  return send([0xF0, ...body, ck, 0xF7], "ITW " + hex(adr) + " = " + hex(dt));
+}
+// Envoi de la config d'un morceau vers le KN2000 (paramètre par paramètre, puis tempo)
+async function restorePanel(p) {
+  const keys = Object.keys(p.params || {});
+  if (!keys.length && !p.tempo) { log("🎵 Aucun réglage sauvegardé pour ce morceau.", "info"); return; }
+  log("🎹 Configuration du morceau → KN2000 : " + keys.length + " paramètre(s)" + (p.tempo ? " + tempo ♩" + p.tempo : "") + ".", "ok");
+  for (const k of keys) {
+    const a = k.split(" ").map(x => parseInt(x, 16));
+    sendItw(a, p.params[k]);
+    await new Promise(r => setTimeout(r, 50)); // laisse le KN2000 ingérer chaque écriture
+  }
+  if (p.tempo) sendTmpN(p.tempo);
+}
+document.getElementById("songSave").onclick = async () => {
+  let s = songById(curSongId);
+  if (!s) { alert("Sélectionne d'abord un morceau (ou ➕ Nouveau)."); return; }
+  s.seq = document.getElementById("progInput").value;
+  s.panel = await readPanel();
+  songsSave();
+  renderSongs();
+  log("💾 « " + s.title + " » sauvegardé : séquence + " + Object.keys(s.panel.params).length + " réglage(s) panel (♩" + s.panel.tempo + ").", "ok");
+};
+document.getElementById("songAdd").onclick = () => {
+  const t = prompt("Titre du morceau :");
+  if (!t || !t.trim()) return;
+  const pm = parseInt((prompt("PM associée (1-24 = A1-C8, 0 = aucune) :", "0") || "0"), 10);
+  const s = { id: "u-" + Date.now(), title: t.trim(), pm: (pm >= 1 && pm <= 24) ? pm : 0, msid: "", seq: document.getElementById("progInput").value, panel: null };
+  songs.songs.push(s);
+  curSongId = s.id;
+  songsSave(); renderSongs();
+  log("➕ « " + s.title + " » ajouté — la séquence affichée est mémorisée avec lui ; 💾 Sauver morceau capturera aussi les réglages panel.", "ok");
+};
+document.getElementById("songDel").onclick = () => {
+  const s = songById(curSongId);
+  if (!s || !confirm("Retirer « " + s.title + " » de la liste ?")) return;
+  songs.songs = songs.songs.filter(x => x.id !== s.id);
+  curSongId = null;
+  songsSave(); renderSongs();
+  log("🗑️ « " + s.title + " » retiré de la liste sauvegardée.", "info");
+};
+document.getElementById("songExport").onclick = () => {
+  const blob = new Blob([JSON.stringify(songs, null, 1)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "kn2000-apc-morceaux.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+  log("⬇️ Export : " + songs.songs.length + " morceau(x) — fichier kn2000-apc-morceaux.json.", "ok");
+};
+document.getElementById("songImport").onchange = (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (!f) return;
+  f.text().then(t => {
+    let imp = null; try { imp = JSON.parse(t); } catch (e) { log("Import : JSON invalide.", "ko"); return; }
+    const list = Array.isArray(imp) ? imp : (imp && Array.isArray(imp.songs) ? imp.songs : null);
+    if (!list) { log("Import : format non reconnu (attendu : { songs: [...] }).", "ko"); return; }
+    let n = 0;
+    for (const s of list) {
+      if (!s || !s.id || !s.title) continue;
+      const ex = songs.songs.findIndex(x => x.id === s.id);
+      if (ex >= 0) songs.songs[ex] = s; else songs.songs.push(s);
+      n++;
+    }
+    songsSave(); renderSongs();
+    log("⬆️ Import : " + n + " morceau(x) fusionné(s) dans la liste.", "ok");
+    ev.target.value = "";
+  }).catch(e => log("Import : " + e.message, "ko"));
+};
+
+songs = songsLoad();
+curSongId = songs.songs.length ? songs.songs[0].id : null;
+renderSongs();
+if (curSongId && songById(curSongId).seq) selectSong(curSongId, false); // affiche la séquence du 1er morceau, sans envoi au chargement
 
 initMidi();
 </script>
