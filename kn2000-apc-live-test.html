@@ -16,15 +16,15 @@
   input[type=number] { width: 60px; }
   .row { margin: 6px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
   .hint { font-size: 11px; color: #888; }
-  .grid-input { width: 100%; box-sizing: border-box; font-family: monospace; padding: 8px; font-size: 15px; line-height: 1.45; border: 1px solid #bbb; }
+  .grid-input { width: 100%; box-sizing: border-box; font-family: monospace; padding: 8px; font-size: 15px; line-height: 1.45; border: 1px solid #bbb; background: transparent; position: relative; z-index: 2; } /* v0.34 : fond transparent → la bande violette du miroir passe DERRIÈRE le texte */
   #live { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 14px; }
   .bigscreen { display: flex; flex-wrap: wrap; align-items: center; gap: 28px; padding-bottom: 10px; border-bottom: 1px solid #eee; margin-bottom: 10px; }
   #pos { font-size: 42px; font-weight: bold; color: #1273b0; font-family: monospace; line-height: 1.05; }
   #bpm { font-size: 42px; font-weight: bold; color: #7a4fd0; font-family: monospace; line-height: 1.05; }
-  /* v0.33 : surlignage de la mesure EN COURS directement dans la zone de saisie (calque miroir) */
+  /* v0.33 : surlignage de la mesure EN COURS directement dans la zone de saisie (calque miroir) — v0.34 : bande PÂLE placée DERRIÈRE le texte */
   .editWrap { position: relative; }
-  #mirror { position: absolute; inset: 0; border: 1px solid transparent; padding: 8px; font-family: monospace; font-size: 15px; line-height: 1.45; white-space: pre-wrap; word-wrap: break-word; overflow: hidden; color: transparent; pointer-events: none; }
-  #mirror .mhl { background: #7a4fd0; border-radius: 5px; }
+  #mirror { position: absolute; inset: 0; z-index: 1; border: 1px solid transparent; padding: 8px; font-family: monospace; font-size: 15px; line-height: 1.45; white-space: pre-wrap; word-wrap: break-word; overflow: hidden; color: transparent; pointer-events: none; }
+  #mirror .mhl { background: rgba(122, 79, 208, 0.3); border-radius: 5px; }
   details { margin-top: 12px; background: #fff; border: 1px solid #e3e3e3; border-radius: 8px; padding: 6px 12px; font-size: 13px; }
   details summary { cursor: pointer; font-weight: 600; font-size: 13px; }
   details .row { margin: 8px 0 4px; }
@@ -36,7 +36,7 @@
 </head>
 <body>
 <header>
-  <span><b>🎼 APC Live KN2000</b> <span class="hint">v0.33 — suivi de lecture : la MESURE en cours est surlignée en violet directement dans la zone de saisie</span></span>
+  <span><b>🎼 APC Live KN2000</b> <span class="hint">v0.34 — surlignage pâle derrière le texte ; accord sus abrégé (Csus = Csus4) ; cellule inconnue = ligne rejetée (jamais de mesure amputée en silence)</span></span>
   &nbsp; <span id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
@@ -82,7 +82,7 @@ Thème
       <label title="▶ Démarrer attend le prochain temps 1 (compteur F8 si l'horloge tourne ; sinon minuteur)"><input type="checkbox" id="syncStart"> 🎯 Départ calé</label>
       <label title="FA Start → lance la séquence (accord 1 calé sur le temps 1) ; FB Continue → reprend ; FC Stop → arrête"><input type="checkbox" id="xport" checked> 🎛 Transport clavier</label>
     </div>
-    <div class="hint">▶ Démarrer : (1) tempo imposé au clavier (trame TMP) ; (2) armement Synchro&Break ; (3) séquence — <b>si l'horloge F8 tourne, les accords sont pilotés par le COMPTEUR de pulses</b> : zéro dérive, un changement de tempo à la molette est suivi instantanément, le calage reste collé au compteur affiché (sinon secours au minuteur). <b>🎛 Transport clavier</b> : FA Start → séquence lancée depuis l'accord 1 pile sur le temps 1 ; FB Continue → reprise de la séquence arrêtée (accord interrompu rejoué) ; FC Stop → arrêt (notes OFF). <b>Saisie multi-lignes</b> : les accords OBLIGATOIREMENT entre <code>| … |</code> ; une ligne sans <code>|</code> = <b>titre de section</b> (non joué) ; <code>//</code> = commentaire ; <code>||</code> ouvre un bloc de répétition, <code>|| x2</code> le referme et le joue 2 fois ; la MESURE en cours est surlignée en violet directement dans la zone de saisie pendant la lecture. Voir <b>❓ Aide</b> ci-dessous pour tous les types d'accords. <b>🎵 Morceaux</b> : sélectionner un morceau charge sa séquence et <b>envoie sa config au KN2000</b> (tempo, rythme, APC, sons, volumes — aucun rappel Panel Memory : la config vit dans la page, morceau par morceau) ; <b>💾 Sauver morceau</b> capture la séquence affichée + les réglages COURANTS du clavier (lecture panel façon Panel Console) ; ⬇️ Export / ⬆️ Import pour tout emporter en JSON.</div>
+    <div class="hint">▶ Démarrer : (1) tempo imposé au clavier (trame TMP) ; (2) armement Synchro&Break ; (3) séquence — <b>si l'horloge F8 tourne, les accords sont pilotés par le COMPTEUR de pulses</b> : zéro dérive, un changement de tempo à la molette est suivi instantanément, le calage reste collé au compteur affiché (sinon secours au minuteur). <b>🎛 Transport clavier</b> : FA Start → séquence lancée depuis l'accord 1 pile sur le temps 1 ; FB Continue → reprise de la séquence arrêtée (accord interrompu rejoué) ; FC Stop → arrêt (notes OFF). <b>Saisie multi-lignes</b> : les accords OBLIGATOIREMENT entre <code>| … |</code> ; une ligne sans <code>|</code> = <b>titre de section</b> (non joué) ; <code>//</code> = commentaire ; <code>||</code> ouvre un bloc de répétition, <code>|| x2</code> le referme et le joue 2 fois ; la MESURE en cours est surlignée en violet pâle derrière le texte de la zone de saisie pendant la lecture. Voir <b>❓ Aide</b> ci-dessous pour tous les types d'accords. <b>🎵 Morceaux</b> : sélectionner un morceau charge sa séquence et <b>envoie sa config au KN2000</b> (tempo, rythme, APC, sons, volumes — aucun rappel Panel Memory : la config vit dans la page, morceau par morceau) ; <b>💾 Sauver morceau</b> capture la séquence affichée + les réglages COURANTS du clavier (lecture panel façon Panel Console) ; ⬇️ Export / ⬆️ Import pour tout emporter en JSON.</div>
   </div>
 
   <details>
@@ -93,7 +93,7 @@ Thème
       <b>Bloc de répétition</b> : <code>||</code> (ou <code>!!</code>) seul sur sa ligne ouvre un bloc ; <code>|| x2</code> le referme et le joue 2 fois (<code>x3</code>, <code>x4</code>…).<br>
       <b>Dans une mesure</b> : <code>.</code> tenue · <code>/</code> rejouer l'accord · <code>%</code> répète la mesure · <code>NC</code> silence · <code>C~F~G</code> plusieurs accords dans la cellule · <code>| 3/4 B7 |</code> chiffrage (mesure à N temps).<br>
       <b>Fondamentales</b> : <code>C D E F G A B</code> avec <code>#</code>/<code>b</code> (ex. <code>Bb</code>, <code>F#</code>).<br>
-      <b>Types d'accords reconnus</b> (sur C) : <code>C</code>, <code>CM</code> (majeur) · <code>Cm</code> · <code>C7</code> · <code>CM7</code> (7M) · <code>Cm7</code> · <code>Cm7b5</code> · <code>Cdim</code> · <code>Caug</code> · <code>Caug7</code> · <code>C7#5</code> · <code>C6</code> · <code>Cm6</code> · <code>Csus4</code> · <code>C7sus4</code> · <code>CmM7</code> · <code>CmM7b5</code> · <code>CM7b5</code> · <code>Cb5</code> · <code>Cmb5</code>.<br>
+      <b>Types d'accords reconnus</b> (sur C) : <code>C</code>, <code>CM</code> (majeur) · <code>Cm</code> · <code>C7</code> · <code>CM7</code> (7M) · <code>Cm7</code> · <code>Cm7b5</code> · <code>Cdim</code> · <code>Caug</code> · <code>Caug7</code> · <code>C7#5</code> · <code>C6</code> · <code>Cm6</code> · <code>Csus4</code> (ou <code>Csus</code>) · <code>C7sus4</code> (ou <code>C7sus</code>) · <code>CmM7</code> · <code>CmM7b5</code> · <code>CM7b5</code> · <code>Cb5</code> · <code>Cmb5</code>.<br>
       <b>Alias acceptés</b> : <code>min</code>→m · <code>maj</code>→rien · <code>7M</code>→M7 · <code>ø</code>→m7b5 · <code>°</code>→dim (ex. <code>Am6</code>, <code>D7#5</code>, <code>BbM7</code>).<br>
       <b>Exemple complet</b> :<br>
       <code>Intro</code><br>
@@ -272,7 +272,7 @@ function chordOn(c) {
 // (2) grille ChordPro/JJazzLab : | Am6 . . . | D7 . . . |  ou  ! Bb7 ! D7#5 !
 //     . = tenue, / = rejouer l'accord, % = répète la mesure, NC = silence, ~ = plusieurs accords/cellule, | 3/4 X | = chiffrage
 function normChord(tok) {
-  return tok.replace(/7M/, "M7").replace(/min7/, "m7").replace(/min/, "m").replace(/maj7/, "M7").replace(/maj/, "").replace(/ø/, "m7b5").replace(/°/, "dim");
+  return tok.replace(/7M/, "M7").replace(/min7/, "m7").replace(/min/, "m").replace(/maj7/, "M7").replace(/maj/, "").replace(/ø/, "m7b5").replace(/°/, "dim").replace(/sus(?![0-9])/, "sus4"); // v0.34 : Csus → Csus4, C7sus → C7sus4
 }
 const NOTE_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 function chordLabel(c) { return c ? (NOTE_NAMES[c.root] + c.type) : "NC"; }
@@ -379,7 +379,7 @@ function parseSeq() {
 function parseGridText(raw, quiet) {
   const t = raw.replace(/\/\/.*$/gm, "").replace(/\d*[|!]\d*/g, "|").replace(/:+/g, "");
   const measures = t.split(/[|!]/).map(m => m.trim()).filter(m => m.length);
-  const markers = []; let totalBeats = 0, prevCells = null, lastChord = null;
+  const markers = []; let totalBeats = 0, prevCells = null, lastChord = null, badCell = null; // v0.34 : badCell = cellule non reconnue → TOUTE la ligne est rejetée (aucune mesure amputée en silence)
   measures.forEach((m, mi) => { // v0.33 : mi = index de la mesure (pour le surlignage dans la zone d'édition)
     let cells = m.split(/\s+/).filter(x => x.length);
     let expected = null;
@@ -399,17 +399,18 @@ function parseGridText(raw, quiet) {
         const parts = cell.split("~").filter(x => x.length);
         parts.forEach((pc, k) => {
           const c = parseChord(normChord(pc));
-          if (!c) { log("Cellule non reconnue : \"" + pc + "\"", "ko"); return; }
+          if (!c) { badCell = pc; return; } // v0.34 : rejet de la ligne, plus de saut silencieux
           markers.push({ beat: beat + k / parts.length, kind: "chord", c, label: pc, mIdx: mi });
         });
       } else {
         const c = parseChord(normChord(cell));
-        if (!c) { log("Cellule non reconnue : \"" + cell + "\"", "ko"); return; }
+        if (!c) { badCell = cell; return; } // v0.34 : rejet de la ligne, plus de saut silencieux
         markers.push({ beat, kind: "chord", c, label: cell, mIdx: mi });
       }
       totalBeats++;
     }
   });
+  if (badCell !== null) { log("Cellule non reconnue : \"" + badCell + "\"", "ko"); return; } // toute la ligne est rejetée : jamais de séquence amputée en silence
   const seq = [];
   markers.forEach((mk, i) => {
     const next = markers[i + 1];
