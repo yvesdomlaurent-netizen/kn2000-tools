@@ -30,7 +30,7 @@
 </head>
 <body>
 <header>
-  <span><b>KN2000 APC Live Test</b> v0.23 — Trim de calage rendu tangible (±10 ms + saisie directe en ms) ; Départ calé validé terrain (accords réguliers sur longue séquence)</span>
+  <span><b>KN2000 APC Live Test</b> v0.24 — Recalage AUTO sur la grosse caisse ch16 (détection 8 s) + séquence planifiée sur la grille de mesure : absorbe le décalage après un changement de tempo</span>
   &nbsp; <span id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
@@ -76,7 +76,12 @@
         <button id="trimPlus" title="Décale le calage de +10 ms">+10 ms ▶</button>
         <span class="hint" id="trimVal">0 ms</span>
       </div>
-      <div class="hint">🕐 Horloge interne de mesure <b>mesure : temps : pulse</b> (24 pulses/noire), tenue au tempo TMP — le navigateur ne reçoit pas les F8/FA du KN2000 (filtrés par Chrome, MIDI-Ox les voit lui) donc la page tient sa position seule. « 🎯 Caler » : clique sur le temps 1 entendu. Le trim (±10 ms ou saisie directe) compense le réflexe du clic de Caler : il décale la position ET le Départ calé — négatif = accords envoyés plus tôt. Coche « 🎯 Départ calé » (Test 2) pour que ▶ Démarrer attende le prochain temps 1. Le journal batterie ch16 affiche la position de chaque note reçue → vérifie si la grosse caisse (temps 1) suit un pattern stable.</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px">
+        <label><input type="checkbox" id="autoSync"> 🥁 Recalage auto sur la grosse caisse</label>
+        <label>note kick <input type="number" id="kickNote" min="0" max="127" style="width:55px" title="Numéro de la note grosse caisse — repéré par « Détecter » ou à la main depuis le journal batterie"></label>
+        <button id="learnKick">🥁 Détecter (8 s)</button>
+      </div>
+      <div class="hint">🕐 Horloge interne de mesure <b>mesure : temps : pulse</b> (24 pulses/noire), tenue au tempo TMP — le navigateur ne reçoit pas les F8/FA du KN2000 (filtrés par Chrome, MIDI-Ox les voit lui) donc la page tient sa position seule. « 🎯 Caler » : clique sur le temps 1 entendu. Le trim (±10 ms ou saisie directe) compense le réflexe du clic de Caler. Coche « 🎯 Départ calé » (Test 2) pour que ▶ Démarrer attende le prochain temps 1. <b>🥁 Recalage auto</b> : « Détecter » repère la grosse caisse (8 s d'écoute pendant que le rythme tourne) ; une fois la note kick connue et la case cochée, chaque frappe de kick sur un temps 1 recale l'horloge en douceur (correction 50 %) — c'est ce qui absorbe le décalage après un changement de tempo. La séquence est alors planifiée sur la grille de l'horloge : les corrections se propagent aux accords.</div>
     </div>
 
     <h3>🕐 Horloge & temps réel</h3>
@@ -232,6 +237,32 @@ document.getElementById("trimMoins").onclick = () => { syncTrim -= 10; trimUpdat
 document.getElementById("trimPlus").onclick = () => { syncTrim += 10; trimUpdate(); };
 document.getElementById("trimIn").onchange = () => { syncTrim = parseInt(document.getElementById("trimIn").value) || 0; trimUpdate(); };
 function trimUpdate() { document.getElementById("trimIn").value = syncTrim; document.getElementById("trimVal").textContent = syncTrim + " ms"; log("🎚 Trim de calage : " + syncTrim + " ms — s'applique à la position affichée et au Départ calé (les accords partent d'autant plus tôt si négatif).", "info"); }
+// ---------- Recalage auto sur la grosse caisse (ch16) ----------
+let learning = null; // fenêtre d'écoute de 8 s : { until, events: [{n, t}], done }
+const kickNoteEl = document.getElementById("kickNote");
+document.getElementById("learnKick").onclick = () => {
+  learning = { until: performance.now() + 8000, events: [], done: false };
+  log("🥁 Détection de la grosse caisse : j'écoute la batterie ch16 pendant 8 s — le rythme doit tourner.", "info");
+};
+function analyseKickLearning() {
+  const evts = learning.events; learning = null;
+  if (evts.length < 6) { log("🥁 Détection : pas assez de notes batterie reçues en 8 s (rythme lancé ? Drum Pattern Output ON ?).", "ko"); return; }
+  const by = {};
+  evts.forEach(e => { (by[e.n] = by[e.n] || []).push(e.t); });
+  const beatMs = 60000 / curBpm();
+  let best = null;
+  Object.entries(by).forEach(([n, ts]) => {
+    if (ts.length < 4) return;
+    const iv = []; for (let i = 1; i < ts.length; i++) iv.push(ts[i] - ts[i - 1]);
+    iv.sort((a, b) => a - b);
+    const med = iv[Math.floor(iv.length / 2)];
+    const score = Math.abs(med - 2 * beatMs) / beatMs; // kick typique toutes les 2 noires (temps 1 et 3)
+    if (!best || score < best.score) best = { n: +n, med, score, count: ts.length };
+  });
+  if (!best) { log("🥁 Détection : aucune note batterie récurrente trouvée.", "ko"); return; }
+  kickNoteEl.value = best.n;
+  log("🥁 Détection : grosse caisse probable = note " + best.n + " (" + best.count + " frappes, intervalle médian " + Math.round(best.med) + " ms ≈ " + (best.med / beatMs).toFixed(1) + " noires)." + (best.score < 0.3 ? " Vérifie dans le journal qu'elle tombe bien sur les temps 1 (x:01:000), puis coche « Recalage auto »." : " ⚠️ Intervalle pas très régulier — vérifie la note dans le journal avant de cocher « Recalage auto »."), best.score < 0.3 ? "ok" : "info");
+}
 let pulse = 0;
 const activeNotes = new Set();
 function ppq() { return Math.max(1, parseInt(document.getElementById("ppq").value) || 24); }
@@ -401,9 +432,24 @@ function onMidiMsg(ev) {
     }
     if (!document.getElementById("hideNotes").checked) log("RX ch" + chN + " : " + hex([...ev.data]), "info");
     // Journal batterie ch16 : chaque note est estampillée de la position interne (mesure:temps:pulse)
-    if (document.getElementById("drumLog").checked && st === 0x90 && ev.data[2] > 0 && (ev.data[0] & 0x0F) === 15) {
+    if ((document.getElementById("drumLog").checked || document.getElementById("autoSync").checked) && st === 0x90 && ev.data[2] > 0 && (ev.data[0] & 0x0F) === 15) {
       const p = posInfo();
-      log("🥁 RX ch16 : note " + ev.data[1] + (p ? " @ " + p.meas + ":" + String(p.beat).padStart(2, "0") + ":" + String(p.tick).padStart(3, "0") : " (horloge non calée)"), "info");
+      const n = ev.data[1], t = performance.now();
+      if (learning) {
+        if (t < learning.until) learning.events.push({ n, t });
+        else if (!learning.done) { learning.done = true; analyseKickLearning(); }
+      }
+      // Recalage auto : frappe de la grosse caisse proche d'un temps 1 → correction douce de l'anchor (50 %)
+      if (document.getElementById("autoSync").checked && parseInt(kickNoteEl.value) === n && barAnchor !== null) {
+        const beatMs = 60000 / curBpm(), barMs = 4 * beatMs;
+        const pos = ((t - anchorEff()) % barMs + barMs) % barMs;
+        const signed = pos > barMs / 2 ? pos - barMs : pos; // écart signé au temps 1 le plus proche
+        if (Math.abs(signed) < beatMs * 0.35) {
+          barAnchor += signed * 0.5;
+          log("🥁 Recalage auto : dérive " + (signed > 0 ? "+" : "") + Math.round(signed) + " ms sur le temps 1 → corrigée à 50 % (reste ~" + Math.round(Math.abs(signed) / 2) + " ms).", "info");
+        }
+      }
+      if (document.getElementById("drumLog").checked) log("🥁 RX ch16 : note " + n + (p ? " @ " + p.meas + ":" + String(p.beat).padStart(2, "0") + ":" + String(p.tick).padStart(3, "0") : " (horloge non calée)"), "info");
     }
   }
 }
@@ -570,6 +616,7 @@ function sendRhythmStop() {
   synchroArmed = false; synBadge(); // info terrain Yves 29/10 : le Stop repasse l'état Synchro&Break du clavier sur OFF
 }
 let seqNextAt = 0; // horloge absolue du prochain accord — corrige la dérive des setTimeout en chaîne
+let seqOriginBeats = null; // si Départ calé : position en noires de la séquence sur la grille de l'horloge interne
 function seqStep() {
   const s = seqQueue && seqQueue[seqIdx];
   if (!s) {
@@ -588,12 +635,19 @@ function seqStep() {
   chordOn(s.chord);
   seqIdx++;
   // tempo live : recalculé à chaque accord — la molette tempo du clavier reste suivie (trame TMP)
-  // planification sur horloge absolue : le prochain accord vise seqNextAt + durée, pas « maintenant + durée »
-  const ms = s.beats * 60000 / curBpm();
-  const now = performance.now();
-  const target = (seqNextAt > now ? seqNextAt : now) + ms;
-  seqNextAt = target;
-  seqTimer = setTimeout(seqStep, Math.max(0, target - now));
+  // planification : sur la GRILLE de l'horloge interne si Départ calé (les recalages batterie se propagent aux accords),
+  // sinon sur l'horloge absolue locale (le prochain accord vise seqNextAt + durée, pas « maintenant + durée »)
+  const beatMs = 60000 / curBpm();
+  let target;
+  if (seqOriginBeats !== null && barAnchor !== null) {
+    seqOriginBeats += s.beats;
+    target = anchorEff() + seqOriginBeats * beatMs;
+  } else {
+    const ms = s.beats * beatMs, now = performance.now();
+    target = (seqNextAt > now ? seqNextAt : now) + ms;
+    seqNextAt = target;
+  }
+  seqTimer = setTimeout(seqStep, Math.max(0, target - performance.now()));
 }
 
 document.getElementById("play").onclick = () => {
@@ -615,16 +669,16 @@ document.getElementById("play").onclick = () => {
     if (document.getElementById("syncStart").checked && barAnchor !== null) {
       const beatMs = 60000 / curBpm();
       const ms = performance.now() - anchorEff();
-      const inBar = ((ms / beatMs) % 4 + 4) % 4;
-      const wait = (4 - inBar) * beatMs;
-      log("🎯 Départ calé sur la mesure : " + Math.round(wait) + " ms d'attente jusqu'au prochain temps 1 (position " + posStr() + ").", "info");
+      seqOriginBeats = (Math.floor(ms / (4 * beatMs)) + 1) * 4; // prochain début de mesure, en noires depuis l'anchor
+      const wait = seqOriginBeats * beatMs - ms;
+      log("🎯 Départ calé sur la mesure : " + Math.round(wait) + " ms d'attente jusqu'au prochain temps 1 (position " + posStr() + "). La séquence suivra la grille de l'horloge interne : les recalages batterie s'y propagent.", "info");
       playTimers.push(setTimeout(startSeq, wait));
-    } else startSeq();
+    } else { seqOriginBeats = null; startSeq(); }
   }, 500)); // laisse le temps au clavier d'ingérer le tempo TMP avant de partir
 };
 document.getElementById("stopPlay").onclick = () => {
   clearPlay(); if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; }
-  seqQueue = null; chordOff();
+  seqQueue = null; chordOff(); seqOriginBeats = null;
   sendRhythmStop();
   log("⏹ Stop — notes OFF, rythme arrêté (CC82 Stop ch Control + FC). L'état Synchro repasse OFF côté clavier (badge) : ▶ Démarrer le réarmera.", "info");
 };
