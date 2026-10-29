@@ -45,7 +45,7 @@
 </head>
 <body>
 <header>
-  <span><b>🎼 APC Live KN2000</b> <span class="hint">v0.36 — correctif départ à la mesure : le premier accord part immédiatement (plus de silence d'un « cum » d'avance sur l'horloge F8)</span></span>
+  <span><b>🎼 APC Live KN2000</b> <span class="hint">v0.37 — correctif : le FA émis par le clavier au démarrage de son rythme ne remet plus la séquence au début — réalignage sur le temps 1, la lecture continue</span></span>
   &nbsp; <span id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
@@ -101,7 +101,7 @@ Thème
       <span id="mCount">—</span>
     </div>
     <div class="row"><div id="tapeBar" title="Glisser la bande pour choisir la mesure de départ"><div id="tapeFill"></div><div id="tapeHandle">▼</div></div></div>
-    <div class="hint">▶ Démarrer : (1) tempo imposé au clavier (trame TMP) ; (2) armement Synchro&Break ; (3) séquence — <b>si l'horloge F8 tourne, les accords sont pilotés par le COMPTEUR de pulses</b> : zéro dérive, un changement de tempo à la molette est suivi instantanément, le calage reste collé au compteur affiché (sinon secours au minuteur). <b>🎛 Transport clavier</b> : FA Start → séquence lancée depuis l'accord 1 pile sur le temps 1 ; FB Continue → reprise de la séquence arrêtée (accord interrompu rejoué) ; FC Stop → arrêt (notes OFF). <b>📼 Départ mesure</b> : champ, flèches ⏮ ◀ ▶ ⏭ ou bande glissante — <b>▶ Démarrer part de la mesure choisie</b> (les mesures d'avant ne sont pas envoyées ; 🔁 Repeat y reboucle) ; le FA Start du clavier part toujours de la mesure 1 ; le compteur affiche la mesure en cours pendant la lecture. <b>Saisie multi-lignes</b> : les accords OBLIGATOIREMENT entre <code>| … |</code> ; une ligne sans <code>|</code> = <b>titre de section</b> (non joué) ; <code>//</code> = commentaire ; <code>||</code> ouvre un bloc de répétition, <code>|| x2</code> le referme et le joue 2 fois ; la MESURE en cours est surlignée en violet pâle derrière le texte de la zone de saisie pendant la lecture. Voir <b>❓ Aide</b> ci-dessous pour tous les types d'accords. <b>🎵 Morceaux</b> : sélectionner un morceau charge sa séquence et <b>envoie sa config au KN2000</b> (tempo, rythme, APC, sons, volumes — aucun rappel Panel Memory : la config vit dans la page, morceau par morceau) ; <b>💾 Sauver morceau</b> capture la séquence affichée + les réglages COURANTS du clavier (lecture panel façon Panel Console) ; ⬇️ Export / ⬆️ Import pour tout emporter en JSON.</div>
+    <div class="hint">▶ Démarrer : (1) tempo imposé au clavier (trame TMP) ; (2) armement Synchro&Break ; (3) séquence — <b>si l'horloge F8 tourne, les accords sont pilotés par le COMPTEUR de pulses</b> : zéro dérive, un changement de tempo à la molette est suivi instantanément, le calage reste collé au compteur affiché (sinon secours au minuteur). <b>🎛 Transport clavier</b> : FA Start → séquence lancée depuis l'accord 1 pile sur le temps 1 ; FB Continue → reprise de la séquence arrêtée (accord interrompu rejoué) ; FC Stop → arrêt (notes OFF). <b>📼 Départ mesure</b> : champ, flèches ⏮ ◀ ▶ ⏭ ou bande glissante — <b>▶ Démarrer part de la mesure choisie</b> (les mesures d'avant ne sont pas envoyées ; 🔁 Repeat y reboucle) ; FA du clavier à l'arrêt → mesure 1 ; FA pendant la lecture → simple réalignage, la lecture continue (le KN2000 émet FA au démarrage de son rythme) ; le compteur affiche la mesure en cours pendant la lecture. <b>Saisie multi-lignes</b> : les accords OBLIGATOIREMENT entre <code>| … |</code> ; une ligne sans <code>|</code> = <b>titre de section</b> (non joué) ; <code>//</code> = commentaire ; <code>||</code> ouvre un bloc de répétition, <code>|| x2</code> le referme et le joue 2 fois ; la MESURE en cours est surlignée en violet pâle derrière le texte de la zone de saisie pendant la lecture. Voir <b>❓ Aide</b> ci-dessous pour tous les types d'accords. <b>🎵 Morceaux</b> : sélectionner un morceau charge sa séquence et <b>envoie sa config au KN2000</b> (tempo, rythme, APC, sons, volumes — aucun rappel Panel Memory : la config vit dans la page, morceau par morceau) ; <b>💾 Sauver morceau</b> capture la séquence affichée + les réglages COURANTS du clavier (lecture panel façon Panel Console) ; ⬇️ Export / ⬆️ Import pour tout emporter en JSON.</div>
   </div>
 
   <details>
@@ -496,13 +496,23 @@ function onMidiMsg(ev) {
       pulse = 0; lastF8At = performance.now();
       barAnchor = performance.now() - syncTrim; // FA = début de mesure réel
       posEl.textContent = posStr();
-      // 🎛 TRANSPORT clavier : FA = (re)départ de la séquence — accord 1 calé sur CE temps 1
+      // 🎛 TRANSPORT clavier : FA = le rythme du clavier démarre (premier temps 1)
       if (document.getElementById("xport").checked && seqList) {
         if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; }
         seqOriginBeats = null; lastStopIdx = null;
-        seqQueue = seqList; seqIdx = 0; seqStartIdx = 0; seqOriginPulse = pulse; // pulse = 0 au FA → accord 1 pile sur le temps 1
-        log("▶ FA Start du clavier — séquence lancée depuis l'accord 1, calée sur le temps 1 ; les envois suivent le compteur F8.", "ok");
-        seqPump();
+        if (seqQueue) {
+          // v0.37 — CORRECTIF TERRAIN : le KN2000 émet FA quand SON rythme démarre — notamment juste après
+          // ▶ Démarrer (le 1er accord arme Synchro&Break → rythme → FA). Ne PAS rejouer depuis la mesure 1 :
+          // on réaligne l'origine sur ce temps 1 (l'accord en cours devient le temps 1 du rythme), la séquence CONTINUE.
+          const anchorIdx = (seqIdx > seqStartIdx) ? seqIdx - 1 : seqStartIdx;
+          seqOriginPulse = pulse - (seqQueue[anchorIdx] ? seqQueue[anchorIdx].cum * ppq() : 0);
+          log("FA du clavier pendant la lecture — origine réalignée sur le temps 1 du rythme : la séquence CONTINUE (mesure de départ conservée).", "info");
+          seqPump();
+        } else {
+          seqQueue = seqList; seqIdx = 0; seqStartIdx = 0; seqOriginPulse = pulse; // pulse = 0 au FA → accord 1 pile sur le temps 1
+          log("▶ FA Start du clavier — séquence lancée depuis l'accord 1 (mesure 1), calée sur le temps 1 ; les envois suivent le compteur F8.", "ok");
+          seqPump();
+        }
       }
     } else if (b === 0xFB) { // MIDI Continue : reprise de la séquence arrêtée par le dernier FC
       if (document.getElementById("xport").checked && seqList && !seqQueue) {
