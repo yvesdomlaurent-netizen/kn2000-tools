@@ -45,7 +45,7 @@
 </head>
 <body>
 <header>
-  <span><b>🎼 APC Live KN2000</b> <span class="hint">v0.39 — vrai silence NC : APC memory OFF au départ, Synchro&Break désarmé après le FA du clavier</span></span>
+  <span><b>🎼 APC Live KN2000</b> <span class="hint">v0.40 — écran de séquence fidèle au morceau (vidé si pas de séquence sauvegardée) + 🔄 Renvoyer au clavier (vérif)</span></span>
   &nbsp; <span id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   &nbsp; RX <select id="rx" title="Port de réception (venant du KN2000)"></select>
   TX <select id="tx" title="Port d'émission (vers le KN2000)"></select>
@@ -71,6 +71,7 @@
       <select id="songSel" style="max-width:340px" title="Sélectionner un morceau : charge sa séquence dans la zone de saisie et ENVOIE ses réglages au clavier (tempo, rythme, APC, sons, volumes…). ♪ = séquence sauvegardée."></select>
       <button id="songAdd" title="Ajouter un morceau à la liste (titre demandé)">➕ Nouveau</button>
       <button id="songSave" title="Sauvegarder dans ce morceau : la séquence affichée + les réglages COURANTS du clavier (lus par DRQ, façon Panel Console)">💾 Sauver morceau</button>
+      <button id="songRefresh" title="Rafraîchir : renvoyer au clavier les réglages du morceau courant (tempo, rythme, APC, sons, volumes) pour vérifier la réception sur le clavier">🔄 Renvoyer au clavier</button>
       <button id="songDel" title="Retirer ce morceau de la liste sauvegardée">🗑️</button>
       <button id="songExport" title="Exporter tous les morceaux (séquences + réglages) en fichier JSON — sauvegarde / transfert">⬇️ Export</button>
       <label style="cursor:pointer" title="Importer des morceaux depuis un fichier JSON exporté (fusion par morceau)">⬆️ Import<input type="file" id="songImport" accept=".json,application/json" hidden></label>
@@ -101,7 +102,7 @@ Thème
       <span id="mCount">—</span>
     </div>
     <div class="row"><div id="tapeBar" title="Glisser la bande pour choisir la mesure de départ"><div id="tapeFill"></div><div id="tapeHandle">▼</div></div></div>
-    <div class="hint">▶ Démarrer : (1) tempo imposé au clavier (trame TMP) ; (2) armement Synchro&Break ; (3) séquence — <b>si l'horloge F8 tourne, les accords sont pilotés par le COMPTEUR de pulses</b> : zéro dérive, un changement de tempo à la molette est suivi instantanément, le calage reste collé au compteur affiché (sinon secours au minuteur). <b>🎛 Transport clavier</b> : FA Start → séquence lancée depuis l'accord 1 pile sur le temps 1 ; FB Continue → reprise de la séquence arrêtée (accord interrompu rejoué) ; FC Stop → arrêt (notes OFF). <b>📼 Départ mesure</b> : champ, flèches ⏮ ◀ ▶ ⏭ ou bande glissante — <b>▶ Démarrer part de la mesure choisie</b> (les mesures d'avant ne sont pas envoyées ; 🔁 Repeat y reboucle) ; FA du clavier à l'arrêt → mesure 1 ; FA pendant la lecture → simple réalignage, la lecture continue (le KN2000 émet FA au démarrage de son rythme) ; le grand compteur de position démarre à la mesure de départ (N:01:000) ; le compteur affiche la mesure en cours pendant la lecture. <b>🔇 Vrai silence NC</b> : ▶ Démarrer passe l'APC memory OFF ; dès que le FA du clavier confirme le rythme lancé, Synchro&Break est désarmé — <code>NC</code> coupe l'accompagnement sans couper la batterie, l'accord suivant relance (memory laissé OFF : retour à la main au panneau). <b>Saisie multi-lignes</b> : les accords OBLIGATOIREMENT entre <code>| … |</code> ; une ligne sans <code>|</code> = <b>titre de section</b> (non joué) ; <code>//</code> = commentaire ; <code>||</code> ouvre un bloc de répétition, <code>|| x2</code> le referme et le joue 2 fois ; la MESURE en cours est surlignée en violet pâle derrière le texte de la zone de saisie pendant la lecture. Voir <b>❓ Aide</b> ci-dessous pour tous les types d'accords. <b>🎵 Morceaux</b> : sélectionner un morceau charge sa séquence et <b>envoie sa config au KN2000</b> (tempo, rythme, APC, sons, volumes — aucun rappel Panel Memory : la config vit dans la page, morceau par morceau) ; <b>💾 Sauver morceau</b> capture la séquence affichée + les réglages COURANTS du clavier (lecture panel façon Panel Console) ; ⬇️ Export / ⬆️ Import pour tout emporter en JSON.</div>
+    <div class="hint">▶ Démarrer : (1) tempo imposé au clavier (trame TMP) ; (2) armement Synchro&Break ; (3) séquence — <b>si l'horloge F8 tourne, les accords sont pilotés par le COMPTEUR de pulses</b> : zéro dérive, un changement de tempo à la molette est suivi instantanément, le calage reste collé au compteur affiché (sinon secours au minuteur). <b>🎛 Transport clavier</b> : FA Start → séquence lancée depuis l'accord 1 pile sur le temps 1 ; FB Continue → reprise de la séquence arrêtée (accord interrompu rejoué) ; FC Stop → arrêt (notes OFF). <b>📼 Départ mesure</b> : champ, flèches ⏮ ◀ ▶ ⏭ ou bande glissante — <b>▶ Démarrer part de la mesure choisie</b> (les mesures d'avant ne sont pas envoyées ; 🔁 Repeat y reboucle) ; FA du clavier à l'arrêt → mesure 1 ; FA pendant la lecture → simple réalignage, la lecture continue (le KN2000 émet FA au démarrage de son rythme) ; le grand compteur de position démarre à la mesure de départ (N:01:000) ; le compteur affiche la mesure en cours pendant la lecture. <b>🔇 Vrai silence NC</b> : ▶ Démarrer passe l'APC memory OFF ; dès que le FA du clavier confirme le rythme lancé, Synchro&Break est désarmé — <code>NC</code> coupe l'accompagnement sans couper la batterie, l'accord suivant relance (memory laissé OFF : retour à la main au panneau). <b>Saisie multi-lignes</b> : les accords OBLIGATOIREMENT entre <code>| … |</code> ; une ligne sans <code>|</code> = <b>titre de section</b> (non joué) ; <code>//</code> = commentaire ; <code>||</code> ouvre un bloc de répétition, <code>|| x2</code> le referme et le joue 2 fois ; la MESURE en cours est surlignée en violet pâle derrière le texte de la zone de saisie pendant la lecture. Voir <b>❓ Aide</b> ci-dessous pour tous les types d'accords. <b>🎵 Morceaux</b> : sélectionner un morceau charge sa séquence et <b>envoie sa config au KN2000</b> (tempo, rythme, APC, sons, volumes — aucun rappel Panel Memory : la config vit dans la page, morceau par morceau) ; <b>💾 Sauver morceau</b> capture la séquence affichée + les réglages COURANTS du clavier (lecture panel façon Panel Console) ; ⬇️ Export / ⬆️ Import pour tout emporter en JSON ; un morceau sans séquence sauvegardée VIDE l'écran (rappel du titre en commentaire, jamais sauvegardé) ; <b>🔄 Renvoyer au clavier</b> renvoie les réglages panel du morceau courant (vérif clavier).</div>
   </div>
 
   <details>
@@ -889,7 +890,7 @@ const PANEL_READS = [
   [0x20,0x20,0x02,1,"Vol APC1"], [0x20,0x21,0x02,1,"Vol APC2"], [0x20,0x22,0x02,1,"Vol APC3"], [0x20,0x23,0x02,1,"Vol APC4"], [0x20,0x24,0x02,1,"Vol APC5"], [0x20,0x25,0x02,1,"Vol APC6"], [0x20,0x26,0x02,1,"Vol APC7"],
   [0x20,0x08,0x10,1,"Réverb totale"], [0x20,0x0A,0x0C,1,"APC mode enable"]
 ];
-let songs = null, curSongId = null, panelCap = null; // panelCap : collecteur pendant la lecture panel
+let songs = null, curSongId = null, panelCap = null, seqPlaceholder = null; // panelCap : collecteur pendant la lecture panel ; seqPlaceholder : texte affiché pour un morceau SANS séquence (v0.40 — ne jamais le sauvegarder comme séquence)
 
 function songsLoad() {
   let st = null;
@@ -928,12 +929,24 @@ function selectSong(id, envoi) {
   if (!s) return;
   curSongId = id;
   document.getElementById("songSel").value = id;
-  if (s.seq) { document.getElementById("progInput").value = s.seq; loadSeq(); }
+  if (s.seq) { seqPlaceholder = null; document.getElementById("progInput").value = s.seq; loadSeq(); }
+  else { // v0.40 : l'écran reflète le morceau réel — VIDÉ si pas encore de séquence, avec rappel du titre en commentaire
+    seqPlaceholder = "// " + s.title + " — pas encore de séquence sauvegardée. Tapez la grille ici, puis 💾 Sauver morceau la capturera.";
+    document.getElementById("progInput").value = seqPlaceholder;
+    loadSeq();
+  }
   songInfo();
   if (s.panel && envoi !== false) restorePanel(s.panel);
   log("🎵 Morceau : « " + s.title + " »" + (s.seq ? " — séquence chargée" : " (pas encore de séquence sauvegardée)") + (s.panel ? (envoi === false ? " ; réglages panel disponibles" : " ; réglages panel ENVOYÉS au KN2000") : " ; pas encore de réglages sauvegardés — 💾 Sauver morceau les capturera"), "info");
 }
 document.getElementById("songSel").onchange = () => selectSong(document.getElementById("songSel").value, true);
+document.getElementById("songRefresh").onclick = () => { // v0.40 : renvoi des réglages du morceau courant au KN2000 (vérif clavier)
+  const s = songById(curSongId);
+  if (!s) { log("🔄 Sélectionnez d'abord un morceau (ou ➕ Nouveau).", "ko"); return; }
+  if (!s.panel) { log("🔄 « " + s.title + " » : pas encore de réglages sauvegardés — 💾 Sauver morceau les capturera. (La séquence, elle, n'est jamais « envoyée » : elle est jouée en direct accord par accord.)", "info"); return; }
+  log("🔄 « " + s.title + " » — renvoi des réglages au KN2000 pour vérification.", "info");
+  restorePanel(s.panel);
+};
 
 // Lecture du panel courant (façon Panel Console) : DRQ sur chaque adresse, les réponses ITR
 // sont capturées par le hook panelCap dans onMidiMsg ; tempo = trame TMP (jamais de DRQ 25).
@@ -973,7 +986,7 @@ async function restorePanel(p) {
 document.getElementById("songSave").onclick = async () => {
   let s = songById(curSongId);
   if (!s) { alert("Sélectionne d'abord un morceau (ou ➕ Nouveau)."); return; }
-  s.seq = document.getElementById("progInput").value;
+  s.seq = (seqPlaceholder !== null && document.getElementById("progInput").value === seqPlaceholder) ? "" : document.getElementById("progInput").value; // v0.40 : jamais sauvegarder le rappel de titre
   s.panel = await readPanel();
   songsSave();
   renderSongs();
@@ -983,7 +996,7 @@ document.getElementById("songAdd").onclick = () => {
   const t = prompt("Titre du morceau :");
   if (!t || !t.trim()) return;
   const pm = parseInt((prompt("PM associée (1-24 = A1-C8, 0 = aucune) :", "0") || "0"), 10);
-  const s = { id: "u-" + Date.now(), title: t.trim(), pm: (pm >= 1 && pm <= 24) ? pm : 0, msid: "", seq: document.getElementById("progInput").value, panel: null };
+  const s = { id: "u-" + Date.now(), title: t.trim(), pm: (pm >= 1 && pm <= 24) ? pm : 0, msid: "", seq: (seqPlaceholder !== null && document.getElementById("progInput").value === seqPlaceholder) ? "" : document.getElementById("progInput").value, panel: null };
   songs.songs.push(s);
   curSongId = s.id;
   songsSave(); renderSongs();
