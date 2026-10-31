@@ -46,8 +46,8 @@
 </style>
 </head>
 <body>
-<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.5.13</span>
-  <span class="pill warn" title="Page en construction : restauration validée terrain pour Sound (ITW) et Panel Memory (bulk handshake) ; Sequencer : bulk handshake v0.5.13 — correctif ADR complet des blocs (v0.5.12 écrivait tous les blocs à 60 00 00 → NAK au 3e bloc, test 31/10) ; re-dump + re-catalogue requis, à valider terrain ; Composer reste à valider (page outils)">🔨 en construction</span></h1>
+<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.5.14</span>
+  <span class="pill warn" title="Page en construction : restauration validée terrain pour Sound (ITW) et Panel Memory (bulk handshake) ; Sequencer : bulk handshake v0.5.13 (ADR complets) + v0.5.14 (dédup du catalogue : un re-dump à contenu identique met à jour les adresses d'un patch legacy au lieu de le laisser tel quel ; le journal affiche le patch utilisé avant tout envoi) ; à valider terrain ; Composer reste à valider (page outils)">🔨 en construction</span></h1>
 <div class="tip">💡 Sauvegarder et restaurer l'état du clavier : <strong>Dumps</strong> (KN2000 → page) puis <strong>Catalogue</strong> (patches versionnés, croisement KN2000 ↔ catalogue, restauration complète ou différentielle).
 <strong>Aucune préparation au clavier n'est nécessaire</strong> (validé terrain 26/10/2026). Mémoires volatiles : le KN2000 ne conserve ses mémoires que ~80 min hors tension.</div>
 
@@ -682,9 +682,17 @@ function savePatch(id, ser, srcName) {
   const prev = curPatch(id);
   const nm = srcName || (areaName(id) + " v" + (patchCount(id) + 1));
   if (prev && prev.hash === h) {
-    prev.date = new Date().toISOString();
+    // v0.5.14 : la dédup comparait uniquement le CONTENU (hash des données) — un re-dump à contenu identique
+    // laissait le patch legacy inchangé (ADR 1-octet d'avant v0.5.13) alors que le nouveau dump avait les adresses
+    // complètes → la restauration Sequencer refusait « ADR complets absents » même après re-dump + re-catalogue.
+    // Correctif : on rafraîchit aussi les métadonnées de blocs (ADR/seq/SIZ) du patch existant.
+    const legacyPrev = prev.area.blocks.some(b => { const r = typeof b.adr === "string" ? parseInt(b.adr, 16) : b.adr; return r >= 0 && r < 0x8000; });
+    prev.date = new Date().toISOString(); prev.area = ser;
     storeSave(); catUI();
-    log("💾 " + areaName(id) + " : contenu IDENTIQUE au patch « " + prev.name + " » — date mise à jour (aucune nouvelle version).", "ok");
+    if (legacyPrev)
+      log("💾 " + areaName(id) + " : contenu IDENTIQUE au patch « " + prev.name + " » — ADR complets du nouveau dump APPLIQUÉS au patch (il redevient restaurable), date mise à jour.", "ok");
+    else
+      log("💾 " + areaName(id) + " : contenu IDENTIQUE au patch « " + prev.name + " » — date mise à jour (aucune nouvelle version).", "ok");
     return prev;
   }
   const p = { id: id + "-" + Date.now(), name: nm, date: new Date().toISOString(), hash: h, area: ser };
@@ -1009,6 +1017,7 @@ $("btnRestore").onclick = async () => {
     if (!output) { log("Choisir la sortie MIDI.", "ko"); return; }
     if (dump.on || sending) { log("Opération MIDI déjà en cours.", "ko"); return; }
     const cp = curPatch(id); if (!cp) { log("Aucun patch Sequencer dans le catalogue.", "ko"); return; }
+    log("↩️ Patch Sequencer courant : « " + cp.name + " » — catalogué le " + fmtDate(cp.date) + ", " + cp.area.blocks.length + " bloc(s) : " + cp.area.blocks.map(b => adLbl(b.adr) + " · " + (b.siz || 0) + " o").join(", ") + ".", "info");   // v0.5.14 : visibilité AVANT l'envoi — si c'est l'ancien patch (31/10), c'est lui qu'il faut remplacer par un re-dump + 💾 Cataloguer
     const bl = seqBulkBlocks(cp.area.blocks);
     if (bl.err) { log(bl.err, "ko"); return; }
     const label = "Restauration Sequencer « " + cp.name + " »";
