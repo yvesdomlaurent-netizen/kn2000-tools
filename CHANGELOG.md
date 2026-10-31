@@ -12,6 +12,13 @@ Outils :
 
 ## [Non publié] / Unreleased
 
+### Sauvegarde / Catalogue v0.5.15 — 🎉 SÉQUENCEUR : restauration VALIDÉE TERRAIN + libellés mis à jour
+
+- **Validation terrain (Yves, 31/10 13:44-14:51)** : restauration Sequencer par bulk handshake **OK** — ↩️ Restaurer à 13:44, puis re-dump et 💾 Cataloguer → patch « SEQUENCER v4 » (complet · 2048 o), tableau croisé **🟢 conforme**. L'aire Sequencer est donc dumpable ET restaurable de bout en bout.
+- **Préreaut terrain confirmé** : le clavier doit être sur la page **SYSEX BULK DUMP** au moment de la restauration — sinon il ne se passe rien (le KN2000 n'écoute le bulk que sur cette page, comme pour le dump).
+- **🐛 Libellés obsolètes corrigés** : le menu de restauration indiquait encore « 🔨 restaurable (ITW, à valider terrain) » pour le Séquenceur (voie ITW abandonnée depuis la v0.5.12) et le tableau croisé « à valider (page outils) ». Les deux affichent désormais ✅ validé terrain (bulk — 31/10).
+- Blob v0.5.15 : `4942fd767856778e07a321e3e17aa9d1837f2f55` (126 550 o) ; node --check OK, libellé ITW supprimé (grep 0).
+
 ### Sauvegarde / Catalogue v0.5.14 — 🐛 correctif déduplication du catalogue (le re-dump ne réparait pas un patch legacy)
 
 - **Retour terrain (Yves, 31/10 nuit)** : après re-dump Sequencer avec la v0.5.13 ET re-catalogue, la restauration affichait ENCORE le refus « ADR complets absents ».
