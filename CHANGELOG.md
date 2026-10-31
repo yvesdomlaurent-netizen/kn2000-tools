@@ -12,6 +12,14 @@ Outils :
 
 ## [Non publié] / Unreleased
 
+### Sauvegarde / Catalogue v0.5.12 — ↩️ Restauration SEQUENCER par BULK HANDSHAKE (l'ITW écarté)
+
+- **Test terrain décisif (Yves, 31/10)** : restauration Sequencer par ITW 2C (18 trames parties, aire `60 00 00`, adressage `60 (off>>7) (off&7f)`) → **aucun effet** (pas de message clavier — normal, l'ITW est silencieux — et re-dump toujours vide). L'ITW vers l'aire 60 ne prend pas.
+- **Cause identifiée dans le Reference Guide (p.25, classification)** : *individual data* = System/Part/Sound parameter ; *data dump* = Sound (header+param), Panel (data+memory), **Composer, Sequencer**. Comme les aires Panel (blocs 40/41 — dont l'écriture ITW avait déjà échoué en silence), le Séquenceur s'écrit par le **protocole bulk**, pas par l'ITW.
+- **Moteur `seqBulkRun`** : même handshake que la restauration PM validée terrain 27/10 — HRQ → HRT du clavier → notre HRT → ACK → pour CHAQUE bloc du dump (mêmes ADR/SIZ que le dump d'origine, dans l'ordre) : BTR (120 o inline) + CDD 125 o, **chaque paquet ACKé** (NAK = renvoi ×2, ERR = arrêt propre) → EOK → END ACKés. Page **SYSEX BULK DUMP du clavier requise** (le clavier n'écoute le bulk qu'en réception).
+- **↩️ Restaurer (aire SEQUENCER)** : envoie les blocs du patch Sequencer courant (refus si octets manquants). **📂 Restaurer un fichier** : mêmes formats (`.bin` brut = 1 bloc `60 00 00` ; seqdump-v1 / catalogue-v1 = blocs du dump), envoi direct sans catalogue. Mode Différentiel sans objet en bulk (les blocs partent entiers).
+- **Validation hors clavier** : syntaxe OK ; `seqBulkBlocks` (bloc complet 2048 o accepté, trous `--` refusés) et `pmBulkPackets` (BTR 255 o + CDD 125 o, checksum CN inclus, SIZ 2048 = `00 10 00`) testés ; structure BTR identique au moteur PM. **À valider terrain** (GO explicite) : page SYSEX BULK DUMP au clavier → ↩️ ou 📂 → ACK par paquet attendus → « réception OK » à l'écran → re-dump.
+
 ### Sauvegarde / Catalogue v0.5.11 — 📂 Restaurer un fichier → SÉQUENCEUR (sans catalogue)
 
 - **Demande Yves (31/10 soir)** : « je ne sais pas sélectionner uniquement le fichier préparé — la restauration ne passe que par le catalogue ». Choix validé : bouton « Restaurer depuis un fichier ».
