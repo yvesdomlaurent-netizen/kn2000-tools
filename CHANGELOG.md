@@ -12,6 +12,14 @@ Outils :
 
 ## [Non publié] / Unreleased
 
+### Sauvegarde / Catalogue v0.5.14 — 🐛 correctif déduplication du catalogue (le re-dump ne réparait pas un patch legacy)
+
+- **Retour terrain (Yves, 31/10 nuit)** : après re-dump Sequencer avec la v0.5.13 ET re-catalogue, la restauration affichait ENCORE le refus « ADR complets absents ».
+- **Cause racine** : la déduplication du catalogue (`hashBlocks`) compare uniquement le CONTENU (données) — pas les adresses. Si le re-dump produit des données identiques au patch existant (ex. même séquence re-créée), le Cataloguer se contente de mettre à jour la date du VIEUX patch (ADR 1-octet d'avant v0.5.13) au lieu d'en créer un nouveau → la restauration continue de sélectionner le patch legacy et refuse.
+- **Correctif** : à contenu identique, le Cataloguer applique aussi les métadonnées de blocs du nouveau dump (ADR complets/seq/SIZ) au patch existant — un patch legacy redevient restaurable par simple re-dump + 💾 Cataloguer (log dédié « ADR complets du nouveau dump APPLIQUÉS »). À contenu différent, une nouvelle entrée est créée comme avant.
+- **Diagnostic terrain** : avant tout envoi Sequencer, le journal affiche désormais le patch courant utilisé (nom, date de catalogue, adresses et tailles des blocs) — si c'est l'ancien patch qui sort, c'est visible immédiatement.
+- **Validation hors clavier** : node --check OK ; tests sandbox : patch legacy 2 blocs → refus ; re-catalogue contenu identique → ADR 60 00 00 / 60 10 00 appliqués au patch → restauration acceptée ; legacy 1 bloc → 60 00 00 accepté ; contenu différent → nouvelle entrée. Blob v0.5.14 : `829b12b92ea4e46d3cb9880293cbd16a32d25b59` (126 370 o), vérifié distant (titre v0.5.14, correctif présent).
+
 ### Sauvegarde / Catalogue v0.5.13 — 🐛 correctif critique : ADR complet (la restauration Sequencer écrivait tous les blocs à 60 00 00)
 
 - **Test terrain v0.5.12 (Yves, 31/10 soir)** : la voie bulk est la BONNE — handshake complet OK (HRQ → HRT → ACK), blocs 256 o ACKés (3+3 paquets), puis 4 paquets ACKés dans le bloc 768 o (**première écriture jamais acceptée dans l'aire Sequencer**), NAK ×2 sur le paquet 5/7, puis silence (état clavier incertain → OFF/ON conseillé avant tout nouvel essai).
