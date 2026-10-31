@@ -46,8 +46,8 @@
 </style>
 </head>
 <body>
-<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.5.14</span>
-  <span class="pill warn" title="Page en construction : restauration validée terrain pour Sound (ITW) et Panel Memory (bulk handshake) ; Sequencer : bulk handshake v0.5.13 (ADR complets) + v0.5.14 (dédup du catalogue : un re-dump à contenu identique met à jour les adresses d'un patch legacy au lieu de le laisser tel quel ; le journal affiche le patch utilisé avant tout envoi) ; à valider terrain ; Composer reste à valider (page outils)">🔨 en construction</span></h1>
+<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.5.15</span>
+  <span class="pill warn" title="Page en construction : restauration validée terrain pour Sound (ITW), Panel Memory (bulk handshake, 27/10) et SÉQUENCEUR (bulk handshake + ADR complets, 31/10 — clavier sur la page SYSEX BULK DUMP requis) ; v0.5.15 : libellés de restauration mis à jour (le Séquenceur disait encore « ITW ») ; Composer reste à valider (page outils)">🔨 en construction</span></h1>
 <div class="tip">💡 Sauvegarder et restaurer l'état du clavier : <strong>Dumps</strong> (KN2000 → page) puis <strong>Catalogue</strong> (patches versionnés, croisement KN2000 ↔ catalogue, restauration complète ou différentielle).
 <strong>Aucune préparation au clavier n'est nécessaire</strong> (validé terrain 26/10/2026). Mémoires volatiles : le KN2000 ne conserve ses mémoires que ~80 min hors tension.</div>
 
@@ -781,7 +781,9 @@ function crossUIhtml() {
       ? '<span class="st-ok">✅ validé terrain</span>'
       : a.id === "panel"
         ? '<span class="st-ok">✅ validé terrain (24 PM, bulk — 27/10)</span>'
-        : '<span class="st-none">à valider (page outils)</span>';
+        : a.id === "sequencer"
+          ? '<span class="st-ok">✅ validé terrain (bulk — 31/10)</span>'   // v0.5.15 : restauré + re-dump 🟢 conforme terrain 31/10 — clavier sur SYSEX BULK DUMP requis
+          : '<span class="st-none">à valider (page outils)</span>';
     rows += "<tr><td class='aname'>" + a.name + "</td><td>" + dKn + "</td><td>" + dPt + "</td><td>" + dSt + "</td><td>" + send + "</td><td>" + rest + "</td></tr>";
   }
   return "<table class='cross'><tr><th>Aire</th><th>Dans le KN2000 (dernier dump)</th><th>Patch courant du catalogue</th><th>État</th><th>Dernier envoi → KN2000</th><th>Restauration</th></tr>" + rows + "</table>";
@@ -827,8 +829,8 @@ function catUI() {
   const sa = $("resArea");
   const prev = sa.value;
   sa.innerHTML = "";
-  for (const a of AREAS) sa.add(new Option(a.name + (a.id === "sound" ? " ✅ restaurable" : a.id === "panel" ? " ✅ restaurable (24 PM, bulk)" : a.id === "sequencer" ? " 🔨 restaurable (ITW, à valider terrain)" : " — à valider"), a.id));
-  sa.value = prev || "sound";   // défaut : SOUND MEMORY (seule aire restaurable aujourd'hui)
+  for (const a of AREAS) sa.add(new Option(a.name + (a.id === "sound" ? " ✅ restaurable" : a.id === "panel" ? " ✅ restaurable (24 PM, bulk)" : a.id === "sequencer" ? " ✅ restaurable (bulk handshake — 31/10)" : " — à valider"), a.id));   // v0.5.15 : le Séquenceur indiquait encore « ITW » (voie abandonnée)
+  sa.value = prev || "sound";   // défaut : SOUND MEMORY
   resUI();
 }
 
