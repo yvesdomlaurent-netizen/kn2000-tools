@@ -12,6 +12,15 @@ Outils :
 
 ## [Non publié] / Unreleased
 
+### Sauvegarde / Catalogue v0.5.10 — ↩️ Restauration SEQUENCER (ITW, à valider terrain)
+
+- **Demande Yves (31/10)** : permettre la restauration (envoi vers le KN2000) de la partie SEQUENCEUR depuis le catalogue — jusqu'ici l'option était barrée « à valider » dans le sélecteur « Restaurer ».
+- **L'aire SEQUENCER est désormais restaurable** : le sélecteur propose « SEQUENCER 🔨 restaurable (ITW, à valider terrain) » ; ↩️ envoie le patch courant de l'aire `60 00 00` (2048 o = emplacement chanson 1) par le même moteur ITW 2C que la Sound Memory — trames de 120 o max (limite terrain v0.3.1), pause 60 ms, 18 trames (17×120 o + 1×8 o) ≈ 1 s.
+- **Mode Complet ou Différentiel** : comme pour Sound, le mode différentiel ne renvoie que les tranches de 120 o qui diffèrent du dernier dump (0 trame si conforme) ; refus explicite si le patch contient des octets manquants (dump incomplet → re-dump) ou si le dump de référence est incomplet (pas de différentiel fiable → complet).
+- **Sécurité** : confirmation dédiée rappelant que l'écriture Sequencer est une **hypothèse à tester** (GO explicite requis, registre v2) — « le clavier n'accuse pas réception : l'écran et le re-dump seront les juges ». Marquage « à valider terrain » conservé partout (pill d'en-tête, ast de la section, badge sur les lignes de patch, tableau de bord).
+- **Base** : l'aire `60 00 00` dumpée fait exactement 2048 o, structure identique à un emplacement de chanson KN1500 (test du 31/10) — même encodage d'adresse que les sons (paires 7 bits : `60 (off>>7) (off&7f)`).
+- **Validation** : script complet vérifié sans erreur de syntaxe ; logique buildSeqFrames testée (complet = 18 trames, différentiel conforme = 0 trame, 1 octet changé = 1 trame, octets manquants = refus). **À valider terrain** : envoi réel → écran/oreille → re-dump → tableau de bord 🟢.
+
 ### Sauvegarde / Catalogue v0.5.9 — 🎼 chantier Séquenceur & APC : sauvegarde de test + comparateur différentiel
 
 - **Contexte** : ouverture du chantier « décryptage Séquenceur & APC » (29/10/2026) — comprendre l'encodage des progressions d'accords de l'aire SEQUENCER (`60 00 00`) par analyse différentielle de dumps, comme pour la Sound Memory.
