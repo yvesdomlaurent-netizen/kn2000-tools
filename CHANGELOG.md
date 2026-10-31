@@ -12,6 +12,15 @@ Outils :
 
 ## [Non publié] / Unreleased
 
+### Sauvegarde / Catalogue v0.5.13 — 🐛 correctif critique : ADR complet (la restauration Sequencer écrivait tous les blocs à 60 00 00)
+
+- **Test terrain v0.5.12 (Yves, 31/10 soir)** : la voie bulk est la BONNE — handshake complet OK (HRQ → HRT → ACK), blocs 256 o ACKés (3+3 paquets), puis 4 paquets ACKés dans le bloc 768 o (**première écriture jamais acceptée dans l'aire Sequencer**), NAK ×2 sur le paquet 5/7, puis silence (état clavier incertain → OFF/ON conseillé avant tout nouvel essai).
+- **Cause racine (dans le DUMP, pas dans l'écriture)** : à la réception des BTR, la page ne gardait que le 1ᵉʳ octet de l'adresse (`d[6]` = `60`) et jetait les octets bas (`d[7]`, `d[8]`) → la restauration partait avec ADR `60 00 00` pour TOUS les blocs : blocs 256 o écrasés l'un sur l'autre, bloc 768 o débordant de la sous-zone → NAK au paquet qui franchit la limite. Les PM passaient car les blocs Panel 40/41 ont réellement `00 00` en octets bas.
+- **Correctif** : l'ADR 21 bits complet (`d[6]<<14 | d[7]<<7 | d[8]`) est conservé au dump, affiché dans le journal (ex. `60 04 00`), sérialisé dans les catalogues et retransmis dans les BTR d'écriture (helpers `adFull`/`adBytes`/`adLbl`). Anciens catalogues 1-octet toujours lisibles (`60`→`60 00 00`, `41`→`41 00 00`) : restauration PANEL inchangée ; restauration Sequencer multi-blocs issue d'un dump antérieur **refusée explicitement** (adresses basses perdues) — re-dump + re-catalogue requis.
+- **Conséquence terrain** : le patch Sequencer du Catalogue 31/10 (dumpé en v0.5.12) n'est PAS restaurable — **re-dumper l'aire SEQUENCER avec la v0.5.13** puis 💾 re-cataloguer avant tout ↩️ Restaurer.
+- **Validation hors clavier** : syntaxe OK ; tests sandbox : BTR reconstruits aux adresses attendues (60 00 00 / 60 02 00 / 60 04 00 / 60 0A 00, SIZ exacts), checksum CN inclus inchangé (moteur PM validé terrain 27/10), refus legacy multi-blocs, legacy 1 bloc → 60 00 00, panel legacy → 41 00 00 ; round-trip md5 local ↔ distant byte-exact (125 062 o).
+- **Protocole terrain (GO explicite requis)** : OFF/ON du clavier → re-dump SEQUENCER v0.5.13 (noter les adresses complètes dans le journal) → 💾 Cataloguer → vider l'emplacement → page SYSEX BULK DUMP → ↩️ Restaurer (SEQUENCER) → journal : HRQ → HRT → ACK → chaque bloc à SA adresse, paquets ACKés → EOK/END → « réception OK » à l'écran → re-dump → 🟢.
+
 ### Sauvegarde / Catalogue v0.5.12 — ↩️ Restauration SEQUENCER par BULK HANDSHAKE (l'ITW écarté)
 
 - **Test terrain décisif (Yves, 31/10)** : restauration Sequencer par ITW 2C (18 trames parties, aire `60 00 00`, adressage `60 (off>>7) (off&7f)`) → **aucun effet** (pas de message clavier — normal, l'ITW est silencieux — et re-dump toujours vide). L'ITW vers l'aire 60 ne prend pas.
