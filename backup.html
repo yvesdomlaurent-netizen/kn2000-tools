@@ -46,8 +46,8 @@
 </style>
 </head>
 <body>
-<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.5.10</span>
-  <span class="pill warn" title="Page en construction : restauration validée terrain pour Sound (ITW) et Panel Memory (bulk handshake) ; Sequencer implémenté (ITW, à valider terrain) ; Composer reste à valider (page outils)">🔨 en construction</span></h1>
+<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.5.11</span>
+  <span class="pill warn" title="Page en construction : restauration validée terrain pour Sound (ITW) et Panel Memory (bulk handshake) ; Sequencer implémenté (ITW + restauration depuis fichier, à valider terrain) ; Composer reste à valider (page outils)">🔨 en construction</span></h1>
 <div class="tip">💡 Sauvegarder et restaurer l'état du clavier : <strong>Dumps</strong> (KN2000 → page) puis <strong>Catalogue</strong> (patches versionnés, croisement KN2000 ↔ catalogue, restauration complète ou différentielle).
 <strong>Aucune préparation au clavier n'est nécessaire</strong> (validé terrain 26/10/2026). Mémoires volatiles : le KN2000 ne conserve ses mémoires que ~80 min hors tension.</div>
 
@@ -135,7 +135,13 @@
     <button id="btnRestore" title="Envoie le patch courant de l'aire vers le KN2000 en trames ITW (2C) — écriture réelle, avec confirmation">↩️ Restaurer</button>
     <span class="pill off" id="resSt">—</span>
   </div>
-  <div class="ast">Sound Memory : ✅ <strong>validée terrain</strong> (re-dump = 0 octet différent). <strong>Panel Memory : ✅ validée terrain 27/10 par bulk handshake</strong> (bloc 40 puis bloc 41 = 24 PM, chaque paquet ACKé — page SYSEX BULK DUMP du clavier requise, ~35 s). Sequencer : v0.5.10 — envoi ITW implémenté (trames 120 o, pause 60 ms), à valider terrain</strong> (écriture réelle = GO explicite requis). Composer : restauration <strong>non validée</strong> (page outils).
+  <div class="row"><span class="glbl">Depuis fichier</span>
+    <input type="file" id="resFileIn" accept=".bin,.json,application/json" style="display:none">
+    <button class="sec" id="btnResFile" title="Charge un fichier et l'envoie vers l'aire SÉQUENCEUR (60 00 00) SANS passer par le catalogue : .bin brut (octets du dump, 2048 o attendus), export kn2000-seqdump-v1, ou catalogue kn2000-catalog-v1 (aire sequencer) — écriture réelle, avec confirmation">📂 Restaurer un fichier → SÉQUENCEUR</button>
+    <span class="pill off" id="resFileSt">—</span>
+  </div>
+  <div class="ast">📂 Formats acceptés : .bin brut (octets du dump, 2048 o attendus pour l'aire 60 00 00), JSON kn2000-seqdump-v1 (export « 💾 Sauvegarder le dump Sequencer »), JSON kn2000-catalog-v1 (aire sequencer). Le fichier n'entre PAS dans le catalogue : envoi direct en trames ITW, mode Complet.</div>
+  <div class="ast">Sound Memory : ✅ <strong>validée terrain</strong> (re-dump = 0 octet différent). <strong>Panel Memory : ✅ validée terrain 27/10 par bulk handshake</strong> (bloc 40 puis bloc 41 = 24 PM, chaque paquet ACKé — page SYSEX BULK DUMP du clavier requise, ~35 s). Sequencer : v0.5.11 — envoi ITW implémenté (trames 120 o, pause 60 ms) + 📂 restauration directe depuis un fichier (.bin/seqdump/catalogue), à valider terrain</strong> (écriture réelle = GO explicite requis). Composer : restauration <strong>non validée</strong> (page outils).
   Sound : trames de 120 octets max (limite terrain), pause 60 ms — le clavier n'accuse jamais réception (l'écran et le re-dump jugent). Panel : chaque paquet est ACKé par le clavier (« réception OK » à l'écran). Après restauration : le tableau de bord passe 🟢 après un re-dump.</div>
 </div>
 </div>
@@ -964,6 +970,46 @@ $("btnRestore").onclick = async () => {
   } catch (e) { log("Envoi interrompu : " + e.message, "ko"); }
   sending = false; catUI();
 };
+
+// ===== v0.5.11 : restauration SÉQUENCEUR depuis un fichier (sans catalogue) =====
+$("btnResFile").onclick = () => $("resFileIn").click();
+$("resFileIn").addEventListener("change", async ev => {
+  const f = ev.target.files && ev.target.files[0]; if (!f) return;
+  ev.target.value = "";   // permettre de recharger le même fichier ensuite
+  const stEl = $("resFileSt");
+  stEl.textContent = "…"; stEl.className = "pill off";
+  if (!output) { log("Choisir la sortie MIDI.", "ko"); stEl.textContent = "pas de sortie MIDI"; return; }
+  if (dump.on || sending) { log("Opération MIDI déjà en cours.", "ko"); return; }
+  let bytes = [], label = f.name;
+  try {
+    if (/\.bin$/i.test(f.name)) {
+      bytes = Array.from(new Uint8Array(await f.arrayBuffer()));
+    } else {
+      const j = JSON.parse(await f.text());
+      const s = seqBlocksFromJson(j);
+      if (!s) { log("Fichier « " + f.name + " » : pas d'aire sequencer (formats acceptés : .bin, kn2000-seqdump-v1, kn2000-catalog-v1).", "ko"); stEl.textContent = "format non reconnu"; return; }
+      bytes = blocksBytes(s.blocks);
+      label = "« " + (s.label || "?") + " » (" + f.name + ")";
+    }
+  } catch (e) { log("Lecture de « " + f.name + " » échouée : " + e.message, "ko"); stEl.textContent = "lecture impossible"; return; }
+  if (!bytes.length) { log("Fichier « " + f.name + " » vide.", "ko"); stEl.textContent = "vide"; return; }
+  const holes = bytes.filter(x => x === null).length;
+  if (holes) { log("Fichier « " + f.name + " » : " + holes + " octet(s) manquant(s) ('--') — refusé, dump incomplet.", "ko"); stEl.textContent = holes + " octet(s) manquant(s)"; return; }
+  if (bytes.length !== 2048) log("⚠️ Taille inhabituelle : " + bytes.length + " o (2048 attendus pour l'aire 60 00 00) — l'envoi restera possible après confirmation.", "ko");
+  const r = buildSeqFrames({ blocks: [{ data: bytes.map(x => A2(x)).join("") }] }, null, "full");
+  if (r.err) { log(r.err, "ko"); stEl.textContent = "erreur"; return; }
+  const warn = "⚠️ Écriture réelle vers le KN2000 — aire SÉQUENCEUR (60 00 00, emplacement chanson 1).\nFichier " + label + " : " + r.size + " o → " + r.total + " trame(s) ITW (mode Complet, sans passer par le catalogue).\n\n⚠️ Non validée terrain : GO explicite requis.\nLe clavier n'accuse pas réception : l'écran et le re-dump seront les juges. Continuer ?";
+  if (!confirm(warn)) { log("Restauration depuis fichier annulée.", "info"); stEl.textContent = "annulé"; return; }
+  sending = true; $("btnRestore").disabled = true; $("btnResFile").disabled = true;
+  log("=== RESTAURATION FICHIER " + label + " → SÉQUENCEUR : " + r.total + " trame(s) ITW (pause 60 ms) — observer le clavier ===", "info");
+  try {
+    await sendITWframes(r.frames, "fichier " + label);
+    st.lastSend.sequencer = new Date().toISOString(); storeSave();
+    stEl.textContent = "envoyé : " + f.name; stEl.className = "pill on";
+    log("✅ Envoi terminé : " + r.total + " trame(s), " + r.size + " o. Vérifier à l'écran/oreille, puis re-dumper l'aire → le tableau de bord doit passer 🟢.", "ok");
+  } catch (e) { log("Envoi interrompu : " + e.message, "ko"); stEl.textContent = "interrompu"; }
+  sending = false; $("btnResFile").disabled = false; catUI();
+});
 
 // ===== 🗂️ Bibliothèque : dossier de travail partagé (IndexedDB kn2000_se, comme le Sound Editor) =====
 let catDir = null;
