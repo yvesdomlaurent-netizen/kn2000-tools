@@ -12,6 +12,15 @@ Outils :
 
 ## [Non publié] / Unreleased
 
+### Sauvegarde / Catalogue v0.5.11 — 📂 Restaurer un fichier → SÉQUENCEUR (sans catalogue)
+
+- **Demande Yves (31/10 soir)** : « je ne sais pas sélectionner uniquement le fichier préparé — la restauration ne passe que par le catalogue ». Choix validé : bouton « Restaurer depuis un fichier ».
+- **Nouvelle rangée « Depuis fichier »** dans la carte Restauration : 📂 charge un fichier et l'envoie directement vers l'aire SÉQUENCEUR (`60 00 00`) **sans passer par le catalogue** (pas de patch créé).
+- **Formats acceptés** : `.bin` brut (octets du dump — ex. `kn2000-sequencer-60-00-00.bin`, 2048 o attendus ; avertissement si taille différente), JSON `kn2000-seqdump-v1` (exports « 💾 Sauvegarder le dump Sequencer », réutilise `seqBlocksFromJson`), JSON `kn2000-catalog-v1` (aire sequencer du Catalogue 31/10).
+- **Gardiens** : refus si octets manquants (`--`), sortie MIDI absente ou opération en cours ; confirmation dédiée (écriture réelle, GO explicite, non validée terrain) ; mode Complet uniquement (le différentiel reste réservé aux patches catalogués, qui bénéficient du dernier dump).
+- **Base technique** : `buildSeqFrames` (v0.5.10) réutilisé tel quel — trames ITW 120 o max, pause 60 ms, adresses `60 (off>>7) (off&7f)`.
+- **Validation** : syntaxe vérifiée ; chemins testés (bin/seqdump/catalogue, refus octets manquants). **À valider terrain** avec le test `60 08 00`+ (emplacements 2-10).
+
 ### Sauvegarde / Catalogue v0.5.10 — ↩️ Restauration SEQUENCER (ITW, à valider terrain)
 
 - **Demande Yves (31/10)** : permettre la restauration (envoi vers le KN2000) de la partie SEQUENCEUR depuis le catalogue — jusqu'ici l'option était barrée « à valider » dans le sélecteur « Restaurer ».
