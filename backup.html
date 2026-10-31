@@ -46,8 +46,8 @@
 </style>
 </head>
 <body>
-<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.5.12</span>
-  <span class="pill warn" title="Page en construction : restauration validée terrain pour Sound (ITW) et Panel Memory (bulk handshake) ; Sequencer : bulk handshake v0.5.12 (ITW écarté après test terrain 31/10), à valider terrain ; Composer reste à valider (page outils)">🔨 en construction</span></h1>
+<h1>💾 KN2000 Sauvegarde <span style="font-size:.6em;color:#8fd0ff">v0.5.13</span>
+  <span class="pill warn" title="Page en construction : restauration validée terrain pour Sound (ITW) et Panel Memory (bulk handshake) ; Sequencer : bulk handshake v0.5.13 — correctif ADR complet des blocs (v0.5.12 écrivait tous les blocs à 60 00 00 → NAK au 3e bloc, test 31/10) ; re-dump + re-catalogue requis, à valider terrain ; Composer reste à valider (page outils)">🔨 en construction</span></h1>
 <div class="tip">💡 Sauvegarder et restaurer l'état du clavier : <strong>Dumps</strong> (KN2000 → page) puis <strong>Catalogue</strong> (patches versionnés, croisement KN2000 ↔ catalogue, restauration complète ou différentielle).
 <strong>Aucune préparation au clavier n'est nécessaire</strong> (validé terrain 26/10/2026). Mémoires volatiles : le KN2000 ne conserve ses mémoires que ~80 min hors tension.</div>
 
@@ -214,6 +214,12 @@ const $ = id => document.getElementById(id);
 const logEl = $("log");
 function log(m, c) { const d = document.createElement("div"); d.className = c || "info"; d.textContent = m; logEl.appendChild(d); logEl.scrollTop = logEl.scrollHeight; }
 const A2 = x => x.toString(16).padStart(2, "0");
+// v0.5.13 : ADR complet 21 bits. Jusqu'à v0.5.12 seuls le 1er octet des BTR était conservé (les blocs
+// Sequencer partaient TOUS à 60 00 00 → écrasements + NAK au débordement de sous-zone, test terrain 31/10).
+// adFull normalise les anciennes valeurs 1-octet (60 → 60 00 00, 40 → 40 00 00…) ; adBytes/adLbl décomposent.
+const adFull = a => (a !== undefined && a !== null && a >= 0 && a < 0x8000) ? (a << 14) : a;
+function adBytes(a) { const f = adFull(typeof a === "string" ? parseInt(a, 16) : a); return [(f >> 14) & 0x7f, (f >> 7) & 0x7f, f & 0x7f]; }
+function adLbl(a) { return adBytes(a).map(A2).join(" "); }
 const hex = a => [...a].map(x => A2(x)).join(" ");
 function denibble(arr) { const o = []; for (let i = 0; i + 1 < arr.length; i += 2) o.push(arr[i] << 4 | arr[i + 1]); return o; }
 function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -397,7 +403,7 @@ function dumpIdle() {
   else if (!dump.cur) log("⚠️ Timeout — handshake établi mais pas de bloc reçu. Clavier resté en réception BULK (après un restore) ? Quitter la page SYSEX BULK DUMP / OFF-ON du clavier, puis relancer.", "ko");   // v0.5.4 : indice terrain 27/10 (dump KO juste après une réception bulk, émission non relancée)
   dumpEnd(false);
 }
-function bLbl(b) { return A2(b.adr) + (b.seq > 1 ? "#" + b.seq : ""); }
+function bLbl(b) { return adLbl(b.adr) + (b.seq > 1 ? "#" + b.seq : ""); }
 function closeBlock(key, why) {
   const b = dump.blocks[key];
   if (!b || b.closed) return;
@@ -414,16 +420,16 @@ function dumpMsg(d) {
     const ck = d[d.length - 2], cn = d[d.length - 3];
     const calc = d.slice(1, d.length - 3).reduce((a, x) => a ^ x, 0);
     if (calc !== ck && (calc ^ cn) !== ck) { log("[RX] BTR checksum KO — ignoré : " + hex(d.slice(0, 12)), "ko"); return; }
-    const adr = d[6], siz = d[9] << 14 | d[10] << 7 | d[11];
+    const adr = (d[6] << 14) | (d[7] << 7) | d[8], siz = d[9] << 14 | d[10] << 7 | d[11];   // v0.5.13 : ADR complet 21 bits
     dump.btrSeen = true;
-    if (dump.cur !== null) closeBlock(dump.cur, "nouveau BTR " + A2(adr) + " reçu");
+    if (dump.cur !== null) closeBlock(dump.cur, "nouveau BTR " + adLbl(adr) + " reçu");
     const seq = (dump.cnt[adr] = (dump.cnt[adr] || 0) + 1);
     const key = adr + "-" + seq;
     dump.cur = key;
     dump.blocks[key] = { adr, seq, siz, data: new Array(siz).fill(null), got: 0, closed: false };
     storeB(key, 0, denibble(d.slice(12, d.length - 3)));
     send(PM_ACK);
-    log("[RX] BTR bloc " + A2(adr) + (seq > 1 ? " occurrence #" + seq : "") + " — SIZ " + siz + " octets, checksum OK → [TX] ACK", "ok");
+    log("[RX] BTR bloc " + adLbl(adr) + (seq > 1 ? " occurrence #" + seq : "") + " — SIZ " + siz + " octets, checksum OK → [TX] ACK", "ok");
     areaUI(dump.area);
     return;
   }
@@ -661,7 +667,7 @@ function hashBlocks(blocks) {   // empreinte de contenu (déduplication)
 function patchCount(id) { return (st.patches[id] || []).length; }
 function curPatch(id) { const l = st.patches[id] || []; return l.length ? l[l.length - 1] : null; }
 // écart documenté : bloc 40 du PANEL s'arrête systématiquement à 1056/1088 (32 o jamais émis — terrain 18-26/10) → normalisé
-function docGap(areaId, b) { const a = typeof b.adr === "string" ? parseInt(b.adr, 16) : b.adr; return areaId === "panel" && a === 0x40 && b.siz === 1088 && b.got >= 1056; }
+function docGap(areaId, b) { const a = typeof b.adr === "string" ? parseInt(b.adr, 16) : b.adr; return areaId === "panel" && adFull(a) === 0x100000 && b.siz === 1088 && b.got >= 1056; }
 function savePatch(id, ser, srcName) {
   if (!ser || !ser.blocks || !ser.blocks.length) { log("Rien à cataloguer pour " + areaName(id) + ".", "ko"); return null; }
   if (!st.patches[id]) st.patches[id] = [];
@@ -670,7 +676,7 @@ function savePatch(id, ser, srcName) {
   const miss = bytes.filter(x => x === null).length;
   if (miss) {
     const bad = ser.blocks.filter(b => b.data && b.data.indexOf("--") >= 0 && !docGap(id, b));
-    if (bad.length) { log("Patch " + areaName(id) + " refusé : " + miss + " octet(s) manquant(s) hors écart documenté (bloc " + bad.map(b => A2(b.adr)).join(", ") + ") — re-dumper l'aire.", "ko"); return null; }
+    if (bad.length) { log("Patch " + areaName(id) + " refusé : " + miss + " octet(s) manquant(s) hors écart documenté (bloc " + bad.map(b => adLbl(b.adr)).join(", ") + ") — re-dumper l'aire.", "ko"); return null; }
     log("ℹ️ " + areaName(id) + " : écart 32 documenté du bloc 40 accepté (jamais émis par le clavier) — patch catalogué avec les octets connus.", "info");
   }
   const prev = curPatch(id);
@@ -716,7 +722,7 @@ $("impFile").addEventListener("change", ev => {
 // infos d'entête / contenu d'une aire sérialisée
 function areaInfos(ser) {
   const out = [];
-  for (const b of ser.blocks) out.push("bloc " + b.adr + (b.seq > 1 ? "#" + b.seq : "") + " : " + (b.got !== undefined ? b.got : "?") + "/" + (b.siz || "?") + " o");
+  for (const b of ser.blocks) out.push("bloc " + adLbl(b.adr) + (b.seq > 1 ? "#" + b.seq : "") + " : " + (b.got !== undefined ? b.got : "?") + "/" + (b.siz || "?") + " o");
   return out.join(" · ");
 }
 function soundSlots(ser) {   // 36 noms de sons depuis le bloc 5184 o
@@ -901,16 +907,19 @@ function buildSeqFrames(patchSer, dumpSer, mode) {
 // paquet, NAK = renvoi) → EOK → END, page SYSEX BULK DUMP au clavier. On renvoie les MÊMES blocs
 // (ADR/SIZ) que ceux du dump d'origine, dans l'ordre.
 function seqBulkBlocks(blocks) {
-  const list = [];
+  const list = []; let legacy = 0;   // legacy = blocs dont l'ADR bas est inconnu (dump fait avant v0.5.13)
   for (const b of blocks) {
-    const adr = typeof b.adr === "string" ? parseInt(b.adr, 16) : b.adr;
+    const raw = typeof b.adr === "string" ? parseInt(b.adr, 16) : b.adr;
+    const adr = adFull(raw);
+    if (raw !== undefined && raw !== null && raw < 0x8000) legacy++;
     const siz = b.siz || (b.data ? b.data.length / 2 : 0);
     const d = blocksBytes([b]);
     if (!siz || d.length < siz || d.slice(0, siz).some(x => x === null))
-      return { err: "bloc " + A2(adr) + " incomplet (" + d.filter(x => x !== null).length + "/" + siz + " o, octets manquants inclus) — re-dumper l'aire puis re-cataloguer." };
+      return { err: "bloc " + adLbl(adr) + " incomplet (" + d.filter(x => x !== null).length + "/" + siz + " o, octets manquants inclus) — re-dumper l'aire puis re-cataloguer." };
     list.push({ adr, siz, data: d.slice(0, siz) });
   }
   if (!list.length) return { err: "le patch Sequencer est vide — re-dumper l'aire puis re-cataloguer." };
+  if (legacy && list.length > 1) return { err: "ADR complets absents (dump réalisé avant v0.5.13 : les octets bas de l'adresse de chaque bloc n'étaient pas enregistrés — tous les blocs partiraient à 60 00 00). Re-dumper l'aire SEQUENCER avec la v0.5.13 puis re-cataloguer." };
   return { list };
 }
 async function seqBulkRun(label, blocks) {
@@ -932,7 +941,7 @@ async function seqBulkRun(label, blocks) {
     log("[RX] ACK (23) du clavier ✓ — handshake établi", "ok");
     let nSent = 0;
     for (let bi = 0; bi < blocks.length; bi++) {
-      const packets = allPk[bi], lbl = "bloc " + A2(blocks[bi].adr) + " (" + blocks[bi].siz + " o)";
+      const packets = allPk[bi], lbl = "bloc " + adLbl(blocks[bi].adr) + " (" + blocks[bi].siz + " o)";
       for (let i = 0; i < packets.length; i++) {
         let sent = 0;
         while (true) {
@@ -1003,7 +1012,7 @@ $("btnRestore").onclick = async () => {
     const bl = seqBulkBlocks(cp.area.blocks);
     if (bl.err) { log(bl.err, "ko"); return; }
     const label = "Restauration Sequencer « " + cp.name + " »";
-    const warn = "⚠️ Écriture réelle vers le KN2000 — aire SÉQUENCEUR.\n" + label + " par BULK HANDSHAKE : " + bl.list.length + " bloc(s) (" + bl.list.map(b => A2(b.adr) + " · " + b.siz + " o").join(", ") + "), chaque paquet ACKé par le clavier.\n\n📋 Se positionner sur la page SYSEX BULK DUMP du clavier AVANT de continuer.\n\n⚠️ À valider terrain (l'ITW 2C ne prend pas sur cette aire — voie bulk, même moteur que les PM) : GO explicite requis. Continuer ?";
+    const warn = "⚠️ Écriture réelle vers le KN2000 — aire SÉQUENCEUR.\n" + label + " par BULK HANDSHAKE : " + bl.list.length + " bloc(s) (" + bl.list.map(b => adLbl(b.adr) + " · " + b.siz + " o").join(", ") + "), chaque paquet ACKé par le clavier.\n\n📋 Se positionner sur la page SYSEX BULK DUMP du clavier AVANT de continuer.\n\n⚠️ À valider terrain (l'ITW 2C ne prend pas sur cette aire — voie bulk, même moteur que les PM) : GO explicite requis. Continuer ?";
     if (!confirm(warn)) { log("Restauration Sequencer annulée.", "info"); return; }
     await seqBulkRun(label, bl.list);
     return;
@@ -1059,7 +1068,7 @@ $("resFileIn").addEventListener("change", async ev => {
   let bl;
   if (jsonBlocks) { bl = seqBulkBlocks(jsonBlocks); if (bl.err) { log("Fichier « " + f.name + " » : " + bl.err, "ko"); stEl.textContent = "bloc incomplet"; return; } }
   else bl = { list: [{ adr: 0x60, siz: bytes.length, data: bytes }] };   // .bin brut = 1 bloc 60 00 00
-  const warn = "⚠️ Écriture réelle vers le KN2000 — aire SÉQUENCEUR.\nFichier " + label + " : " + bl.list.map(b => A2(b.adr) + " · " + b.siz + " o").join(", ") + " par BULK HANDSHAKE (chaque paquet ACKé).\n\n📋 Se positionner sur la page SYSEX BULK DUMP du clavier AVANT de continuer.\n\n⚠️ À valider terrain (voie bulk, moteur des PM) : GO explicite requis. Continuer ?";
+  const warn = "⚠️ Écriture réelle vers le KN2000 — aire SÉQUENCEUR.\nFichier " + label + " : " + bl.list.map(b => adLbl(b.adr) + " · " + b.siz + " o").join(", ") + " par BULK HANDSHAKE (chaque paquet ACKé).\n\n📋 Se positionner sur la page SYSEX BULK DUMP du clavier AVANT de continuer.\n\n⚠️ À valider terrain (voie bulk, moteur des PM) : GO explicite requis. Continuer ?";
   if (!confirm(warn)) { log("Restauration depuis fichier annulée.", "info"); stEl.textContent = "annulé"; return; }
   const ok = await seqBulkRun("RESTAURATION FICHIER " + label + " → SÉQUENCEUR", bl.list);
   stEl.textContent = ok ? "envoyé : " + f.name : "interrompu"; stEl.className = "pill " + (ok ? "on" : "off");
@@ -1189,9 +1198,9 @@ function pmBulkFrame(head, bytes, cn) {   // checksum = XOR des octets 1..n-3 (C
   const ck = body.slice(1).reduce((a, x) => a ^ x, 0);
   return [...body, ck, 0xf7];
 }
-function pmBulkPackets(adr, siz, data) {   // 1 BTR (ADR adr 00 00, SIZ 3×7-bit, 120 o inline, CN=01) + CDD de 125 o, dernier partiel CN=00
+function pmBulkPackets(adr, siz, data) {   // 1 BTR (ADR 3 octets (v0.5.13 : complet), SIZ 3×7-bit, 120 o inline, CN=01) + CDD de 125 o, dernier partiel CN=00
   const packets = [];
-  packets.push(pmBulkFrame([0xf0, 0x50, 0x2d, 0x01, 0x18, 0x10, adr, 0x00, 0x00, (siz >> 14) & 0x7f, (siz >> 7) & 0x7f, siz & 0x7f], data.slice(0, 120), 0x01));
+  packets.push(pmBulkFrame([0xf0, 0x50, 0x2d, 0x01, 0x18, 0x10, ...adBytes(adr), (siz >> 14) & 0x7f, (siz >> 7) & 0x7f, siz & 0x7f], data.slice(0, 120), 0x01));
   const rest = data.slice(120);
   const n = Math.ceil(rest.length / 125);
   for (let i = 0; i < n; i++) packets.push(pmBulkFrame([0xf0, 0x50, 0x7e], rest.slice(i * 125, (i + 1) * 125), i === n - 1 ? 0x00 : 0x01));
@@ -1212,7 +1221,7 @@ async function pmBulkRun(label, data41, data40) {   // bloc 40 (1056 o) PUIS blo
     r = await pmBulkWait(0x23, 4000, "ACK (23)");
     if (r === "err") throw new Error("ERR du clavier");
     log("[RX] ACK (23) du clavier ✓ — handshake établi", "ok");
-    const blocks = [[0x40, 1088, data40, "bloc 40 (état du panel)"], [0x41, 8064, data41, "bloc 41 (24 PM)"]];
+    const blocks = [[0x100000, 1088, data40, "bloc 40 (état du panel)"], [0x104000, 8064, data41, "bloc 41 (24 PM)"]];   // v0.5.13 : ADR complets
     const allPk = blocks.map(b => [pmBulkPackets(b[0], b[1], b[2]), b[3]]);
     let nSent = 0, nTot = 0; for (const pk of allPk) nTot += pk[0].length;
     for (const [packets, lbl] of allPk) for (let i = 0; i < packets.length; i++) {
@@ -1246,8 +1255,8 @@ async function pmBulkRun(label, data41, data40) {   // bloc 40 (1056 o) PUIS blo
 $("pmBulkBtn").onclick = async () => {
   const cp = curPatch("panel");
   if (!cp) { log("Aucun patch PANEL — dumper l'aire PANEL puis 💾 Cataloguer, ou importer un catalogue/master (l'écriture bulk envoie les blocs 40+41 du patch courant).", "ko"); return; }
-  const adrOf = x => cp.area.blocks.find(b => (typeof b.adr === "string" ? parseInt(b.adr, 16) : b.adr) === x);
-  const b40 = adrOf(0x40), b41 = adrOf(0x41);
+  const adrOf = x => cp.area.blocks.find(b => adFull(typeof b.adr === "string" ? parseInt(b.adr, 16) : b.adr) === x);   // v0.5.13 : ADR complet
+  const b40 = adrOf(0x100000), b41 = adrOf(0x104000);
   if (!b41 || !b41.data) { log("Le patch PANEL courant ne contient pas le bloc 41 (24 PM) — re-dumper l'aire PANEL puis 💾 Cataloguer.", "ko"); return; }
   const d41 = blocksBytes([b41]);
   if (d41.length < 8064 || d41.slice(0, 8064).some(x => x === null)) { log("Bloc 41 incomplet (" + d41.filter(x => x !== null).length + "/8064 o) — re-dumper l'aire PANEL puis 💾 Cataloguer (l'écriture bulk envoie le bloc entier).", "ko"); return; }
@@ -1259,7 +1268,7 @@ $("pmBulkBtn").onclick = async () => {
 function pmListFromPatch() {   // 24 segments de 336 o depuis le bloc 41 du patch PANEL courant
   const cp = curPatch("panel");
   if (!cp) return null;
-  const b = cp.area.blocks.find(x => (typeof x.adr === "string" ? parseInt(x.adr, 16) : x.adr) === 0x41);
+  const b = cp.area.blocks.find(x => adFull(typeof x.adr === "string" ? parseInt(x.adr, 16) : x.adr) === 0x104000);
   if (!b || !b.data) return null;
   const bytes = blocksBytes([b]);
   const pms = [];
@@ -1490,4 +1499,5 @@ refreshPorts();
 </script>
 </body>
 </html>
+
 
