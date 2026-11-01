@@ -14,6 +14,7 @@ Outils :
 ## [Non publié] / Unreleased
 
 ### APC Live v2.6 — M5 Live & Automation
+- **v2.6.1** : bouton « 🧹 Vider le buffer » à côté de ● REC — abandonne les actions capturées sans rien enregistrer (les timelapses déjà sauvegardés restent intacts).
 - **Nouvel onglet M5 « ⚡ LIVE/AUTO »** : deux usages — **Live** (boutons rapides + armer un timelapse qui déclenche ses actions aux mesures données) et **Apprentissage** (● REC : chaque bouton rapide / pad pressé est horodaté à la mesure du compteur → 💾 Enregistrer-sous en fait un timelapse éditable).
 - **Analyse de la grille** (🔍) : sections depuis les lignes de titres, blocs sans titre = « Part N » renommables (mémorisé par morceau), suffixe « x2 » et blocs `|| xN` comptés pour chaque répétition ; tableau sections / mesures / actions du timelapse sélectionné par type (mutes, rythme, réverb, presets).
 - **Boutons rapides** : ① scènes de mutes ; ② Fill In 1/2 · Intro · Ending · Count In · Stop · Variation (20 60 09, à calibrer) · Break + transport Pianist/Fingered + Memory ; ③ Réverb ON/OFF par part APC ; ④ preset Réverb ; ⑤ preset DSP ; ⑥ macros (suites de commandes, sauvegardées depuis le buffer ● REC).

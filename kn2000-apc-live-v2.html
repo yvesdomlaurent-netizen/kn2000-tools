@@ -257,6 +257,7 @@ Thème
       <span class="hint" id="m5PosLbl">mesure : —</span>
       <span style="flex:1"></span>
       <label title="Apprentissage : chaque bouton rapide / pad pressé est horodaté à la mesure courante du compteur — puis 💾 Enregistrer-sous en fait un timelapse éditable"><input type="checkbox" id="m5Rec"> ● REC apprentissage</label>
+      <button id="m5RecClear" title="Vide le buffer ● REC sans rien enregistrer (les timelapses déjà sauvegardés restent intacts)">🧹 Vider le buffer</button>
       <span class="hint" id="m5RecCount"></span>
     </div>
     <div class="row">
@@ -2092,6 +2093,11 @@ document.getElementById("m5Rec").addEventListener("change", () => {
   else if (!on) log("● REC en pause (" + (m5rec ? m5rec.length : 0) + " action(s) dans le buffer) — 💾 Enregistrer-sous (rangée Timelapses) pour clôturer.", "info");
   m5RecRefresh();
 });
+document.getElementById("m5RecClear").onclick = () => { // v2.6.1 — vide le buffer sans rien enregistrer
+  const n = m5rec ? m5rec.length : 0;
+  m5rec = null; document.getElementById("m5Rec").checked = false; m5RecRefresh();
+  log("🧹 Buffer ● REC vidé (" + n + " action(s) abandonnée(s)) — les timelapses déjà enregistrés sont intacts.", "info");
+};
 
 // ---------- Timelapses : stockage par morceau, armer, éditer, dupliquer, lier, supprimer ----------
 function m5TlSelRefresh() {
