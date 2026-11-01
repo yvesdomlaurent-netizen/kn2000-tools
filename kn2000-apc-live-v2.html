@@ -1510,7 +1510,8 @@ function renderM4() {
     if (d.son) { const sb = (p && p[d.son]) || null; const snd = sb ? matchSound(sb[0], sb[1]) : null;
       h += "<select data-sndsel=\"" + d.lbl + "\" data-key=\"" + d.son + "\" class=\"apcsnd\" title=\"Son de la part (20 2m 00) — à valider terrain\">" + knSoundOpts(snd) + "</select>"; }
     if (d.cc) { // v2.3 — Réverb/DSP ON/OFF + Pan par CC sur le canal basic (doc p.18-19)
-      const pcc = (p && p.ccs) || {}; const gc = c => { const x = pcc[m4ChBase(d) + "|" + c]; return (x === undefined || x === null) ? null : x; };
+      const scc = songs.songs.find(x => x.id === curSongId); // v2.3.1 : les CC vivent à s.panel.ccs (pas dans params) — sans ça, pas de retour de position et ON en boucle
+      const pcc = (scc && scc.panel && scc.panel.ccs) || {}; const gc = c => { const x = pcc[m4ChBase(d) + "|" + c]; return (x === undefined || x === null) ? null : x; };
       const rv = gc(91), ds = gc(94), pn = gc(10);
       h += " <button data-cctgl=\"91\" data-partlbl=\"" + d.lbl + "\" style=\"min-width:46px\" title=\"Réverb de la part : CC91 sur le canal basic (" + m4ChBase(d) + ") — 7F=ON, 00=OFF (Reference Guide p.18-19)\">RV " + (rv === null ? "?" : (rv >= 0x40 ? "ON" : "OFF")) + "</button>"
         + " <button data-cctgl=\"94\" data-partlbl=\"" + d.lbl + "\" style=\"min-width:50px\" title=\"DSP de la part : CC94 sur le canal basic (" + m4ChBase(d) + ") — 7F=ON, 00=OFF (Reference Guide p.18-19)\">DSP " + (ds === null ? "?" : (ds >= 0x40 ? "ON" : "OFF")) + "</button>"
@@ -1603,7 +1604,9 @@ document.getElementById("m4Grid").addEventListener("click", (ev) => {
   if (t.dataset.cctgl !== undefined && t.dataset.cctgl !== null) { // v2.3 — Réverb/DSP ON/OFF par part en CC sur le canal basic
     const d = M4_DRUMS.find(x => x.lbl === t.dataset.partlbl);
     if (!d) return;
-    const on = !t.textContent.includes("ON");
+    const scc = songs.songs.find(x => x.id === curSongId); // v2.3.1 : l'état ON/OFF se lit dans la valeur mémorisée, pas dans le texte du bouton
+    const stored = (scc && scc.panel && scc.panel.ccs) ? scc.panel.ccs[m4ChBase(d) + "|" + t.dataset.cctgl] : null;
+    const on = !(stored !== undefined && stored !== null && stored >= 0x40); // inconnu → premier clic = ON
     const cc = parseInt(t.dataset.cctgl, 10);
     m4CC(d, cc, on ? 0x7F : 0x00, (cc === 91 ? "Réverb" : "DSP") + " " + d.lbl + " " + (on ? "ON" : "OFF"));
     renderM4(); return;

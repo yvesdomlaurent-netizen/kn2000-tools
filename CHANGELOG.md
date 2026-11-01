@@ -14,6 +14,7 @@ Outils :
 ## [Non publié] / Unreleased
 
 ### APC Live v2.3
+- Correctif v2.3.1 : les boutons RV/DSP lisaient l'état dans le mauvais objet → affichage « ? » permanent et ON envoyé en boucle ; l'état se lit maintenant dans la valeur mémorisée (s.panel.ccs) et le bouton affiche ON/OFF.
 - **Réglages par part en CC** (Reference Guide p.18-19) : Réverb ON/OFF (CC91), DSP ON/OFF (CC94) et Pan (CC10) ajoutés sur les lignes Accomp 1-3, Bass et Chord de l'onglet Parties — émis sur le canal basic de la part (Chord suit le canal accords cible), mémorisés par morceau et renvoyés au rappel de la config.
 - **Volume Chord doublé en CC7** : le curseur et le Mute de la part Chord émettent en plus le volume de canal (CC7) sur le canal Chord — le sysex 20 25 02 ne réagit pas sur le KN2000.
 - Confirmation doc : bank select / Program Change des parts ACCOMP et BASS uniquement en COMPOSER record → les sélecteurs de sons restent en attente d'une méthode.
