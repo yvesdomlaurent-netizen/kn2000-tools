@@ -1,9 +1,3 @@
----
-name: "kn2000-apc-live-v2"
-title: "KN2000 — APC Live v2"
-type: "text/html"
----
-
 <!doctype html>
 <html lang="fr">
 <head>
@@ -84,7 +78,7 @@ type: "text/html"
   <span class="badge" id="kbdBadge" title="Liaison KN2000 (badge charte)">🎹 <b id="kbdDot">○</b> KN2000</span>
   <span class="badge" id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   <span style="flex:1"></span>
-  <span><b>🎼 APC Live KN2000</b> <span class="hint">v2.0 — M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties</span></span>
+  <span><b>🎼 APC Live KN2000</b> <span class="hint">v2.2 — M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties (pavés + presets)</span></span>
   <span style="flex:1"></span>
   <nav class="hubLinks" title="Navigation entre les outils du projet (charte 7i)">
     <a href="index.html">🏠 Hub</a>
@@ -191,6 +185,10 @@ Thème
       <span id="mCount">—</span>
     </div>
     <div class="row"><div id="tapeBar" title="Glisser la bande pour choisir la mesure de départ"><div id="tapeFill"></div><div id="tapeHandle">▼</div></div></div>
+    <div class="row" style="align-items:center">
+      <label style="font-weight:600" title="Scène de session : ensemble de volumes Drums & accompagnements mémorisé en M4 (ex « Sans batteur »)">🎭 Scène de session <select id="sceneSelM2"></select></label>
+      <button id="sceneApplyM2" title="Applique la scène sélectionnée : volumes envoyés au KN2000 et mémorisés pour le morceau courant">✅ Appliquer</button>
+    </div>
     <div class="hint">▶ Démarrer · 🎛 Transport clavier · 📼 Départ mesure · 🔇 Vrai silence NC · Saisie multi-lignes · 🎵 Morceaux — mode d'emploi complet : bouton <b>❓ Aide</b> du bandeau (en haut de page).</div>
   </div>
 
@@ -1332,67 +1330,326 @@ function importSongsFileV2(f) {
 document.getElementById("songImport").onchange = ev => { const f = ev.target.files && ev.target.files[0]; if (f) importSongsFileV2(f); ev.target.value = ""; };
 document.getElementById("m1Import").onchange = ev => { const f = ev.target.files && ev.target.files[0]; if (f) importSongsFileV2(f); ev.target.value = ""; };
 
-// ---------- M4 : Parties du morceau courant (sons + volumes + réglages, retours panel) ----------
-const M4_PARTS = [ // [label, clé son (2 octets) ou null, clé volume]
-  ["RIGHT 1", "20 10 00", "20 10 02"], ["RIGHT 2", "20 11 00", "20 11 02"], ["LEFT", "20 12 00", "20 12 02"],
-  ["Batterie", null, "20 1F 02"],
-  ["APC 1", null, "20 20 02"], ["APC 2", null, "20 21 02"], ["APC 3", null, "20 22 02"], ["APC 4", null, "20 23 02"],
-  ["APC 5", null, "20 24 02"], ["APC 6", null, "20 25 02"], ["APC 7", null, "20 26 02"]
-];
-const M4_MISC = [ // réglages utiles : [label, clé, nb octets, max]
-  ["Rythme", "20 60 00", 2, 127], ["Transpose", "20 00 02", 1, 127], ["APC type", "20 60 02", 1, 3],
-  ["APC mémoire", "20 60 03", 1, 1], ["Réverb totale", "20 08 10", 1, 127], ["APC mode enable", "20 0A 0C", 1, 1]
-];
+const KN={"sounds":[[9,0,"Piano","PIANO & E.PIANO",0,0],[9,1,"Bright Piano","PIANO & E.PIANO",1,0],[9,2,"Piano 1 Octave","PIANO & E.PIANO",0,16],[9,3,"Rock Piano","PIANO & E.PIANO",3,32],[9,4,"Honky Tonk","PIANO & E.PIANO",1,16],[9,5,"Electric Grand","PIANO & E.PIANO",3,0],[9,6,"E.Piano 1","PIANO & E.PIANO",5,0],[9,7,"E.Piano 2","PIANO & E.PIANO",5,32],[9,8,"Modern E.P.1","PIANO & E.PIANO",6,0],[9,9,"Mellow Piano","PIANO & E.PIANO",2,0],[9,10,"Piano 2 Octave","PIANO & E.PIANO",2,16],[9,11,"Midi Grand","PIANO & E.PIANO",0,32],[9,12,"Jangle Piano","PIANO & E.PIANO",1,48],[9,13,"Synth Piano","PIANO & E.PIANO",114,0],[9,14,"Modern E.P.2","PIANO & E.PIANO",4,0],[9,15,"Modern E.P.3","PIANO & E.PIANO",6,48],[9,16,"Bell Piano","PIANO & E.PIANO",116,16],[9,17,"Crystal Piano","PIANO & E.PIANO",114,32],[1,0,"Harpsichord","HARPSI & MALLET",16,0],[1,1,"Cembalo","HARPSI & MALLET",18,0],[1,2,"Clavi","HARPSI & MALLET",17,0],[1,3,"Synth Clavi","HARPSI & MALLET",115,0],[1,4,"Glockenspiel","HARPSI & MALLET",9,0],[1,5,"Vibraphone","HARPSI & MALLET",8,0],[1,6,"Marimba","HARPSI & MALLET",10,0],[1,7,"Xylophone","HARPSI & MALLET",11,0],[1,8,"Steel Drum","HARPSI & MALLET",15,0],[1,9,"Harpsi.Octave","HARPSI & MALLET",16,16],[1,10,"Celesta","HARPSI & MALLET",12,0],[1,11,"Bottle Marimba","HARPSI & MALLET",13,0],[1,12,"African Mallet","HARPSI & MALLET",113,0],[1,13,"Tubular Bells","HARPSI & MALLET",14,0],[1,14,"Wind Chime","HARPSI & MALLET",14,16],[1,15,"Tinkle Bell","HARPSI & MALLET",14,32],[1,16,"Caribbean Mallet","HARPSI & MALLET",11,16],[1,17,"Synth Glocken","HARPSI & MALLET",9,32],[10,0,"Nylon Str.Gtr.1","GUITAR",20,0],[10,1,"Nylon Str.Gtr.2","GUITAR",21,0],[10,2,"Folk Guitar","GUITAR",22,0],[10,3,"Jazz Guitar 1","GUITAR",25,0],[10,4,"Bright Solid Gtr","GUITAR",26,0],[10,5,"Mellow Solid Gtr","GUITAR",28,0],[10,6,"Mute Guitar","GUITAR",29,0],[10,7,"Distortion Gtr.","GUITAR",30,0],[10,8,"Country Guitar","GUITAR",31,16],[10,9,"12 String Guitar","GUITAR",23,0],[10,10,"Jazz Guitar 2","GUITAR",24,0],[10,11,"Funk Solid Gtr.","GUITAR",26,16],[10,12,"'60's Solid Gtr.","GUITAR",28,16],[10,13,"Overdrive Guitar","GUITAR",27,32],[10,14,"Guitar Harmonics","GUITAR",27,16],[10,15,"Hawaiian Guitar","GUITAR",31,0],[10,16,"Synth Solid Gtr.","GUITAR",26,32],[10,17,"Synth Mute Gtr.","GUITAR",29,32],[2,0,"Banjo","SPECIAL PERC",33,0],[2,1,"Mandolin","SPECIAL PERC",35,0],[2,2,"Harp","SPECIAL PERC",32,0],[2,3,"Orchestra Hit 1","SPECIAL PERC",127,16],[2,4,"Timpani","SPECIAL PERC",126,0],[2,5,"Music Box","SPECIAL PERC",7,0],[2,6,"Kalimba","SPECIAL PERC",39,0],[2,7,"Sitar","SPECIAL PERC",38,0],[2,8,"Koto","SPECIAL PERC",37,0],[2,9,"Ukulele","SPECIAL PERC",34,0],[2,10,"Orchestra Hit 2","SPECIAL PERC",127,32],[2,11,"Toy Piano","SPECIAL PERC",7,16],[2,12,"Xmas Piano","SPECIAL PERC",7,32],[2,13,"Gamelan","SPECIAL PERC",14,48],[2,14,"Dulcimer","SPECIAL PERC",38,16],[2,15,"Shamisen","SPECIAL PERC",36,0],[2,16,"Kanun","SPECIAL PERC",38,32],[2,17,"Cumbus","SPECIAL PERC",38,48],[11,0,"Strings","STRINGS & VOCAL",100,0],[11,1,"Octave Strings","STRINGS & VOCAL",102,0],[11,2,"Pizzicato Str.","STRINGS & VOCAL",99,0],[11,3,"Synth Strings 1","STRINGS & VOCAL",103,0],[11,4,"Violin","STRINGS & VOCAL",96,0],[11,5,"Jazz Violin","STRINGS & VOCAL",96,16],[11,6,"Cello","STRINGS & VOCAL",97,0],[11,7,"Vocal Ah","STRINGS & VOCAL",104,48],[11,8,"Vocal Ooh","STRINGS & VOCAL",104,32],[11,9,"Slow Strings","STRINGS & VOCAL",101,0],[11,10,"Tremolo Strings","STRINGS & VOCAL",100,32],[11,11,"Bass Strings","STRINGS & VOCAL",98,16],[11,12,"Synth Strings 2","STRINGS & VOCAL",103,16],[11,13,"Fiddle","STRINGS & VOCAL",96,32],[11,14,"Viola","STRINGS & VOCAL",97,32],[11,15,"Bowed Bass","STRINGS & VOCAL",98,0],[11,16,"Vocal Doo","STRINGS & VOCAL",109,0],[11,17,"Humming","STRINGS & VOCAL",105,0],[3,0,"Jazz Organ","ORGAN & ACCORDION",88,0],[3,1,"Full Drawbars","ORGAN & ACCORDION",89,0],[3,2,"Jazz Drawbars","ORGAN & ACCORDION",93,0],[3,3,"Pop Organ 1","ORGAN & ACCORDION",90,0],[3,4,"Pipe Organ 1","ORGAN & ACCORDION",84,0],[3,5,"Pipe Organ 2","ORGAN & ACCORDION",85,0],[3,6,"Bright Accordion","ORGAN & ACCORDION",80,0],[3,7,"Mellow Accordion","ORGAN & ACCORDION",81,0],[3,8,"Musette","ORGAN & ACCORDION",82,0],[3,9,"16' & 1'","ORGAN & ACCORDION",91,0],[3,10,"Pop Organ 2","ORGAN & ACCORDION",89,32],[3,11,"Rock Organ","ORGAN & ACCORDION",92,32],[3,12,"Digi Organ","ORGAN & ACCORDION",93,32],[3,13,"Theatre Organ 1","ORGAN & ACCORDION",87,32],[3,14,"Theatre Organ 2","ORGAN & ACCORDION",87,48],[3,15,"Harmonium","ORGAN & ACCORDION",86,32],[3,16,"Organ Bass","ORGAN & ACCORDION",94,16],[3,17,"Bandoneon","ORGAN & ACCORDION",80,16],[12,0,"Brass","BRASS",56,0],[12,1,"Octave Brass","BRASS",56,16],[12,2,"Brass & Synth","BRASS",56,48],[12,3,"Trumpet","BRASS",48,0],[12,4,"Mute Trumpet","BRASS",50,0],[12,5,"Flugel Horn","BRASS",51,0],[12,6,"Bright Trombone","BRASS",52,0],[12,7,"Synth Brass","BRASS",60,0],[12,8,"Syn.Brass Ens.1","BRASS",61,16],[12,9,"Mute Brass Ens.","BRASS",56,32],[12,10,"Mellow Trumpet","BRASS",48,16],[12,11,"Mellow Trombone","BRASS",53,0],[12,12,"Closed Fr.Horn","BRASS",54,0],[12,13,"Open Fr.Horn","BRASS",54,16],[12,14,"Tuba","BRASS",55,0],[12,15,"Syn.Brass Ens.2","BRASS",61,48],[12,16,"Oct.Synth Brass","BRASS",63,32],[12,17,"Wow Synth Brass","BRASS",62,48],[4,0,"Soprano Sax","REED",76,0],[4,1,"Alto Sax","REED",77,0],[4,2,"Tenor Sax","REED",78,48],[4,3,"Breathy Tenor","REED",78,16],[4,4,"Baritone Sax","REED",79,16],[4,5,"Jazz Clarinet","REED",68,0],[4,6,"Oboe","REED",66,0],[4,7,"Bassoon","REED",70,0],[4,8,"Harmonica","REED",83,0],[4,9,"Mellow Alto Sax","REED",77,16],[4,10,"Rock Tenor Sax","REED",79,0],[4,11,"Distortion Sax","REED",78,32],[4,12,"Synth Sax","REED",79,48],[4,13,"Mellow Clarinet","REED",68,16],[4,14,"Classic Clarinet","REED",69,0],[4,15,"English Horn","REED",67,0],[4,16,"Bagpipe","REED",73,0],[4,17,"Blues Harmonica","REED",83,16],[13,0,"Piccolo","FLUTE & ETHNIC",64,0],[13,1,"Jazz Flute","FLUTE & ETHNIC",65,0],[13,2,"Classical Flute","FLUTE & ETHNIC",65,16],[13,3,"Alto Flute","FLUTE & ETHNIC",64,16],[13,4,"Recorder","FLUTE & ETHNIC",74,0],[13,5,"Ocarina","FLUTE & ETHNIC",74,16],[13,6,"Pan Flute 1","FLUTE & ETHNIC",72,0],[13,7,"Whistle","FLUTE & ETHNIC",111,0],[13,8,"Shakuhachi","FLUTE & ETHNIC",75,0],[13,9,"Alto Ensemble","FLUTE & ETHNIC",64,48],[13,10,"Pan Flute 2","FLUTE & ETHNIC",72,16],[13,11,"Blown Bottle","FLUTE & ETHNIC",72,32],[13,12,"Quena","FLUTE & ETHNIC",75,16],[13,13,"Shanai","FLUTE & ETHNIC",73,16],[13,14,"Ney","FLUTE & ETHNIC",73,32],[13,15,"Synth Recorder","FLUTE & ETHNIC",74,32],[13,16,"Synth Calliope","FLUTE & ETHNIC",72,48],[13,17,"Knock Whistle","FLUTE & ETHNIC",112,48],[5,0,"Square Lead","SYNTH LEAD",117,0],[5,1,"Saw Lead","SYNTH LEAD",118,16],[5,2,"Air Vox","SYNTH LEAD",106,16],[5,3,"Lead Voice","SYNTH LEAD",121,32],[5,4,"Click Square","SYNTH LEAD",121,0],[5,5,"Pluck Organ","SYNTH LEAD",112,0],[5,6,"Synthynet","SYNTH LEAD",115,16],[5,7,"Poly Smack","SYNTH LEAD",117,16],[5,8,"Nylon Synth","SYNTH LEAD",20,48],[5,9,"Chiffer Lead","SYNTH LEAD",117,32],[5,10,"Charang","SYNTH LEAD",27,48],[5,11,"5th Wave","SYNTH LEAD",119,0],[5,12,"Chopper Flute","SYNTH LEAD",112,32],[5,13,"Pluck Ensemble","SYNTH LEAD",115,32],[5,14,"Atmosphere","SYNTH LEAD",21,48],[5,15,"Sine Lead","SYNTH LEAD",94,0],[5,16,"Plop","SYNTH LEAD",117,48],[5,17,"Wet Square","SYNTH LEAD",121,16],[14,0,"Acoustic Bass","BASS",43,0],[14,1,"Mellow Ac.Bass","BASS",43,16],[14,2,"Electric Bass","BASS",40,0],[14,3,"Fretless Bass","BASS",40,32],[14,4,"Picked E.Bass","BASS",42,0],[14,5,"Mute Bass","BASS",47,0],[14,6,"Slap Bass 1","BASS",41,0],[14,7,"Analog Bass","BASS",46,16],[14,8,"Synth Chopper","BASS",45,0],[14,9,"Bright E.Bass","BASS",40,16],[14,10,"Funky E.Bass","BASS",40,48],[14,11,"Rock Bass","BASS",47,16],[14,12,"Slap Bass 2","BASS",41,16],[14,13,"Wow Bass","BASS",46,0],[14,14,"Smack Bass","BASS",46,48],[14,15,"Wire Bass","BASS",45,32],[14,16,"Mallet Bass","BASS",44,0],[14,17,"Bass & Lead","BASS",46,32],[6,0,"Bell Pad","SYNTH PAD",116,32],[6,1,"Mellow Ensemble","SYNTH PAD",107,16],[6,2,"Polysynth","SYNTH PAD",102,32],[6,3,"Spacy Pad","SYNTH PAD",107,32],[6,4,"Crystal Ensemble","SYNTH PAD",120,0],[6,5,"Metal Pad","SYNTH PAD",106,32],[6,6,"Dream","SYNTH PAD",108,32],[6,7,"Digi Heaven","SYNTH PAD",104,16],[6,8,"Synth Ensemble","SYNTH PAD",103,48],[6,9,"Halo Pad","SYNTH PAD",107,48],[6,10,"Sweep Pad","SYNTH PAD",62,32],[6,11,"Synth Vocal","SYNTH PAD",107,0],[6,12,"Mist","SYNTH PAD",108,48],[6,13,"Mellow Brass","SYNTH PAD",62,16],[6,14,"Click Echo","SYNTH PAD",108,0],[6,15,"Click Vox","SYNTH PAD",106,48],[6,16,"Star Theme","SYNTH PAD",120,16],[6,17,"Synth Orchestra","SYNTH PAD",63,16],[15,0,"Jazz Kit","KEYBOARD PERC (KITS)",113,128],[15,1,"Trad Kit","KEYBOARD PERC (KITS)",118,128],[15,2,"Rock Kit 1","KEYBOARD PERC (KITS)",112,128],[15,3,"Rock Kit 2","KEYBOARD PERC (KITS)",115,128],[15,4,"Light Rock Kit","KEYBOARD PERC (KITS)",126,128],[15,5,"Hard Rock Kit","KEYBOARD PERC (KITS)",119,128],[15,6,"Funk Kit","KEYBOARD PERC (KITS)",120,128],[15,7,"Dance Kit","KEYBOARD PERC (KITS)",122,128],[15,8,"Soul Kit","KEYBOARD PERC (KITS)",121,128],[15,9,"Brush Kit 1","KEYBOARD PERC (KITS)",117,128],[15,10,"Brush Kit 2","KEYBOARD PERC (KITS)",127,128],[15,11,"House Kit","KEYBOARD PERC (KITS)",123,128],[15,12,"Electric Kit","KEYBOARD PERC (KITS)",114,128],[15,13,"Synth Kit","KEYBOARD PERC (KITS)",116,128],[15,14,"Orchestral Kit","KEYBOARD PERC (KITS)",124,128],[15,15,"Sound Effect Kit","KEYBOARD PERC (KITS)",125,128],[7,0,"Agogo","PERC & EFFECT",122,0],[7,1,"Wood Block","PERC & EFFECT",122,16],[7,2,"Taiko Drum","PERC & EFFECT",123,48],[7,3,"Melodic Tom","PERC & EFFECT",122,32],[7,4,"Synth Drum","PERC & EFFECT",124,0],[7,5,"Reverse Cymbal","PERC & EFFECT",122,48],[7,6,"Ice Rain","PERC & EFFECT",121,48],[7,7,"Soundtrack","PERC & EFFECT",119,16],[7,8,"Goblins","PERC & EFFECT",106,0],[7,9,"Fret Noise","PERC & EFFECT",124,16],[7,10,"Key Click","PERC & EFFECT",124,32],[7,11,"Seashore","PERC & EFFECT",124,48],[7,12,"Bird Tweet","PERC & EFFECT",125,32],[7,13,"Telephone","PERC & EFFECT",123,0],[7,14,"Helicopter","PERC & EFFECT",123,16],[7,15,"Applause","PERC & EFFECT",125,48],[7,16,"Gun Shot","PERC & EFFECT",123,32],[7,17,"Rapper","PERC & EFFECT",126,32],[8,0,"Memory A-1","MEMORY A (sons)",0,128],[8,1,"Memory A-2","MEMORY A (sons)",1,128],[8,2,"Memory A-3","MEMORY A (sons)",2,128],[8,3,"Memory A-4","MEMORY A (sons)",3,128],[8,4,"Memory A-5","MEMORY A (sons)",4,128],[8,5,"Memory A-6","MEMORY A (sons)",5,128],[8,6,"Memory A-7","MEMORY A (sons)",6,128],[8,7,"Memory A-8","MEMORY A (sons)",7,128],[8,8,"Memory A-9","MEMORY A (sons)",8,128],[8,9,"Memory A-10","MEMORY A (sons)",9,128],[8,10,"Memory A-11","MEMORY A (sons)",10,128],[8,11,"Memory A-12","MEMORY A (sons)",11,128],[8,12,"Memory A-13","MEMORY A (sons)",12,128],[8,13,"Memory A-14","MEMORY A (sons)",13,128],[8,14,"Memory A-15","MEMORY A (sons)",14,128],[8,15,"Memory A-16","MEMORY A (sons)",15,128],[8,16,"Memory A-17","MEMORY A (sons)",16,128],[8,17,"Memory A-18","MEMORY A (sons)",17,128],[0,0,"Memory B-1","MEMORY B (sons)",18,128],[0,1,"Memory B-2","MEMORY B (sons)",19,128],[0,2,"Memory B-3","MEMORY B (sons)",20,128],[0,3,"Memory B-4","MEMORY B (sons)",21,128],[0,4,"Memory B-5","MEMORY B (sons)",22,128],[0,5,"Memory B-6","MEMORY B (sons)",23,128],[0,6,"Memory B-7","MEMORY B (sons)",24,128],[0,7,"Memory B-8","MEMORY B (sons)",25,128],[0,8,"Memory B-9","MEMORY B (sons)",26,128],[0,9,"Memory B-10","MEMORY B (sons)",27,128],[0,10,"Memory B-11","MEMORY B (sons)",28,128],[0,11,"Memory B-12","MEMORY B (sons)",29,128],[0,12,"Memory B-13","MEMORY B (sons)",30,128],[0,13,"Memory B-14","MEMORY B (sons)",31,128],[0,14,"Memory B-15","MEMORY B (sons)",32,128],[0,15,"Memory B-16","MEMORY B (sons)",33,128],[0,16,"Memory B-17","MEMORY B (sons)",34,128],[0,17,"Memory B-18","MEMORY B (sons)",35,128]],"rhythms":[[8,0,"8Bt Standard 1","8BEAT 1",90,16],[8,1,"8Bt Standard 2","8BEAT 1",90,32],[8,2,"8Bt Soft Rock 1","8BEAT 1",88,32],[8,3,"8Bt Ballad 1","8BEAT 1",91,16],[8,4,"8Bt Ballad 2","8BEAT 1",91,0],[8,5,"8Bt Rock 1","8BEAT 1",90,64],[8,6,"8Bt Rock 2","8BEAT 1",80,16],[8,7,"Folk Rock 1","8BEAT 1",85,0],[8,8,"British Rock 1","8BEAT 1",86,0],[8,9,"8Bt Soft Rock 2","8BEAT 1",90,48],[8,10,"8Bt Soft Rock 3","8BEAT 1",88,64],[8,11,"Folk Rock 2","8BEAT 1",88,48],[8,12,"Country Rock","8BEAT 1",85,16],[8,13,"British Rock 2","8BEAT 1",86,16],[0,0,"8Bt Soul 1","8BEAT 2",87,16],[0,1,"8Bt Soul 2","8BEAT 2",87,0],[0,2,"8Bt Soul 3","8BEAT 2",89,16],[0,3,"8Bt Pop 1","8BEAT 2",84,48],[0,4,"8Bt Pop Rock 1","8BEAT 2",84,0],[0,5,"Hard Rock","8BEAT 2",92,16],[0,6,"Heavy Metal","8BEAT 2",94,16],[0,7,"Rock'n'Roll 1","8BEAT 2",95,0],[0,8,"Rock'n'Roll 2","8BEAT 2",80,48],[0,9,"8Bt Pop 2","8BEAT 2",84,16],[0,10,"8Bt Pop Rock 2","8BEAT 2",84,32],[0,11,"Rock'n'Roll 3","8BEAT 2",80,64],[0,12,"Modern R'n'Roll","8BEAT 2",82,16],[9,0,"16Bt Standard 1","16BEAT",96,32],[9,1,"16Bt Standard 2","16BEAT",96,48],[9,2,"16Bt Rock 1","16BEAT",97,32],[9,3,"16Bt Rock 2","16BEAT",100,0],[9,4,"16Bt Ballad 1","16BEAT",99,64],[9,5,"16Bt Ballad 2","16BEAT",99,96],[9,6,"16Bt Ballad 3","16BEAT",101,16],[9,7,"Piano Pop","16BEAT",101,0],[9,8,"16Bt Pop 1","16BEAT",107,48],[9,9,"16Bt Standard 3","16BEAT",97,0],[9,10,"16Bt Rock 3","16BEAT",99,80],[9,11,"16Bt Ballad 4","16BEAT",96,0],[9,12,"16Bt Ballad 5","16BEAT",99,48],[9,13,"16Bt Pop 2","16BEAT",107,32],[9,14,"16Bt Pop 3","16BEAT",107,16],[9,15,"16Bt Pop 4","16BEAT",107,64],[1,0,"Jazz Rock 1","JAZZ ROCK & SOUL",113,16],[1,1,"Jazz Rock 2","JAZZ ROCK & SOUL",113,0],[1,2,"Jazz Funk 1","JAZZ ROCK & SOUL",114,16],[1,3,"Jazz Funk 2","JAZZ ROCK & SOUL",112,48],[1,4,"Jazz Funk 3","JAZZ ROCK & SOUL",113,64],[1,5,"Soul Rock 1","JAZZ ROCK & SOUL",102,48],[1,6,"Soul Rock 2","JAZZ ROCK & SOUL",102,64],[1,7,"Soul Ballad 1","JAZZ ROCK & SOUL",103,16],[1,8,"Slow Soul Ballad","JAZZ ROCK & SOUL",75,32],[1,9,"Jazz Rock 3","JAZZ ROCK & SOUL",112,32],[1,10,"Jazz Rock 4","JAZZ ROCK & SOUL",113,32],[1,11,"Latin Fusion","JAZZ ROCK & SOUL",113,48],[1,12,"Soul Rock 3","JAZZ ROCK & SOUL",102,80],[1,13,"Soul Rock 4","JAZZ ROCK & SOUL",102,16],[1,14,"Soul Ballad 2","JAZZ ROCK & SOUL",103,0],[10,0,"Funk 1","FUNK & LATIN ROCK",111,16],[10,1,"Funk 2","FUNK & LATIN ROCK",110,48],[10,2,"Swingy Funk 1","FUNK & LATIN ROCK",65,0],[10,3,"Electro Pop 1","FUNK & LATIN ROCK",109,32],[10,4,"Electro Pop 2","FUNK & LATIN ROCK",109,16],[10,5,"Caribbean Rock 1","FUNK & LATIN ROCK",118,32],[10,6,"Samba Rock 1","FUNK & LATIN ROCK",116,32],[10,7,"Samba Rock 2","FUNK & LATIN ROCK",117,0],[10,8,"Salsa","FUNK & LATIN ROCK",68,32],[10,9,"Funk 3","FUNK & LATIN ROCK",110,16],[10,10,"Funk 4","FUNK & LATIN ROCK",110,0],[10,11,"Swingy Funk 2","FUNK & LATIN ROCK",65,16],[10,12,"Electro Pop 3","FUNK & LATIN ROCK",108,16],[10,13,"Electro Pop 4","FUNK & LATIN ROCK",109,0],[10,14,"Caribbean Rock 2","FUNK & LATIN ROCK",118,16],[10,15,"Samba Rock 3","FUNK & LATIN ROCK",116,16],[2,0,"Disco 70's","DANCE POP",121,16],[2,1,"Disco Pop","DANCE POP",123,48],[2,2,"Disco 1","DANCE POP",121,0],[2,3,"Disco 2","DANCE POP",123,64],[2,4,"Euro Beat 1","DANCE POP",120,48],[2,5,"Euro Beat 2","DANCE POP",124,16],[2,6,"U.S. Pop","DANCE POP",124,32],[2,7,"Rap 1","DANCE POP",127,32],[2,8,"House 1","DANCE POP",125,0],[2,9,"Disco Spanish","DANCE POP",120,32],[2,10,"Rap 2","DANCE POP",127,0],[2,11,"House 2","DANCE POP",125,16],[2,12,"Dance Pop","DANCE POP",127,16],[11,0,"Standard Swing 1","BIG BAND & SWING",25,0],[11,1,"Standard Swing 2","BIG BAND & SWING",32,48],[11,2,"Big Band Mid 1","BIG BAND & SWING",38,48],[11,3,"Big Band Mid 2","BIG BAND & SWING",38,64],[11,4,"Big Band Fast","BIG BAND & SWING",36,32],[11,5,"Big Band Ballad","BIG BAND & SWING",39,16],[11,6,"Orchestra Swing","BIG BAND & SWING",37,0],[11,7,"Jazz Waltz Fast","BIG BAND & SWING",46,32],[11,8,"Jazz Waltz Mid","BIG BAND & SWING",46,16],[11,9,"Big Band Mid 3","BIG BAND & SWING",38,16],[11,10,"Big Band Slow","BIG BAND & SWING",38,32],[11,11,"Jazz Waltz Slow","BIG BAND & SWING",47,0],[4,0,"Country Swing 1","U.S.TRAD",17,32],[4,1,"Country Pop","U.S.TRAD",17,64],[4,2,"Country Ballad","U.S.TRAD",75,48],[4,3,"Modern Country","U.S.TRAD",17,80],[4,4,"Bluegrass 1","U.S.TRAD",20,16],[4,5,"R&B 8 Beat","U.S.TRAD",81,16],[4,6,"R&B Ballad","U.S.TRAD",75,64],[4,7,"Gospel Shuffle","U.S.TRAD",77,64],[4,8,"Hawaiian 1","U.S.TRAD",22,16],[4,9,"Country Swing 2","U.S.TRAD",17,48],[4,10,"Country Folk","U.S.TRAD",16,0],[4,11,"Country 8 Beat","U.S.TRAD",18,0],[4,12,"Bluegrass 2","U.S.TRAD",20,32],[4,13,"Gospel R.Ballad","U.S.TRAD",75,80],[4,14,"Gospel 16 Beat","U.S.TRAD",100,16],[4,15,"Hawaiian 2","U.S.TRAD",22,0],[4,16,"Hawaiian 3","U.S.TRAD",23,0],[3,0,"Shuffle R'n'Roll","ROCK (OTHERS)",76,48],[3,1,"Shuffle Boogie","ROCK (OTHERS)",77,32],[3,2,"Shuffle Rock","ROCK (OTHERS)",76,64],[3,3,"Shuffle Soul","ROCK (OTHERS)",77,48],[3,4,"Shuffle Ballad","ROCK (OTHERS)",78,16],[3,5,"Rock Ballad 1","ROCK (OTHERS)",74,32],[3,6,"Rock Ballad 2","ROCK (OTHERS)",74,48],[3,7,"Swing Rock 1","ROCK (OTHERS)",73,16],[3,8,"Swing Rock 2","ROCK (OTHERS)",72,48],[3,9,"Shuffle H.Rock","ROCK (OTHERS)",79,16],[3,10,"Rock Ballad 3","ROCK (OTHERS)",75,0],[3,11,"Rock Ballad 4","ROCK (OTHERS)",74,16],[3,12,"Swing Rock 3","ROCK (OTHERS)",64,0],[3,13,"Swing Rock 4","ROCK (OTHERS)",72,32],[12,0,"Simple Combo","JAZZ COMBO",34,16],[12,1,"Jazz Combo 1","JAZZ COMBO",34,32],[12,2,"Jazz Quartet","JAZZ COMBO",32,64],[12,3,"Jazz Ballad 1","JAZZ COMBO",45,0],[12,4,"Jazz Ballad 2","JAZZ COMBO",35,16],[12,5,"Mod.Jazz Mid 1","JAZZ COMBO",40,48],[12,6,"Mod.Jazz Fast 1","JAZZ COMBO",40,16],[12,7,"Dixie Slow","JAZZ COMBO",24,32],[12,8,"Charleston","JAZZ COMBO",24,16],[12,9,"Jazz Combo 2","JAZZ COMBO",34,0],[12,10,"Jazz Ballad 3","JAZZ COMBO",44,0],[12,11,"Mod.Jazz Fast 2","JAZZ COMBO",40,32],[12,12,"Mod.Jazz Mid 2","JAZZ COMBO",40,0],[13,0,"U.S.March 2/4 1","MARCH & WALTZ",0,32],[13,1,"German March 2/4","MARCH & WALTZ",1,48],[13,2,"Orch.March 2/4","MARCH & WALTZ",0,48],[13,3,"U.S.March 6/8","MARCH & WALTZ",2,16],[13,4,"Simple Waltz","MARCH & WALTZ",13,0],[13,5,"Standard Waltz","MARCH & WALTZ",11,16],[13,6,"Swingy Waltz","MARCH & WALTZ",12,0],[13,7,"Vienna Waltz 1","MARCH & WALTZ",9,32],[13,8,"Country Waltz","MARCH & WALTZ",19,0],[13,9,"U.S.March 2/4 2","MARCH & WALTZ",0,16],[13,10,"German March 6/8","MARCH & WALTZ",3,0],[13,11,"Screen Waltz","MARCH & WALTZ",8,16],[13,12,"Vienna Waltz 2","MARCH & WALTZ",9,16],[13,13,"German Waltz","MARCH & WALTZ",10,16],[13,14,"Orchestra Waltz","MARCH & WALTZ",8,64],[5,0,"Polka 2/4 1","TRAD DANCE",4,48],[5,1,"Polka 6/8","TRAD DANCE",5,0],[5,2,"Foxtrot 1","TRAD DANCE",29,48],[5,3,"Broadway Swing","TRAD DANCE",29,80],[5,4,"Jig","TRAD DANCE",5,16],[5,5,"Showtime","TRAD DANCE",15,0],[5,6,"Chanson Waltz 1","TRAD DANCE",11,32],[5,7,"Chanson Foxtrot","TRAD DANCE",29,64],[5,8,"Canzone Beguine","TRAD DANCE",59,16],[5,9,"Polka 2/4 2","TRAD DANCE",4,32],[5,10,"Foxtrot 2","TRAD DANCE",29,32],[5,11,"Mazurka","TRAD DANCE",10,32],[5,12,"Quickstep","TRAD DANCE",28,0],[5,13,"Chanson Waltz 2","TRAD DANCE",11,0],[5,14,"Canzone Ballad","TRAD DANCE",74,64],[14,0,"Rhumba","LATIN 1",58,16],[14,1,"Beguine","LATIN 1",59,0],[14,2,"Bolero 4/4","LATIN 1",58,32],[14,3,"Mambo","LATIN 1",56,16],[14,4,"Cha Cha 1","LATIN 1",57,16],[14,5,"Cha Cha 2","LATIN 1",57,32],[14,6,"Lambada","LATIN 1",69,0],[14,7,"Paso Doble","LATIN 1",69,16],[14,8,"Reggae 1","LATIN 1",71,0],[14,9,"Bolero 3/4","LATIN 1",54,0],[14,10,"Fast Mambo","LATIN 1",66,0],[14,11,"Reggae 2","LATIN 1",71,16],[6,0,"Simple Bossanova","LATIN 2",48,48],[6,1,"Bossanova 1","LATIN 2",48,16],[6,2,"Bossanova 2","LATIN 2",48,64],[6,3,"Modern Bossa 1","LATIN 2",49,0],[6,4,"Samba 1","LATIN 2",51,16],[6,5,"Samba 2","LATIN 2",51,32],[6,6,"Folklore","LATIN 2",61,0],[6,7,"Tango Argentina","LATIN 2",53,48],[6,8,"Tango Habanera","LATIN 2",55,0],[6,9,"Jazz Bossanova","LATIN 2",49,16],[6,10,"Modern Bossa 2","LATIN 2",52,16],[6,11,"Samba Canson","LATIN 2",48,32],[6,12,"Tango Continent.","LATIN 2",53,32],[6,13,"Arabian 1","LATIN 2",60,0],[6,14,"Arabian 2","LATIN 2",60,16],[7,0,"Memory 1","RHYTHM MEMORY A",0,128],[7,1,"Memory 2","RHYTHM MEMORY A",1,128],[7,2,"Memory 3","RHYTHM MEMORY A",2,128],[7,3,"Memory 4","RHYTHM MEMORY A",3,128],[7,4,"Memory 5","RHYTHM MEMORY A",4,128],[7,5,"Memory 6","RHYTHM MEMORY A",5,128],[15,0,"Memory 7","RHYTHM MEMORY B",6,128],[15,1,"Memory 8","RHYTHM MEMORY B",7,128],[15,2,"Memory 9","RHYTHM MEMORY B",8,128],[15,3,"Memory 10","RHYTHM MEMORY B",9,128],[15,4,"Memory 11","RHYTHM MEMORY B",10,128],[15,5,"Memory 12","RHYTHM MEMORY B",11,128]]}
+
+// ---------- M4 : Parties du morceau courant — panneau « État » façon Panel Console (v2.1) ----------
+// Sons/rythmes exprimés en octets TECH (s[4]/s[5]) sur les adresses 20 1n 00 / 20 60 00 —
+// méthodes validées terrain (Panel Console v1.0.17) : matchSound/matchRhythm + ITW.
 function m4Params() { const s = songs.songs.find(x => x.id === curSongId); return (s && s.panel && s.panel.params) ? s.panel.params : null; }
 function m4Write(key, vals, lbl) {
   const s = songs.songs.find(x => x.id === curSongId);
-  if (!s) { log("🎛 Aucun morceau sélectionné — choisis un morceau (M1) avant d'ajuster les parties.", "ko"); return; }
+  if (!s) { log("🎛 Aucun morceau sélectionné — choisis un morceau (M1) avant d'ajuster les parties.", "ko"); return false; }
   if (!s.panel) s.panel = { tempo: null, params: {} };
   s.panel.params[key] = vals.slice();
   songsSave();
   const a = key.split(" ").map(x => parseInt(x, 16));
   sendItw(a, vals);
   log("🎛 " + lbl + " → " + vals.join(" ") + " (envoyé au KN2000 + mémorisé pour « " + s.title + " »)", "ok");
+  return true;
 }
+const M4_PARTS = [ { lbl: "RIGHT 1", n: 0, son: "20 10 00", vol: "20 10 02" }, { lbl: "RIGHT 2", n: 1, son: "20 11 00", vol: "20 11 02" }, { lbl: "LEFT", n: 2, son: "20 12 00", vol: "20 12 02" } ];
+const M4_DRUMS = [ { lbl: "Drums", ch: 16, vol: "20 1F 02", son: null }, { lbl: "Accomp 1", ch: 4, vol: "20 20 02", son: "20 20 00" }, { lbl: "Accomp 2", ch: 5, vol: "20 21 02", son: "20 21 00" }, { lbl: "Accomp 3", ch: 6, vol: "20 22 02", son: "20 22 00" }, { lbl: "Bass", ch: 7, vol: "20 23 02", son: "20 23 00" }, { lbl: "APC-Drums", ch: null, vol: "20 24 02", son: null }, { lbl: "Chord", ch: "dyn", vol: "20 25 02", son: null }, { lbl: "R.Bass", ch: null, vol: "20 26 02", son: null } ];
+// Canaux = Basic Channel des parts (menu MIDI du clavier, relevé terrain Yves : Acc1=4, Acc2=5, Acc3=6, Bass=7, Drums=16, CHORD=canal accords cible). Chord est dynamique (chChord). Les volumes/mutes partent en sysex (20 2m 02), indépendants du canal.
+const m4ChLbl = d => d.ch === "dyn" ? (chChord() + 1) : (d.ch === null || d.ch === undefined ? " ? " : d.ch);
+const M4_TR = ["G", "G#", "A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#"];
+const M4_APC_T = ["Off", "OneFing", "Fingered", "Pianist"];
+const M4_RV_T = ["Room1", "Room2", "Hall1", "Hall2", "Hall3", "Cathedral", "Echo1", "Echo2", "Echo3", "Echo4"];
+const M4_DSP_T = ["?", "Chorus", "Distortion", "OverDrive", "Exciter", "Delay", "StereoDelay", "Flanger", "Phaser"];
+// Paramètres dynamiques du DSP (20 08 21, SIZ 9) — cartographie validée terrain, identique à Panel Console : [libellé, index octet, min, max, mode]
+const M4_DSP_P = { 1: [["Depth",1,0,127],["Speed",2,0,127]], 2: [["Depth",1,0,127],["Drive",2,0,127]], 3: [["Depth",1,0,127],["Drive",2,0,127]], 4: [["Depth",1,0,127],["Drive",2,0,127],["Boost",4,0,127]], 5: [["Ms",1,0,127],["Feedback",3,0,100,"±"]], 6: [["R1 ms",1,0,127],["R2 ms",2,0,127],["L1 ms",3,0,127],["L2 ms",4,0,127],["Fb R",5,0,100,"±"],["Fb L",6,0,100,"±"]], 7: [["Depth1",1,0,127],["Depth2",2,0,127],["Speed",3,0,127],["Res",4,0,100,"±"],["Man",5,0,127],["Phase",6,0,3]], 8: [["Depth",1,0,127],["Speed",2,0,127],["Res",3,0,100,"±"],["Man",4,0,127]] };
+function knGroups(list) { const g = {}; for (const e of list) { (g[e[3]] = g[e[3]] || []).push(e); } return g; }
+function matchSound(pc, bank) { return KN.sounds.find(s => s[4] === pc && s[5] === (bank || 0)) || null; }
+function matchRhythm(pc, bank) { return KN.rhythms.find(r => r[4] === pc && r[5] === (bank || 0)) || null; }
+function knFind(pc, bank) { return KN.sounds.find(s => s[0] === pc && s[1] === (bank || 0)) || null; }
+function knSoundOpts(sel) { // options de sons groupées ; sel = son courant trouvé par TECH (ou null)
+  let o = "";
+  for (const [g, list] of Object.entries(knGroups(KN.sounds))) {
+    o += "<optgroup label=\"" + g + "\">";
+    for (const e of list) o += "<option value=\"" + e[0] + "/" + e[1] + "\"" + (sel && e[0] === sel[0] && e[1] === sel[1] ? " selected" : "") + ">" + e[2] + "</option>";
+    o += "</optgroup>";
+  }
+  return o;
+}
+// ---------- Presets globaux par famille (DSP / Réverb / APC) — stockage local, listes séparées ----------
+const PR_KEY_V2 = "kn2000-apc-presets-v2";
+const PR_FAMS = ["dsp", "reverb", "apc"];
+function prLoad() { try { const o = JSON.parse(localStorage.getItem(PR_KEY_V2) || "{}"); for (const f of PR_FAMS) if (!Array.isArray(o[f])) o[f] = []; return o; } catch (e) { const o = {}; for (const f of PR_FAMS) o[f] = []; return o; } }
+function prStore(o) { try { localStorage.setItem(PR_KEY_V2, JSON.stringify(o)); } catch (e) { log("Écriture localStorage impossible : " + e.message, "ko"); } }
+function prRefresh() { for (const f of PR_FAMS) { const el = document.getElementById("prSel" + f[0].toUpperCase() + f.slice(1)); if (!el) continue; const o = prLoad(); el.innerHTML = o[f].map((p, i) => "<option value=\"" + i + "\">" + p.name + "</option>").join("") || "<option value=\"\">— aucun preset —</option>"; } }
+function prRow(fam, title) { // rangée preset façon « Drums & accompagnements » : 💾 / liste / ✅ / 🗑
+  const F = fam[0].toUpperCase() + fam.slice(1);
+  return "<button data-prsav=\"" + fam + "\" title=\"" + title + "\">💾</button>"
+    + "<select id=\"prSel" + F + "\" style=\"max-width:150px\" title=\"Presets " + fam + " (liste globale)\"></select>"
+    + "<button data-prapp=\"" + fam + "\" title=\"Applique le preset choisi (envoi au KN2000 + mémorisation pour le morceau courant)\">✅</button>"
+    + "<button data-prdel=\"" + fam + "\" title=\"Supprime le preset choisi\">🗑</button>";
+}
+// état courant d'une famille (lu depuis les réglages panel du morceau, sinon défauts)
+function prCapture(fam) {
+  const p = m4Params();
+  const g = k => (p && p[k]) ? p[k] : null;
+  if (fam === "dsp") {
+    let d = g("20 08 21"); if (!d) d = [1, 5, 3, 0, 0, 0, 50, 100, 0];
+    return d.slice(0, 9);
+  }
+  if (fam === "reverb") {
+    const on = g("20 08 10"); return { on: on ? on[0] : 127, type: g("20 08 11") ? g("20 08 11")[0] : 0, depth: g("20 08 12") ? g("20 08 12")[0] : 3 };
+  }
+  const t = g("20 60 02"); const m = g("20 60 03");
+  return { type: t ? t[0] : 2, mem: m ? m[0] : 0 };
+}
+function prApply(fam, name) {
+  let n = 0;
+  if (fam === "dsp") { if (m4Write("20 08 21", prCapture("dsp").map(x => x & 0x7f), "Preset DSP « " + name + " »")) n++; }
+  else if (fam === "reverb") { const d = prCapture("reverb");
+    if (m4Write("20 08 10", [d.on & 0x7f], "Preset Réverb « " + name + " » : " + (d.on ? "ON" : "OFF"))) n++;
+    if (m4Write("20 08 11", [d.type & 0x7f], "Preset Réverb « " + name + " » : type → " + M4_RV_T[d.type])) n++;
+    if (m4Write("20 08 12", [d.depth & 0x7f], "Preset Réverb « " + name + " » : profondeur → " + (d.depth + 1) + "/8")) n++; }
+  else { const d = prCapture("apc");
+    if (m4Write("20 60 02", [d.type & 0x7f], "Preset APC « " + name + " » : " + M4_APC_T[d.type])) n++;
+    if (m4Write("20 60 03", [d.mem & 0x7f], "Preset APC « " + name + " » : memory " + (d.mem ? "ON" : "OFF"))) n++; }
+  log("✅ Preset " + fam + " « " + name + " » appliqué (" + n + " écriture(s)).", "ok");
+  renderM4();
+}
+// ---------- Rendu M4 : pavés façon Panel Console ----------
+function m4DspState() { const p = m4Params(); const d = (p && p["20 08 21"]) ? p["20 08 21"].slice(0, 9) : null; return d && d.length === 9 ? d : null; }
 function renderM4() {
   const s = songs.songs.find(x => x.id === curSongId);
   const p = m4Params();
   document.getElementById("m4Song").textContent = s ? "🎵 " + s.title : "— aucun morceau sélectionné";
   document.getElementById("m4Hint").textContent = p ? "réglages panel en mémoire ♩" + ((s.panel && s.panel.tempo) || "?") : "pas encore de réglages sauvegardés";
-  let h = "";
-  for (const [lbl, sonKey, volKey] of M4_PARTS) {
-    const son = p ? p[sonKey] : null, vol = p ? p[volKey] : null;
-    h += "<div class=\"partCard\" data-pk=\"" + volKey + "\"><div class=\"pcLbl\">" + lbl + "</div>";
-    if (sonKey) h += "<div class=\"row\"><label>Instrument PC <input type=\"number\" min=\"0\" max=\"127\" style=\"width:70px\" data-k=\"" + sonKey + "\" data-f=\"0\" value=\"" + (son ? son[0] : "") + "\"></label>"
-      + "<label>Bank <input type=\"number\" min=\"0\" max=\"127\" style=\"width:70px\" data-k=\"" + sonKey + "\" data-f=\"1\" value=\"" + (son ? son[1] : "") + "\"></label>"
-      + "<span class=\"hint\">(PC + bank tels que lus du clavier)</span></div>";
-    h += "<div class=\"row\" style=\"align-items:center\"><label style=\"flex:1\">Volume <input type=\"range\" min=\"0\" max=\"127\" data-k=\"" + volKey + "\" value=\"" + (vol ? vol[0] : 100) + "\" oninput=\"this.nextElementSibling.textContent=this.value\"></label><b style=\"width:30px;text-align:right\">" + (vol ? vol[0] : "—") + "</b></div></div>";
+  const gv = k => (p && p[k]) ? p[k][0] : null;
+  const slider = (k, v, w) => "<input type=\"range\" min=\"0\" max=\"127\" data-k=\"" + k + "\" value=\"" + (v === null ? 100 : v) + "\" style=\"width:" + (w || 90) + "px\" oninput=\"this.nextElementSibling.textContent=this.value\"><b style=\"width:26px;text-align:right;display:inline-block\">" + (v === null ? "—" : v) + "</b>";
+  let h = "<div class=\"row\" style=\"flex-wrap:wrap;gap:10px\">";
+  // ===== PAVÉ Clavier : RIGHT 1 / RIGHT 2 / LEFT (son par nom + volume) =====
+  for (const pt of M4_PARTS) {
+    const sb = (p && p[pt.son]) || null; const snd = sb ? matchSound(sb[0], sb[1]) : null;
+    const v = gv(pt.vol);
+    h += "<div class=\"partCard\" style=\"flex:1;min-width:220px\"><div class=\"pcLbl\">" + pt.lbl + "</div>"
+      + "<select data-sndsel=\"" + pt.lbl + "\" data-key=\"" + pt.son + "\" style=\"max-width:100%\">" + knSoundOpts(snd) + "</select>"
+      + "<div class=\"row\" style=\"align-items:center;margin-top:4px\"><label style=\"flex:1\">Vol " + slider(pt.vol, v) + "</label></div></div>";
   }
-  h += "<div class=\"partCard\"><div class=\"pcLbl\">⚙️ Réglages utiles</div><div class=\"row\">";
-  for (const [lbl, key, n, mx] of M4_MISC) {
-    const v = p ? p[key] : null;
-    h += "<label>" + lbl + " <input type=\"number\" min=\"0\" max=\"" + mx + "\" style=\"width:70px\" data-k=\"" + key + "\" data-n=\"" + n + "\" value=\"" + (v ? v[0] : "") + "\"" + (n === 2 ? " title=\"octet 1 sur 2 (PC)\"" : "") + "></label>";
+  h += "</div>";
+  h += "<div class=\"row\" style=\"flex-wrap:wrap;gap:10px;align-items:stretch\">";
+  // ===== PAVÉ Rythme & réglages =====
+  { const rb = (p && p["20 60 00"]) || null; const rhy = rb ? matchRhythm(rb[0], rb[1]) : null;
+    let ropts = "";
+    for (const [g, list] of Object.entries(knGroups(KN.rhythms))) { ropts += "<optgroup label=\"" + g + "\">"; for (const e of list) ropts += "<option value=\"" + e[0] + "/" + e[1] + "\"" + (rhy && e[0] === rhy[0] && e[1] === rhy[1] ? " selected" : "") + ">" + e[2] + "</option>"; ropts += "</optgroup>"; }
+    const tr = gv("20 00 02");
+    h += "<div class=\"partCard\" style=\"flex:1;min-width:230px\"><div class=\"pcLbl\">Rythme &amp; réglages</div>"
+      + "<div class=\"row\" style=\"margin:4px 0\"><b style=\"width:64px\">Rythme</b><select data-rhy=\"1\" style=\"flex:1;min-width:0\">" + ropts + "</select></div>"
+      + "<div class=\"row\" style=\"margin:4px 0\"><b style=\"width:64px\">Transpose</b><select data-key=\"20 00 02\" style=\"flex:1;min-width:0\">"
+      + M4_TR.map((t, i) => "<option value=\"" + i + "\"" + ((tr === null ? 5 : tr) === i ? " selected" : "") + ">" + (i === 5 ? "C (aucune)" : t) + "</option>").join("") + "</select></div>"
+      + "<div class=\"hint\">Le rythme part en 2 écritures (enable 20 04 01 puis 20 60 00) ; transpose = 20 00 02 (00=G … 05=C … 0B=F#).</div></div>";
   }
-  h += "</div></div>";
+  // ===== PAVÉ Réverb (20 08 10/11/12) + presets =====
+  { const on = gv("20 08 10"); const ty = gv("20 08 11"); const dp = gv("20 08 12");
+    h += "<div class=\"partCard\" style=\"flex:1;min-width:230px\"><div class=\"pcLbl\" style=\"display:flex;align-items:center;gap:6px;flex-wrap:wrap\">Réverb " + prRow("reverb", "Mémorise ON/OFF + type + profondeur comme preset Réverb (liste globale)") + "</div>"
+      + "<div class=\"row\" style=\"align-items:center;margin:4px 0\"><button data-revtgl title=\"Reverb total ON/OFF (20 08 10 : 7F/00)\" style=\"min-width:46px\">" + (on === null ? " ? " : (on ? "ON" : "OFF")) + "</button>"
+      + "<select data-key=\"20 08 11\" title=\"Type de réverb (20 08 11)\">" + M4_RV_T.map((t, i) => "<option value=\"" + i + "\"" + ((ty === null ? 0 : ty) === i ? " selected" : "") + ">" + t + "</option>").join("") + "</select></div>"
+      + "<div class=\"row\" style=\"align-items:center;margin:4px 0\"><label>Prof. <input type=\"range\" min=\"0\" max=\"7\" data-k=\"20 08 12\" value=\"" + (dp === null ? 3 : dp) + "\" style=\"width:90px\" oninput=\"this.nextElementSibling.textContent=(+this.value+1)\"> <b style=\"width:26px;display:inline-block\">" + (dp === null ? 4 : dp + 1) + "</b>/8</label></div>"
+      + "<div class=\"hint\">Réverb : ON/OFF (20 08 10), type Room1→Echo4 (20 08 11), profondeur 1-8 (20 08 12) — comme Panel Console.</div></div>";
+  }
+  // ===== PAVÉ DSP (20 08 21, 9 octets) + presets =====
+  { const d = m4DspState(); const t = d ? d[0] : 1; const defs = M4_DSP_P[t] || [];
+    let params = "";
+    for (const [lbl, idx, mn, mx, mode] of defs) {
+      let val = d ? d[idx] : ((mn + mx) >> 1); if (mode === "±") val = d ? (d[idx] - 50) : 0;
+      params += "<label style=\"white-space:nowrap\">" + lbl + " <input type=\"range\" min=\"" + mn + "\" max=\"" + mx + "\" data-dspidx=\"" + idx + "\" data-dspmode=\"" + (mode || "") + "\" value=\"" + val + "\" style=\"width:80px\" oninput=\"this.nextElementSibling.textContent=this.value\"> <b style=\"width:26px;display:inline-block\">" + val + "</b></label> ";
+    }
+    h += "<div class=\"partCard\" style=\"flex:1.4;min-width:300px\"><div class=\"pcLbl\" style=\"display:flex;align-items:center;gap:6px;flex-wrap:wrap\">DSP " + prRow("dsp", "Mémorise le bloc complet 9 octets (type + paramètres + output + reverb send) comme preset DSP") + "</div>"
+      + "<div class=\"row\" style=\"align-items:center;margin:4px 0;flex-wrap:wrap\"><select data-dsptype title=\"Type DSP (octet 0 du bloc 20 08 21)\">" + [1,2,3,4,5,6,7,8].map(i => "<option value=\"" + i + "\"" + (t === i ? " selected" : "") + ">" + M4_DSP_T[i] + "</option>").join("") + "</select>"
+      + "<label>Out <input type=\"range\" min=\"0\" max=\"127\" data-dspk=\"7\" value=\"" + (d ? d[7] : 100) + "\" style=\"width:80px\" oninput=\"this.nextElementSibling.textContent=this.value\"> <b style=\"width:26px;display:inline-block\">" + (d ? d[7] : 100) + "</b></label>"
+      + "<label>Rev <input type=\"range\" min=\"0\" max=\"127\" data-dspk=\"8\" value=\"" + (d ? d[8] : 0) + "\" style=\"width:80px\" oninput=\"this.nextElementSibling.textContent=this.value\"> <b style=\"width:26px;display:inline-block\">" + (d ? d[8] : 0) + "</b></label></div>"
+      + "<div class=\"row\" style=\"gap:6px;flex-wrap:wrap\">" + params + "</div>"
+      + "<div class=\"hint\">Bloc complet 20 08 21 (SIZ 9) : type + paramètres selon le type + output + reverb send — cartographie terrain identique à Panel Console. « ± » = réglage centré sur 0.</div></div>";
+  }
+  // ===== PAVÉ APC (20 60 02 type, 20 60 03 memory) + presets =====
+  { const t = gv("20 60 02"); const m = gv("20 60 03");
+    h += "<div class=\"partCard\" style=\"flex:1;min-width:230px\"><div class=\"pcLbl\" style=\"display:flex;align-items:center;gap:6px;flex-wrap:wrap\">APC " + prRow("apc", "Mémorise type + memory comme preset APC") + "</div>"
+      + "<div class=\"row\" style=\"margin:4px 0;flex-wrap:wrap\">"
+      + M4_APC_T.map((lbl, i) => "<button data-apct=\"" + i + "\"" + ((t === null ? 2 : t) === i ? " style=\"background:#2a6;color:#fff\"" : "") + ">" + lbl + "</button>").join("") + "</div>"
+      + "<div class=\"row\" style=\"margin:4px 0\"><button data-apcmem title=\"APC Memory (20 60 03) — ON : le clavier tient l'accord après relâchement\" style=\"min-width:46px\">" + (m === null ? " ? " : (m ? "ON" : "OFF")) + "</button> <span class=\"hint\">Memory</span></div>"
+      + "<div class=\"hint\">APC : type Off/OneFing/Fingered/Pianist (20 60 02) + memory (20 60 03) — même logique que Panel Console.</div></div>";
+  }
+  h += "</div>";
+  // ===== PAVÉ Drums & accompagnements : 8 lignes (Mute + Vol + canal) + scènes de session + sons Accomp1-3/Bass =====
+  h += "<div class=\"partCard\"><div class=\"pcLbl\" style=\"display:flex;align-items:center;gap:8px;flex-wrap:wrap\">Drums &amp; accompagnements"
+    + "<button id=\"m4SceneSave\" title=\"Mémorise l'ensemble des volumes (mutes inclus : volume 0) comme scène de session — réutilisable depuis M2 Direct\">💾 Scène</button>"
+    + "<select id=\"sceneSel\" title=\"Scènes de session mémorisées (volumes Drums & accompagnements)\"></select>"
+    + "<button id=\"m4SceneApply\" title=\"Applique la scène choisie : volumes envoyés au KN2000 et mémorisés pour le morceau courant\">✅ Appliquer</button>"
+    + "<button id=\"m4SceneDel\" title=\"Supprime la scène choisie\">🗑</button></div>"
+    + "<div class=\"hint\" style=\"margin:4px 0 6px\">Canal entre parenthèses = Basic Channel de la part (menu MIDI du clavier). Chord suit « Canal accords (cible) » de ⚙️ Canaux &amp; réglages ; APC-Drums et R.Bass : à relever au clavier. Les volumes et mutes partent en sysex (indépendants du canal). Sons des parts APC : définis par le rythme — les sélecteurs Accomp 1-3 / Bass (20 2m 00) sont à valider terrain.</div>";
+  for (const d of M4_DRUMS) {
+    const v = gv(d.vol);
+    h += "<div class=\"row\" style=\"align-items:center;margin:2px 0\"><label style=\"min-width:110px;font-weight:600\" title=\"Canal MIDI d'entrée de la part (Basic Channel du clavier)\">" + d.lbl + " <span style=\"font-weight:400;color:#888\">(" + m4ChLbl(d) + ")</span></label>"
+      + "<label title=\"Mute = volume 0 (décoché = rétablit le volume d'avant)\"><input type=\"checkbox\" data-mute=\"" + d.vol + "\"" + (v === 0 ? " checked" : "") + "> Mute</label>"
+      + "<label style=\"flex:1\">Vol " + slider(d.vol, v) + "</label>";
+    if (d.son) { const sb = (p && p[d.son]) || null; const snd = sb ? matchSound(sb[0], sb[1]) : null;
+      h += "<select data-sndsel=\"" + d.lbl + "\" data-key=\"" + d.son + "\" class=\"apcsnd\" title=\"Son de la part (20 2m 00) — à valider terrain\">" + knSoundOpts(snd) + "</select>"; }
+    h += "</div>";
+  }
+  h += "</div>";
   document.getElementById("m4Grid").innerHTML = h;
+  m4SceneRefresh();
+  prRefresh();
 }
+// ---------- Écritures spécifiques DSP (bloc 9 octets) ----------
+function m4DspWrite() {
+  const d = m4DspState();
+  const t = parseInt(document.querySelector("#m4Grid select[data-dsptype]").value, 10);
+  const cur = d || [t, 5, 3, 0, 0, 0, 50, 100, 0];
+  cur[0] = t;
+  for (const el of document.querySelectorAll("#m4Grid input[data-dspidx], #m4Grid input[data-dspk]")) {
+    const idx = el.dataset.dspidx !== undefined ? parseInt(el.dataset.dspidx, 10) : parseInt(el.dataset.dspk, 10);
+    let v = parseInt(el.value, 10) & 0x7f; if (el.dataset.dspmode === "±") v = (parseInt(el.value, 10) + 50) & 0x7f;
+    cur[idx] = v;
+  }
+  m4Write("20 08 21", cur.slice(0, 9), "DSP → " + M4_DSP_T[cur[0]]);
+}
+// ---------- Écouteurs M4 ----------
 document.getElementById("m4Grid").addEventListener("change", (ev) => {
-  const t = ev.target, key = t.dataset.k;
-  if (!key || !curSongId) return;
-  let vals = null;
-  if (t.dataset.f !== undefined) { // son PC/bank : reconstruit la paire
-    const other = document.querySelector("#m4Grid input[data-k=\"" + CSS.escape(key) + "\"][data-f=\"" + (1 - t.dataset.f) + "\"]");
-    const a = parseInt(t.value, 10), b = other ? parseInt(other.value, 10) : NaN;
-    if (isNaN(a) || isNaN(b)) { log("🎛 Instrument : donne PC ET bank (valeurs 0-127).", "ko"); return; }
-    vals = t.dataset.f === "0" ? [a, b] : [b, a];
-  } else if (t.type === "range") { vals = [parseInt(t.value, 10)]; }
-  else { vals = [parseInt(t.value, 10)]; if (isNaN(vals[0])) return; }
-  m4Write(key, vals, "Partie/réglage " + key);
+  const t = ev.target;
+  if (t.dataset.sndsel) { // sélecteur de son (Clavier + Accomp 1-3 / Bass)
+    const [pc, bk] = t.value.split("/").map(Number);
+    const snd = knFind(pc, bk);
+    if (snd) m4Write(t.dataset.key, [snd[4] & 0x7f, snd[5] & 0x7f], "Son " + t.dataset.sndsel + " → " + snd[2]);
+    return;
+  }
+  if (t.dataset.rhy) {
+    const [pc, bk] = t.value.split("/").map(Number);
+    const r = KN.rhythms.find(x => x[0] === pc && x[1] === bk);
+    if (!r) return;
+    sendItw([0x20, 0x04, 0x01], [0x01]);
+    setTimeout(() => { m4Write("20 60 00", [r[4] & 0x7f, r[5] & 0x7f], "Rythme → " + r[2]); }, 120);
+    return;
+  }
+  if (t.dataset.dsptype !== undefined && t.tagName === "SELECT") { m4DspWrite(); renderM4(); return; }
+  if (t.dataset.dspidx !== undefined || t.dataset.dspk !== undefined) { m4DspWrite(); return; }
+  if (t.dataset.mute) { // Mute = volume 0 ; décocher rétablit le volume d'avant
+    const key = t.dataset.mute;
+    const slider = document.querySelector("#m4Grid input[type=range][data-k=\"" + CSS.escape(key) + "\"]");
+    if (t.checked) {
+      if (slider) slider.dataset.prev = slider.value;
+      m4Write(key, [0], "Mute (volume 0)");
+      if (slider) { slider.value = 0; slider.nextElementSibling.textContent = "0"; }
+    } else {
+      const prev = slider && slider.dataset.prev ? parseInt(slider.dataset.prev, 10) : 100;
+      m4Write(key, [prev], "Volume rétabli → " + prev);
+      if (slider) { slider.value = prev; slider.nextElementSibling.textContent = String(prev); }
+    }
+    return;
+  }
+  if (t.dataset.k && t.type === "range") { // volume / réverb profondeur
+    const v = parseInt(t.value, 10); if (isNaN(v)) return;
+    const lbl = t.dataset.k === "20 08 12" ? "Réverb profondeur → " + (v + 1) + "/8" : "Volume → " + v;
+    m4Write(t.dataset.k, [v], lbl);
+    if (t.nextElementSibling) t.nextElementSibling.textContent = String(t.dataset.k === "20 08 12" ? v + 1 : v);
+    return;
+  }
+  if (t.dataset.key && t.tagName === "SELECT") { // transpose / réverb type
+    const v = parseInt(t.value, 10); if (isNaN(v)) return;
+    const lbl = t.dataset.key === "20 08 11" ? "Réverb type → " + M4_RV_T[v] : "Réglage → " + v;
+    m4Write(t.dataset.key, [v], lbl);
+  }
 });
-document.getElementById("m4Reload").onclick = async () => { await readPanel(); renderM4(); };
+document.getElementById("m4Grid").addEventListener("click", (ev) => {
+  const t = ev.target.closest ? ev.target.closest("button, select") : ev.target;
+  if (!t || !t.dataset) return;
+  if (t.dataset.revtgl !== undefined && t.dataset.revtgl !== null) {
+    const on = t.textContent !== "ON";
+    m4Write("20 08 10", [on ? 127 : 0], "Réverb " + (on ? "ON" : "OFF")); renderM4(); return;
+  }
+  if (t.dataset.apct !== undefined && t.dataset.apct !== null) {
+    m4Write("20 60 02", [parseInt(t.dataset.apct, 10)], "APC → " + M4_APC_T[+t.dataset.apct]); renderM4(); return;
+  }
+  if (t.dataset.apcmem !== undefined && t.dataset.apcmem !== null) {
+    const on = t.textContent !== "ON";
+    m4Write("20 60 03", [on ? 1 : 0], "APC Memory " + (on ? "ON" : "OFF")); renderM4(); return;
+  }
+  if (t.dataset.prsav) {
+    const fam = t.dataset.prsav; const nm = prompt("Nom du preset " + fam + " ?");
+    if (nm && nm.trim()) { const o = prLoad(); o[fam].push({ name: nm.trim(), data: prCapture(fam), ts: Date.now() }); prStore(o); prRefresh();
+      const sel = document.getElementById("prSel" + fam[0].toUpperCase() + fam.slice(1)); sel.value = String(o[fam].length - 1);
+      log("💾 Preset " + fam + " « " + nm.trim() + " » mémorisé (liste globale).", "ok"); }
+    return;
+  }
+  if (t.dataset.prapp) {
+    const fam = t.dataset.prapp; const sel = document.getElementById("prSel" + fam[0].toUpperCase() + fam.slice(1));
+    const o = prLoad(); const pr = o[fam][parseInt(sel.value, 10)];
+    if (!pr) { log("Choisis d'abord un preset dans la liste.", "info"); return; }
+    // appliquer = écraser l'état courant de la famille avec le preset, puis envoyer
+    const s = songs.songs.find(x => x.id === curSongId);
+    if (!s) { log("Choisis un morceau (M1) avant d'appliquer un preset.", "ko"); return; }
+    if (!s.panel) s.panel = { tempo: null, params: {} };
+    if (fam === "dsp") s.panel.params["20 08 21"] = pr.data.slice(0, 9);
+    else if (fam === "reverb") { s.panel.params["20 08 10"] = [pr.data.on & 0x7f]; s.panel.params["20 08 11"] = [pr.data.type & 0x7f]; s.panel.params["20 08 12"] = [pr.data.depth & 0x7f]; }
+    else { s.panel.params["20 60 02"] = [pr.data.type & 0x7f]; s.panel.params["20 60 03"] = [pr.data.mem & 0x7f]; }
+    songsSave();
+    prApply(fam, pr.name);
+    return;
+  }
+  if (t.dataset.prdel) {
+    const fam = t.dataset.prdel; const sel = document.getElementById("prSel" + fam[0].toUpperCase() + fam.slice(1));
+    const o = prLoad(); const i = parseInt(sel.value, 10);
+    if (isNaN(i) || !o[fam][i]) { log("Choisis d'abord un preset à supprimer.", "info"); return; }
+    log("🗑 Preset " + fam + " « " + o[fam][i].name + " » supprimé.", "info");
+    o[fam].splice(i, 1); prStore(o); prRefresh(); return;
+  }
+  if (t.id === "m4SceneApply") {
+    m4SceneApply(parseInt(document.getElementById("sceneSel").value, 10)); return;
+  }
+  if (t.id === "m4SceneSave") {
+    const nm = prompt("Nom de la scène de session (volumes Drums & accompagnements) ?");
+    if (nm && nm.trim()) { const a = scenesLoad(); a.push({ name: nm.trim(), vols: m4SceneCurrent(), ts: Date.now() }); scenesStore(a); m4SceneRefresh(); document.getElementById("sceneSel").value = String(a.length - 1); log("💾 Scène « " + nm.trim() + " » mémorisée (" + Object.keys(a[a.length - 1].vols).length + " volumes).", "ok"); }
+    return;
+  } else if (t.id === "m4SceneDel") {
+    const a = scenesLoad(); const i = parseInt(document.getElementById("sceneSel").value, 10);
+    if (isNaN(i) || !a[i]) { log("Choisis d'abord une scène à supprimer.", "info"); return; }
+    log("🗑 Scène « " + a[i].name + " » supprimée.", "info"); a.splice(i, 1); scenesStore(a); m4SceneRefresh(); return;
+  }
+});
+// ---------- Scènes de session (volumes Drums & accompagnements) — inchangées ----------
+const SCENE_KEY_V2 = "kn2000-apc-scenes-v2";
+function scenesLoad() { try { const a = JSON.parse(localStorage.getItem(SCENE_KEY_V2) || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+function scenesStore(a) { try { localStorage.setItem(SCENE_KEY_V2, JSON.stringify(a)); } catch (e) { log("Écriture localStorage impossible : " + e.message, "ko"); } }
+function m4SceneRefresh() {
+  const a = scenesLoad(); const el = document.getElementById("sceneSel"); if (!el) return;
+  el.innerHTML = a.map((sc, i) => "<option value=\"" + i + "\">" + sc.name + "</option>").join("") || "<option value=\"\">— aucune scène —</option>";
+  const m2 = document.getElementById("sceneSelM2"); if (m2) m2.innerHTML = el.innerHTML;
+}
+function m4SceneCurrent() { // capture les volumes Drums & accompagnements affichés
+  const vols = {};
+  for (const d of M4_DRUMS) {
+    const sl = document.querySelector("#m4Grid input[type=range][data-k=\"" + CSS.escape(d.vol) + "\"]");
+    vols[d.vol] = sl ? parseInt(sl.value, 10) : 100;
+  }
+  return vols;
+}
+function m4SceneApply(i) {
+  const a = scenesLoad(); const sc = a[i];
+  if (!sc) { log("Choisis d'abord une scène dans la liste.", "info"); return; }
+  let n = 0;
+  for (const [k, v] of Object.entries(sc.vols)) { if (m4Write(k, [v], "Scène « " + sc.name + " » : volume → " + v)) n++; }
+  log("✅ Scène « " + sc.name + " » appliquée (" + n + " volumes envoyés au KN2000" + (curSongId ? " et mémorisés pour le morceau courant" : "") + ").", "ok");
+  renderM4();
+}
+document.getElementById("sceneApplyM2").onclick = () => m4SceneApply(parseInt(document.getElementById("sceneSelM2").value, 10));
+document.getElementById("chChord").addEventListener("input", () => { if (document.getElementById("m4Grid")) renderM4(); }); // le canal affiché pour Chord suit le réglage en direct
+// 📥 Relire le panel : lecture de l'état courant du KN2000 (DRQ) → devient les réglages du morceau courant
+document.getElementById("m4Reload").onclick = async () => {
+  const s = songs.songs.find(x => x.id === curSongId);
+  if (!s) { log("Choisis d'abord un morceau (M1) — puis 📥 Relire le panel.", "ko"); return; }
+  log("📥 Relire le panel : lecture de l'état courant du KN2000 pour « " + s.title + " »...", "info");
+  s.panel = await readPanel();
+  songsSave();
+  renderM4();
+  log("💾 Panel lu appliqué à « " + s.title + " » (" + Object.keys(s.panel.params).length + " réglage(s)) — M4 à jour. Pense à 💾 Sauver morceau (M2).", "ok");
+};
+
 const _setModeV2 = setMode;
 setMode = function (m) { _setModeV2(m); if (m === "m4") renderM4(); };
 renderSongs = function () { _rsV2(); renderM1(); renderM4(); };
+renderM4(); // premier rendu M4 dès le chargement — sinon les boutons dynamiques (scènes, presets) n'existent pas encore et leur câblage plante le script
 
 log("🎼 APC Live v2 — modes M1 (préparation) · M2 (direct) · M3 (réglages & tests) · M4 (parties). Liste V1 intacte : les deux pages cohabitent (stockage distinct).", "info");
 </script>

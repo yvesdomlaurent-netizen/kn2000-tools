@@ -13,6 +13,20 @@ Outils :
 
 ## [Non publié] / Unreleased
 
+### APC Live v2.2 — M4 Parties en pavés + presets Live (DSP / Réverb / APC)
+
+- **M4 restructuré en pavés façon Panel Console** : Clavier (RIGHT 1/2, LEFT — son par nom + volume), Rythme & réglages (rythme, transpose), Réverb (ON/OFF `20 08 10`, type Room1→Echo4 `20 08 11`, profondeur 1-8 `20 08 12`), DSP (bloc complet `20 08 21` SIZ 9 : type Chorus→Phaser + **paramètres dynamiques selon le type** + output + reverb send — cartographie terrain validée empiriquement), APC (type Off/OneFing/Fingered/Pianist `20 60 02` + memory `20 60 03`), Drums & accompagnements (8 lignes Mute/Vol).
+- **Presets Live par pavé** (💾 / liste / ✅ / 🗑) : trois listes globales séparées **DSP / Réverb / APC** (localStorage `kn2000-apc-presets-v2`) ; 💾 mémorise l'état courant du pavé, ✅ Appliquer = envoi ITW au KN2000 + mémorisation pour le morceau courant — pour caler et essayer en répète ; l'attachement des presets aux morceaux et les événements de jeu dynamiques seront cadrés séparément (côté Morceaux).
+- **Sélecteurs de sonorité pour Accomp 1-3 et Bass** (adresse `20 2m 00`, octets TECH — **à valider terrain**) ; APC-Drums/Chord/R.Bass : sons définis par le rythme (mémo conservé).
+- **Canal MIDI affiché entre parenthèses** pour chaque ligne Drums & accompagnements (Basic Channels relevés terrain : Acc1=4, Acc2=5, Acc3=6, Bass=7, Drums=16) ; **Chord dynamique** — suit « Canal accords (cible) » des réglages en direct.
+- **🐛 Correctif critique de chargement** : le câblage direct de boutons créés dynamiquement (scènes) s'exécutait avant le premier rendu M4 → `getElementById` null → **tout le bloc script plantait au chargement** (bouton 📥 Relire le panel, sélecteur de scène M2 et transport inopérants, aucun log) ; les boutons dynamiques passent en **délégation de clic** sur la grille M4 + premier rendu M4 dès le chargement de la page.
+
+### APC Live v2.1 — M4 Parties : panneau « État » + scènes de session
+
+- **M4 Parties reconstruit autour du panneau « État »** de la Panel Console : sons par nom (table KN des 250 sons/rythmes, résolution par octets TECH s[4]/s[5] — méthode validée terrain), volumes, **Mute = volume 0** par ligne (décocher rétablit le volume d'avant), rythme par nom (enable `20 04 01` + `20 60 00`), transpose, APC type/mémoire, réverb.
+- **Scènes de session** (volumes Drums & accompagnements, mutes inclus : volume 0) : 💾 sauver / ✅ appliquer / 🗑 supprimer — **sélectionnables depuis M2 Direct** (sélecteur dédié) pour les macros de session (« Sans batteur », « Sans bassiste »…).
+- Point volume résolu terrain (réactivité OK) ; activation synchro/automation : mise de côté volontairement.
+
 ### APC Live v2.0 — 🎼 publication de la page de pilotage de scène en quatre modes
 
 - **Premier jet construit à partir de la v0.41** (`kn2000-apc-live-test.html`, qui reste en ligne et intacte — les deux pages cohabitent, stockage localStorage distinct : `kn2000-apc-songs-v2`).
