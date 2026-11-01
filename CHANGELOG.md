@@ -7,10 +7,23 @@ Outils :
 - **Sound Editor** — `sound-editor.html` — éditeur de sons Sound Memory (144 octets)
 - **Panel Console** — `panel-console.html` — console de pilotage du clavier
 - **Sauvegarde / Catalogue** — `backup.html` — dump et catalogue de l'état complet du clavier
+- **APC Live** — `kn2000-apc-live-v2.html` — pilotage de scène temps réel : grilles d'accords, morceaux, parties
 
 ---
 
 ## [Non publié] / Unreleased
+
+### APC Live v2.0 — 🎼 publication de la page de pilotage de scène en quatre modes
+
+- **Premier jet construit à partir de la v0.41** (`kn2000-apc-live-test.html`, qui reste en ligne et intacte — les deux pages cohabitent, stockage localStorage distinct : `kn2000-apc-songs-v2`).
+- **M2 Direct** : moteur V1 intact — lecture des grilles d'accords synchrone sur l'horloge F8 (compteur de pulses, zéro dérive, suivi du tempo à la molette), transport clavier FA/FB/FC, départ à la mesure, Synchro&Break, vrai silence NC, gros compteur position/BPM toujours visible.
+- **M1 Morceaux** : bibliothèque des 136 morceaux avec recherche, bouton ▶ Direct, import/export JSON rétro-compatible ({songs:[…]} ou tableau, doublons d'id conservés par renommage, champs inconnus préservés pour les versions futures), NC hérité.
+- **M4 Parties** : sons (PC+bank) et volumes des voies RIGHT 1/2, LEFT, batterie, APC 1-7 + réglages utiles (rythme, transpose, APC type/mémoire, réverb) — chaque modification est envoyée au KN2000 (ITW) et mémorisée dans les réglages du morceau courant ; bouton 📥 Relire le panel.
+- **M3 Réglages & tests** : charte P7 appliquée — badge 🎹 KN2000 à 3 états synchronisé avec la pastille de connexion (confirmée par ping sysex DRQ Synchro), canaux & réglages dans le menu ⚙️ (7e), ❓ Aide en overlay depuis le bandeau (7c), journal avec 🧹 Vider en tête de panneau, navigation hub (7i), barre d'onglets toujours visible.
+- **🩺 Détection pulses/noire** : mesure les F8 reçus pendant 4 s et propose la valeur standard — le KN2000 émet 48 pulses/noire (mesuré terrain 01/11, valeur par défaut corrigée : l'horloge tournait 2× trop vite avec l'ancienne hypothèse 24). Réglage persistant.
+- **Divers** : mémorisation de la taille de fenêtre (bouton 🗗 Fenêtre mémorisée), mode actif persistant.
+- Fichier : `kn2000-apc-live-v2.html`. Validation terrain progressive (recherche M1, ▶ Direct, connexion, ppq, badge, onglets) — imports Drive et NC à confirmer en usage.
+
 
 ### Sauvegarde / Catalogue v0.5.15 — 🎉 SÉQUENCEUR : restauration VALIDÉE TERRAIN + libellés mis à jour
 
