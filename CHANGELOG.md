@@ -13,6 +13,12 @@ Outils :
 
 ## [Non publié] / Unreleased
 
+### APC Live v2.5
+- **Sonorité Chord** : sélecteur de son sur la ligne Chord (adresse `20 25 00`, numéros Technics) — **à valider terrain**.
+- **Parts Add-on 1/2** : deux canaux libres (défaut 11/12, configurables dans ⚙️ Réglages, champs chAdd1/chAdd2) avec son (CC0/CC32/Program Change), volume CC7, RV CC91, DSP CC94 et Pan CC10 — mémorisés par morceau (s.panel.addsnd), renvoyés au rappel de la config.
+- **Mutes par part** : deux mécaniques — parts APC = CC7 à 0 avec mémorisation du volume d'avant (s.panel.mutePrev) et restauration à l'un-mute ; parts Add-on = flag uniquement, TOUT envoi bloqué tant que la part est muette (addonCC/addonSnd refusent).
+- **Scènes = mutes uniquement** : les scènes v2.5 ne mémorisent que des mutes ({name, mutes:{…}}) sans toucher aux volumes ; les anciennes scènes de volumes restent visibles en « héritage » (non applicables, supprimables).
+
 ### APC Live v2.4
 - **Validation terrain des CC par part** : Réverb CC91 confirmée sur les parts APC — le bouton RV s'étend à APC-Drums (canal à renseigner sur la ligne, mémorisé par morceau).
 - **DSP (CC94) et Pan (CC10) recentrés sur Chord** (fonctionnent sur le canal 8, pas sur les autres parts APC) ; boutons DSP et Pan retirés des lignes Accomp 1-3 et Bass.

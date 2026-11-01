@@ -79,7 +79,7 @@
   <span class="badge" id="kbdBadge" title="Liaison KN2000 (badge charte)">🎹 <b id="kbdDot">○</b> KN2000</span>
   <span class="badge" id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   <span style="flex:1"></span>
-  <span><b>🎼 APC Live KN2000</b> <span class="hint">v2.4 — M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties (pavés + presets + CC par part)</span></span>
+  <span><b>🎼 APC Live KN2000</b> <span class="hint">v2.4 — M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties (sons + mutes + CC par part + Add-on)</span></span>
   <span style="flex:1"></span>
   <nav class="hubLinks" title="Navigation entre les outils du projet (charte 7i)">
     <a href="index.html">🏠 Hub</a>
@@ -105,6 +105,8 @@
       <label>Canal accords (cible) <input type="number" id="chChord" value="8" min="1" max="16" title="Basic Channel de la part CHORD = candidat n°1"></label>
       <label>Canal Control CC82 <input type="number" id="chDrums" value="4" min="1" max="16" title="Réglage CONTROL du KN2000 = canal des CC82 (Info terrain Yves : 4)"></label>
       <label>Canal ACCOMP1 (CC80) <input type="number" id="chAcc1" value="1" min="1" max="16"></label>
+      <label>Canal Add-on 1 <input type="number" id="chAdd1" value="11" min="1" max="16" title="Canal libre pour une part Add-on (séquence MIDI future) — v2.5"></label>
+      <label>Canal Add-on 2 <input type="number" id="chAdd2" value="12" min="1" max="16" title="Canal libre pour une part Add-on (séquence MIDI future) — v2.5"></label>
     </div>
     <div class="row">
       <label>Octave fondamentale : C<input type="number" id="oct" value="3" min="1" max="6"> (C3=48)</label>
@@ -1102,6 +1104,13 @@ async function restorePanel(p) {
     send([0xB0 + (ch - 1), cc, p.ccs[k] & 0x7F], "CC" + cc + " ch" + ch + " → " + (p.ccs[k] & 0x7F));
     await new Promise(r => setTimeout(r, 40));
   }
+  for (const chS of Object.keys(p.addsnd || {})) { // v2.5 — sons des parts Add-on (bank select + Program Change sur leur canal)
+    const snd = p.addsnd[chS]; const ch = parseInt(chS, 10);
+    send([0xB0 + (ch - 1), 0, (snd[1] >> 7) & 0x7F], "CC0 ch" + ch + " → " + ((snd[1] >> 7) & 0x7F));
+    send([0xB0 + (ch - 1), 32, snd[1] & 0x7F], "CC32 ch" + ch + " → " + (snd[1] & 0x7F));
+    send([0xC0 + (ch - 1), snd[0] & 0x7F], "PC ch" + ch + " → " + (snd[0] & 0x7F));
+    await new Promise(r => setTimeout(r, 60));
+  }
   if (p.tempo) sendTmpN(p.tempo);
 }
 document.getElementById("songSave").onclick = async () => {
@@ -1109,8 +1118,12 @@ document.getElementById("songSave").onclick = async () => {
   if (!s) { alert("Sélectionne d'abord un morceau (ou ➕ Nouveau)."); return; }
   s.seq = (seqPlaceholder !== null && document.getElementById("progInput").value === seqPlaceholder) ? "" : document.getElementById("progInput").value; // v0.40 : jamais sauvegarder le rappel de titre
   const prevCcs = (s.panel && s.panel.ccs) || null; // v2.3 : les CC par part ne se lisent pas au DRQ → conservés à la sauvegarde
+  const prevMutes = (s.panel && s.panel.mutes) || null; // v2.5 : mutes par part
+  const prevSnd = (s.panel && s.panel.addsnd) || null; // v2.5 : sons des parts Add-on
   s.panel = await readPanel();
   if (prevCcs) s.panel.ccs = prevCcs;
+  if (prevMutes) s.panel.mutes = prevMutes;
+  if (prevSnd) s.panel.addsnd = prevSnd;
   songsSave();
   renderSongs();
   log("💾 « " + s.title + " » sauvegardé : séquence + " + Object.keys(s.panel.params).length + " réglage(s) panel" + (s.panel.ccs ? " + " + Object.keys(s.panel.ccs).length + " CC" : "") + " (♩" + s.panel.tempo + ").", "ok");
@@ -1357,7 +1370,9 @@ function m4Write(key, vals, lbl) {
   return true;
 }
 const M4_PARTS = [ { lbl: "RIGHT 1", n: 0, son: "20 10 00", vol: "20 10 02" }, { lbl: "RIGHT 2", n: 1, son: "20 11 00", vol: "20 11 02" }, { lbl: "LEFT", n: 2, son: "20 12 00", vol: "20 12 02" } ];
-const M4_DRUMS = [ { lbl: "Drums", ch: 16, vol: "20 1F 02" }, { lbl: "Accomp 1", ch: 4, vol: "20 20 02", rv: true }, { lbl: "Accomp 2", ch: 5, vol: "20 21 02", rv: true }, { lbl: "Accomp 3", ch: 6, vol: "20 22 02", rv: true }, { lbl: "Bass", ch: 7, vol: "20 23 02", rv: true }, { lbl: "APC-Drums", ch: null, vol: "20 24 02", rv: true }, { lbl: "Chord", ch: "dyn", vol: "20 25 02", rv: true, dsp: true, pan: true }, { lbl: "R.Bass", ch: null, vol: "20 26 02" } ];
+const M4_DRUMS = [ { lbl: "Drums", ch: 16, vol: "20 1F 02" }, { lbl: "Accomp 1", ch: 4, vol: "20 20 02", rv: true }, { lbl: "Accomp 2", ch: 5, vol: "20 21 02", rv: true }, { lbl: "Accomp 3", ch: 6, vol: "20 22 02", rv: true }, { lbl: "Bass", ch: 7, vol: "20 23 02", rv: true }, { lbl: "APC-Drums", ch: null, vol: "20 24 02", rv: true }, { lbl: "Chord", ch: "dyn", vol: "20 25 02", rv: true, dsp: true, pan: true, snd: "20 25 00" }, { lbl: "R.Bass", ch: null, vol: "20 26 02" } ];
+const M4_ADDON = [ { lbl: "Add-on 1", cid: "chAdd1" }, { lbl: "Add-on 2", cid: "chAdd2" } ]; // v2.5 — parts Add-on : canaux libres (11/12 par défaut, réglables ⚙️), réservés aux séquences MIDI futures du générateur d'événements
+const M4_ALL = () => M4_DRUMS.concat(M4_ADDON);
 // v2.4 — Validation terrain : Réverb CC91 OK sur les parts APC (Accomp 1-3, Bass + APC-Drums) ; DSP CC94 et Pan CC10 OK sur Chord seulement ; sons des parts APC = définis par le rythme (sélecteurs retirés). Canal des parts non relevées (APC-Drums) : renseignable sur la ligne (s.panel.chchans).
 function m4ChBase(d) { // canal basic 1-16 ; null = canal à renseigner sur la ligne
   if (d.ch === "dyn") return chChord() + 1;
@@ -1378,6 +1393,70 @@ function m4CC(d, cc, val, lbl) {
   songsSave();
   send([0xB0 + (ch - 1), cc, v], "CC" + cc + " ch" + ch + " → " + v);
   log("🎛 " + lbl + " (CC" + cc + " ch" + ch + " → " + v + ") envoyé au KN2000 + mémorisé pour « " + s.title + " ».", "ok");
+  return true;
+}
+// v2.5 — Mutes par part : parts APC = CC7=0 (l'APC continue de jouer, part inaudible ; réversible) ; parts Add-on = flag (aucune donnée envoyée sur le canal)
+function m4MuteState(lbl) { const s = songs.songs.find(x => x.id === curSongId); return !!(s && s.panel && s.panel.mutes && s.panel.mutes[lbl]); }
+function m4SetMute(d, on) {
+  const s = songs.songs.find(x => x.id === curSongId);
+  if (!s) { log("🔇 Aucun morceau sélectionné — choisis un morceau (M1) avant de muter.", "ko"); return false; }
+  if (!s.panel) s.panel = { tempo: null, params: {} };
+  if (!s.panel.mutes) s.panel.mutes = {};
+  if (on) s.panel.mutes[d.lbl] = true; else delete s.panel.mutes[d.lbl];
+  if (d.cid) { // part Add-on : le mute = plus aucune donnée envoyée sur le canal
+    songsSave();
+    log("🔇 " + d.lbl + " " + (on ? "MUET — aucune donnée ne sera envoyée sur son canal." : "réactivé — le canal redevient actif.") + " Mémorisé pour « " + s.title + " ».", on ? "info" : "ok");
+    return true;
+  }
+  const ch = m4ChBase(d);
+  if (!ch || ch < 1 || ch > 16) { songsSave(); log("🔇 Canal de « " + d.lbl + " » inconnu — renseigne le canal sur la ligne : le mute sera appliqué (CC7=0) dès qu'il sera connu.", "ko"); return false; }
+  if (!s.panel.ccs) s.panel.ccs = {};
+  const key = ch + "|7";
+  if (on) { // mémorise le volume d'avant-mute pour le rétablir intact
+    if (!s.panel.mutePrev) s.panel.mutePrev = {};
+    if (s.panel.ccs[key] !== undefined && s.panel.ccs[key] !== 0) s.panel.mutePrev[d.lbl] = s.panel.ccs[key];
+    s.panel.ccs[key] = 0;
+  } else {
+    const prev = (s.panel.mutePrev && s.panel.mutePrev[d.lbl] !== undefined) ? s.panel.mutePrev[d.lbl]
+      : ((s.panel.ccs[key] !== undefined && s.panel.ccs[key] !== 0) ? s.panel.ccs[key]
+      : ((s.panel.params && s.panel.params[d.vol]) ? s.panel.params[d.vol][0] : 100));
+    s.panel.ccs[key] = prev;
+  }
+  const v = s.panel.ccs[key];
+  songsSave();
+  send([0xB0 + (ch - 1), 7, v & 0x7f], "CC7 ch" + ch + " → " + v);
+  log("🔇 Mute " + d.lbl + " " + (on ? "ON (CC7=0 ch" + ch + ") — l'APC continue de jouer, part inaudible." : "OFF (CC7=" + v + " ch" + ch + ")") + " Mémorisé pour « " + s.title + " ».", "ok");
+  return true;
+}
+// v2.5 — Parts Add-on : canal depuis ⚙️ Réglages, CC bloqué si la part est muette
+function addonCh(a) { const v = parseInt(document.getElementById(a.cid).value, 10); return (v >= 1 && v <= 16) ? v : null; }
+function addonCC(a, cc, val, lbl) {
+  const s = songs.songs.find(x => x.id === curSongId);
+  if (!s) { log("🎛 Aucun morceau sélectionné — choisis un morceau (M1).", "ko"); return false; }
+  if (m4MuteState(a.lbl)) { log("🔇 " + a.lbl + " est MUET — rien n'est envoyé sur son canal.", "info"); return false; }
+  const ch = addonCh(a);
+  if (!ch) { log("🎛 Canal de « " + a.lbl + " » invalide — règle-le dans ⚙️ Réglages.", "ko"); return false; }
+  if (!s.panel) s.panel = { tempo: null, params: {} };
+  if (!s.panel.ccs) s.panel.ccs = {};
+  const v = val & 0x7f;
+  s.panel.ccs[ch + "|" + cc] = v;
+  songsSave();
+  send([0xB0 + (ch - 1), cc, v], "CC" + cc + " ch" + ch + " → " + v);
+  log("🎛 " + lbl + " (CC" + cc + " ch" + ch + " → " + v + ") + mémorisé pour « " + s.title + " ».", "ok");
+  return true;
+}
+function addonSnd(a, snd) { // v2.5 — son d'une part Add-on : bank select + Program Change sur son canal (mode NORM : CC0/CC32/PC)
+  const s = songs.songs.find(x => x.id === curSongId);
+  if (!s) { log("🎛 Aucun morceau sélectionné — choisis un morceau (M1).", "ko"); return false; }
+  if (m4MuteState(a.lbl)) { log("🔇 " + a.lbl + " est MUET — le changement de son n'est pas envoyé.", "info"); return false; }
+  const ch = addonCh(a);
+  if (!ch) { log("🎛 Canal de « " + a.lbl + " » invalide — règle-le dans ⚙️ Réglages.", "ko"); return false; }
+  if (!s.panel) s.panel = { tempo: null, params: {} };
+  if (!s.panel.addsnd) s.panel.addsnd = {};
+  s.panel.addsnd[ch] = [snd[0] & 0x7f, snd[1] & 0x7f];
+  songsSave();
+  send([0xB0 + (ch - 1), 0, (snd[1] >> 7) & 0x7f, 0xB0 + (ch - 1), 32, snd[1] & 0x7f, 0xC0 + (ch - 1), snd[0] & 0x7f], "Son " + a.lbl + " → " + snd[2] + " (bank " + snd[1] + " PC " + snd[0] + ")");
+  log("🎛 Son " + a.lbl + " → " + snd[2] + " (ch" + ch + ") + mémorisé pour « " + s.title + " ».", "ok");
   return true;
 }
 // Canaux = Basic Channel des parts (menu MIDI du clavier, relevé terrain Yves : Acc1=4, Acc2=5, Acc3=6, Bass=7, Drums=16, CHORD=canal accords cible). Chord est dynamique (chChord). Les volumes/mutes partent en sysex (20 2m 02), indépendants du canal.
@@ -1503,18 +1582,23 @@ function renderM4() {
       + "<div class=\"hint\">APC : type Off/OneFing/Fingered/Pianist (20 60 02) + memory (20 60 03) — même logique que Panel Console.</div></div>";
   }
   h += "</div>";
-  // ===== PAVÉ Drums & accompagnements : 8 lignes (Mute + Vol + canal) + scènes de session + sons Accomp1-3/Bass =====
-  h += "<div class=\"partCard\"><div class=\"pcLbl\" style=\"display:flex;align-items:center;gap:8px;flex-wrap:wrap\">Drums &amp; accompagnements"
-    + "<button id=\"m4SceneSave\" title=\"Mémorise l'ensemble des volumes (mutes inclus : volume 0) comme scène de session — réutilisable depuis M2 Direct\">💾 Scène</button>"
-    + "<select id=\"sceneSel\" title=\"Scènes de session mémorisées (volumes Drums & accompagnements)\"></select>"
-    + "<button id=\"m4SceneApply\" title=\"Applique la scène choisie : volumes envoyés au KN2000 et mémorisés pour le morceau courant\">✅ Appliquer</button>"
+  // ===== PAVÉ Drums & accompagnements : 8 lignes (Mute + Vol + canal) + scènes de mutes v2.5 + sons Add-on =====
+  h += "<div class=\"partCard\"><div class=\"pcLbl\" style=\"display:flex;align-items:center;gap:8px;flex-wrap:wrap\">Drums &amp; accompagnements — Mutes"
+    + "<button id=\"m4SceneSave\" title=\"Mémorise l'ensemble des mutes affichés comme scène (v2.5 : uniquement des mutes, jamais de volumes)\">💾 Scène</button>"
+    + "<select id=\"sceneSel\" title=\"Scènes mémorisées (mutes de parts — v2.5 ; les anciennes scènes « volumes » sont en héritage)\"></select>"
+    + "<button id=\"m4SceneApply\" title=\"Applique la scène choisie : mutes envoyés au KN2000 (CC7) et mémorisés pour le morceau courant\">✅ Appliquer</button>"
     + "<button id=\"m4SceneDel\" title=\"Supprime la scène choisie\">🗑</button></div>"
-    + "<div class=\"hint\" style=\"margin:4px 0 6px\">Canal entre parenthèses = Basic Channel de la part (menu MIDI du clavier). Chord suit « Canal accords (cible) » de ⚙️ Canaux &amp; réglages ; APC-Drums et R.Bass : canal à relever au clavier (champ « ch » sur la ligne). Volumes et mutes partent en sysex ; le volume Chord part AUSSI en CC7 sur son canal. Réverb (RV) = CC91 par part (Accomp 1-3, Bass, APC-Drums, Chord) ; DSP et Pan = CC94/CC10 sur Chord (validation terrain v2.4). Sons des parts APC : définis par le rythme (bank/PC uniquement en Composer record).</div>";
+    + "<div class=\"hint\" style=\"margin:4px 0 6px\">Mute (v2.5) : parts APC = CC7=0 sur le canal basic (l'APC continue de jouer, part inaudible, réversible) ; Add-on = plus aucune donnée envoyée sur le canal. Canal entre parenthèses = Basic Channel (Chord suit « Canal accords » ; APC-Drums/R.Bass : champ « ch »). Volumes/balance = kit du morceau (sysex ; Chord aussi en CC7). RV = CC91 (Accomp 1-3, Bass, APC-Drums, Chord) ; DSP/Pan = CC94/CC10 sur Chord + Add-on. Son Chord = sysex 20 25 00 (numéros Technics — à valider terrain).</div>";
   for (const d of M4_DRUMS) {
     const v = gv(d.vol);
+    const muted = m4MuteState(d.lbl);
     h += "<div class=\"row\" style=\"align-items:center;margin:2px 0\"><label style=\"min-width:110px;font-weight:600\" title=\"Canal MIDI d'entrée de la part (Basic Channel du clavier)\">" + d.lbl + " <span style=\"font-weight:400;color:#888\">(" + m4ChLbl(d) + ")</span></label>"
-      + "<label title=\"Mute = volume 0 (décoché = rétablit le volume d'avant)\"><input type=\"checkbox\" data-mute=\"" + d.vol + "\"" + (v === 0 ? " checked" : "") + "> Mute</label>"
-      + "<label style=\"flex:1\">Vol " + slider(d.vol, v) + "</label>";
+      + "<label title=\"Mute = CC7=0 (l'APC joue, part inaudible) ; décocher rétablit le volume\"><input type=\"checkbox\" data-mutelbl=\"" + d.lbl + "\"" + (muted ? " checked" : "") + "> Mute</label>";
+    if (d.snd) { // v2.5 — sélecteur de sonorité pour Chord (sysex 20 25 00, numéros Technics)
+      const sb = (p && p[d.snd]) || null; const snd = sb ? knFind(sb[0], sb[1]) : null;
+      h += "<select data-chsnd=\"1\" data-key=\"" + d.snd + "\" style=\"max-width:140px\" title=\"Son de la part Chord (sysex 20 25 00 — numéros Technics, comme les autres écritures)\">" + knSoundOpts(snd) + "</select>";
+    }
+    h += "<label style=\"flex:1\">Vol " + slider(d.vol, v) + "</label>";
     if (d.rv || d.dsp || d.pan) { // v2.4 — Réverb/DSP/Pan par CC, par part, selon validation terrain
       const scc = songs.songs.find(x => x.id === curSongId); // v2.3.1 : les CC vivent à s.panel.ccs (pas dans params)
       const pcc = (scc && scc.panel && scc.panel.ccs) || {}; const gc = c => { const x = pcc[m4ChBase(d) + "|" + c]; return (x === undefined || x === null) ? null : x; };
@@ -1526,6 +1610,26 @@ function renderM4() {
       if (d.pan) h += " <label title=\"Pan de la part : CC10 sur le canal basic (" + (chv || "?") + ") — 00=gauche, 40=centre, 7F=droite\">Pan <input type=\"range\" data-pancc=\"1\" data-partlbl=\"" + d.lbl + "\" min=\"0\" max=\"127\" value=\"" + (pn === null ? 64 : pn) + "\" style=\"width:70px\"> <span data-panv>" + (pn === null ? "64" : pn) + "</span></label>";
     }
     h += "</div>";
+  }
+  h += "</div>";
+  // ===== PAVÉ Add-on (v2.5) : 2 canaux libres (séquences MIDI futures) — son, vol CC7, RV/DSP/Pan, Mute =====
+  h += "<div class=\"partCard\"><div class=\"pcLbl\">Add-on — canaux libres <span class=\"hint\" style=\"font-weight:400\">(réservés aux séquences MIDI du futur générateur d'événements ; canaux réglables dans ⚙️ Réglages)</span></div>";
+  for (const a of M4_ADDON) {
+    const ch = addonCh(a);
+    const muted = m4MuteState(a.lbl);
+    const scc = songs.songs.find(x => x.id === curSongId);
+    const pcc = (scc && scc.panel && scc.panel.ccs) || {}; const gc = c => { const x = pcc[(ch || "?") + "|" + c]; return (x === undefined || x === null) ? null : x; };
+    const psnd = (scc && scc.panel && scc.panel.addsnd) ? scc.panel.addsnd[ch] : null;
+    const snd = psnd ? knFind(psnd[0], psnd[1]) : null;
+    const vol = gc(7), rv = gc(91), ds = gc(94), pn = gc(10);
+    h += "<div class=\"row\" style=\"align-items:center;margin:2px 0\"><label style=\"min-width:110px;font-weight:600\">" + a.lbl + " <span style=\"font-weight:400;color:#888\">(" + (ch || "?") + ")</span></label>"
+      + "<label title=\"Mute = aucune donnée envoyée sur le canal (pas de CC7 : le canal doit rester silencieux, pas atténué)\"><input type=\"checkbox\" data-mutelbl=\"" + a.lbl + "\"" + (muted ? " checked" : "") + "> Mute</label>"
+      + "<select data-addonsnd=\"" + a.lbl + "\" style=\"max-width:140px\" title=\"Son de la part Add-on : bank select + Program Change sur son canal\"> " + knSoundOpts(snd) + "</select>"
+      + "<label title=\"Volume : CC7 sur le canal Add-on\">Vol <input type=\"range\" min=\"0\" max=\"127\" data-addoncc=\"7\" data-addonlbl=\"" + a.lbl + "\" value=\"" + (vol === null ? 100 : vol) + "\" style=\"width:80px\" oninput=\"this.nextElementSibling.textContent=this.value\"> <b style=\"width:26px;display:inline-block\">" + (vol === null ? "—" : vol) + "</b></label>"
+      + " <button data-addoncctgl=\"91\" data-addonlbl=\"" + a.lbl + "\" style=\"min-width:46px\" title=\"Réverb : CC91 sur le canal Add-on — 7F=ON, 00=OFF\">RV " + (rv === null ? "?" : (rv >= 0x40 ? "ON" : "OFF")) + "</button>"
+      + " <button data-addoncctgl=\"94\" data-addonlbl=\"" + a.lbl + "\" style=\"min-width:50px\" title=\"DSP : CC94 sur le canal Add-on — 7F=ON, 00=OFF\">DSP " + (ds === null ? "?" : (ds >= 0x40 ? "ON" : "OFF")) + "</button>"
+      + " <label title=\"Pan : CC10 sur le canal Add-on — 00=gauche, 40=centre, 7F=droite\">Pan <input type=\"range\" data-addoncc=\"10\" data-addonlbl=\"" + a.lbl + "\" min=\"0\" max=\"127\" value=\"" + (pn === null ? 64 : pn) + "\" style=\"width:70px\"> <span>" + (pn === null ? "64" : pn) + "</span></label>"
+      + "</div>";
   }
   h += "</div>";
   document.getElementById("m4Grid").innerHTML = h;
@@ -1576,20 +1680,30 @@ document.getElementById("m4Grid").addEventListener("change", (ev) => {
   }
   if (t.dataset.dsptype !== undefined && t.tagName === "SELECT") { m4DspWrite(); renderM4(); return; }
   if (t.dataset.dspidx !== undefined || t.dataset.dspk !== undefined) { m4DspWrite(); return; }
-  if (t.dataset.mute) { // Mute = volume 0 ; décocher rétablit le volume d'avant
-    const key = t.dataset.mute;
-    const slider = document.querySelector("#m4Grid input[type=range][data-k=\"" + CSS.escape(key) + "\"]");
-    if (t.checked) {
-      if (slider) slider.dataset.prev = slider.value;
-      m4Write(key, [0], "Mute (volume 0)");
-      if (key === "20 25 02") { const d = M4_DRUMS.find(x => x.vol === "20 25 02"); if (d) m4CC(d, 7, 0, "Mute Chord (CC7 secours ch" + m4ChBase(d) + ")"); }
-      if (slider) { slider.value = 0; slider.nextElementSibling.textContent = "0"; }
-    } else {
-      const prev = slider && slider.dataset.prev ? parseInt(slider.dataset.prev, 10) : 100;
-      m4Write(key, [prev], "Volume rétabli → " + prev);
-      if (key === "20 25 02") { const d = M4_DRUMS.find(x => x.vol === "20 25 02"); if (d) m4CC(d, 7, prev, "Volume Chord rétabli (CC7 secours ch" + m4ChBase(d) + ") → " + prev); }
-      if (slider) { slider.value = prev; slider.nextElementSibling.textContent = String(prev); }
-    }
+  if (t.dataset.chsnd) { // v2.5 — son de la part Chord (sysex 20 25 00, numéros Technics)
+    const [pc, bk] = t.value.split("/").map(Number);
+    const snd = knFind(pc, bk);
+    if (snd) m4Write(t.dataset.key, [snd[4] & 0x7f, snd[5] & 0x7f], "Son Chord → " + snd[2]);
+    return;
+  }
+  if (t.dataset.addonsnd) { // v2.5 — son d'une part Add-on : bank + PC sur son canal
+    const a = M4_ADDON.find(x => x.lbl === t.dataset.addonsnd);
+    if (!a) return;
+    const [pc, bk] = t.value.split("/").map(Number);
+    const snd = knFind(pc, bk);
+    if (snd) addonSnd(a, snd);
+    return;
+  }
+  if (t.dataset.addoncc) { // v2.5 — CC d'une part Add-on (vol CC7, pan CC10) sur son canal
+    const a = M4_ADDON.find(x => x.lbl === t.dataset.addonlbl);
+    if (!a) return;
+    const v = parseInt(t.value, 10); if (isNaN(v)) return;
+    addonCC(a, parseInt(t.dataset.addoncc, 10), v, (t.dataset.addoncc === "7" ? "Volume " + a.lbl : "Pan " + a.lbl) + " → " + v);
+    return;
+  }
+  if (t.dataset.mutelbl) { // v2.5 — Mute par part : APC = CC7=0/rétabli ; Add-on = flag (aucune donnée envoyée)
+    const d = M4_ALL().find(x => x.lbl === t.dataset.mutelbl);
+    if (d) m4SetMute(d, t.checked);
     return;
   }
   if (t.dataset.pancc) { // v2.3 — Pan par part en CC10 sur le canal basic
@@ -1620,6 +1734,17 @@ document.getElementById("m4Grid").addEventListener("click", (ev) => {
   if (t.dataset.revtgl !== undefined && t.dataset.revtgl !== null) {
     const on = t.textContent !== "ON";
     m4Write("20 08 10", [on ? 127 : 0], "Réverb " + (on ? "ON" : "OFF")); renderM4(); return;
+  }
+  if (t.dataset.addoncctgl !== undefined && t.dataset.addoncctgl !== null) { // v2.5 — RV/DSP ON/OFF d'une part Add-on (CC91/CC94 sur son canal)
+    const a = M4_ADDON.find(x => x.lbl === t.dataset.addonlbl);
+    if (!a) return;
+    const scc = songs.songs.find(x => x.id === curSongId);
+    const ch = addonCh(a);
+    const stored = (scc && scc.panel && scc.panel.ccs && ch) ? scc.panel.ccs[ch + "|" + t.dataset.addoncctgl] : null;
+    const on = !(stored !== undefined && stored !== null && stored >= 0x40); // inconnu → premier clic = ON
+    const cc = parseInt(t.dataset.addoncctgl, 10);
+    addonCC(a, cc, on ? 0x7F : 0x00, (cc === 91 ? "Réverb" : "DSP") + " " + a.lbl + " " + (on ? "ON" : "OFF"));
+    renderM4(); return;
   }
   if (t.dataset.cctgl !== undefined && t.dataset.cctgl !== null) { // v2.3 — Réverb/DSP ON/OFF par part en CC sur le canal basic
     const d = M4_DRUMS.find(x => x.lbl === t.dataset.partlbl);
@@ -1671,8 +1796,8 @@ document.getElementById("m4Grid").addEventListener("click", (ev) => {
     m4SceneApply(parseInt(document.getElementById("sceneSel").value, 10)); return;
   }
   if (t.id === "m4SceneSave") {
-    const nm = prompt("Nom de la scène de session (volumes Drums & accompagnements) ?");
-    if (nm && nm.trim()) { const a = scenesLoad(); a.push({ name: nm.trim(), vols: m4SceneCurrent(), ts: Date.now() }); scenesStore(a); m4SceneRefresh(); document.getElementById("sceneSel").value = String(a.length - 1); log("💾 Scène « " + nm.trim() + " » mémorisée (" + Object.keys(a[a.length - 1].vols).length + " volumes).", "ok"); }
+    const nm = prompt("Nom de la scène (jeu de mutes — v2.5 : aucune valeur de volume n'est mémorisée) ?");
+    if (nm && nm.trim()) { const a = scenesLoad(); a.push({ name: nm.trim(), mutes: m4SceneCurrent(), ts: Date.now() }); scenesStore(a); m4SceneRefresh(); document.getElementById("sceneSel").value = String(a.length - 1); log("💾 Scène « " + nm.trim() + " » mémorisée (" + Object.keys(a[a.length - 1].mutes).length + " mute(s)).", "ok"); }
     return;
   } else if (t.id === "m4SceneDel") {
     const a = scenesLoad(); const i = parseInt(document.getElementById("sceneSel").value, 10);
@@ -1686,35 +1811,38 @@ function scenesLoad() { try { const a = JSON.parse(localStorage.getItem(SCENE_KE
 function scenesStore(a) { try { localStorage.setItem(SCENE_KEY_V2, JSON.stringify(a)); } catch (e) { log("Écriture localStorage impossible : " + e.message, "ko"); } }
 function m4SceneRefresh() {
   const a = scenesLoad(); const el = document.getElementById("sceneSel"); if (!el) return;
-  el.innerHTML = a.map((sc, i) => "<option value=\"" + i + "\">" + sc.name + "</option>").join("") || "<option value=\"\">— aucune scène —</option>";
+  el.innerHTML = a.map((sc, i) => "<option value=\"" + i + "\">" + (sc.mutes ? sc.name : "héritage · " + sc.name) + "</option>").join("") || "<option value=\"\">— aucune scène —</option>";
   const m2 = document.getElementById("sceneSelM2"); if (m2) m2.innerHTML = el.innerHTML;
 }
-function m4SceneCurrent() { // capture les volumes Drums & accompagnements affichés
-  const vols = {};
-  for (const d of M4_DRUMS) {
-    const sl = document.querySelector("#m4Grid input[type=range][data-k=\"" + CSS.escape(d.vol) + "\"]");
-    vols[d.vol] = sl ? parseInt(sl.value, 10) : 100;
-  }
-  return vols;
+function m4SceneCurrent() { // v2.5 — capture les MUTES affichés ; une scène ne contient plus AUCUNE valeur de volume (la balance vit dans le kit du morceau)
+  const mutes = {};
+  for (const d of M4_ALL()) if (m4MuteState(d.lbl)) mutes[d.lbl] = true;
+  return mutes;
 }
 function m4SceneApply(i) {
   const a = scenesLoad(); const sc = a[i];
   if (!sc) { log("Choisis d'abord une scène dans la liste.", "info"); return; }
+  if (!sc.mutes) { log("⚠️ Scène « " + sc.name + " » = héritage V2.3-2.4 (volumes) — non appliquable. Crée une scène v2.5 (jeu de mutes) ; l'ancienne reste supprimable par 🗑.", "info"); return; }
   let n = 0;
-  for (const [k, v] of Object.entries(sc.vols)) { if (m4Write(k, [v], "Scène « " + sc.name + " » : volume → " + v)) n++; }
-  log("✅ Scène « " + sc.name + " » appliquée (" + n + " volumes envoyés au KN2000" + (curSongId ? " et mémorisés pour le morceau courant" : "") + ").", "ok");
+  for (const d of M4_ALL()) { const want = !!sc.mutes[d.lbl]; if (m4SetMute(d, want) && want) n++; }
+  log("✅ Scène « " + sc.name + " » appliquée (" + n + " mute(s) ON, les autres parts rétablies) — mémorisé pour le morceau courant.", "ok");
   renderM4();
 }
 document.getElementById("sceneApplyM2").onclick = () => m4SceneApply(parseInt(document.getElementById("sceneSelM2").value, 10));
 document.getElementById("chChord").addEventListener("input", () => { if (document.getElementById("m4Grid")) renderM4(); }); // le canal affiché pour Chord suit le réglage en direct
+for (const _cid of ["chAdd1", "chAdd2"]) document.getElementById(_cid).addEventListener("input", () => { if (document.getElementById("m4Grid")) renderM4(); }); // v2.5 — les lignes Add-on suivent le canal en direct
 // 📥 Relire le panel : lecture de l'état courant du KN2000 (DRQ) → devient les réglages du morceau courant
 document.getElementById("m4Reload").onclick = async () => {
   const s = songs.songs.find(x => x.id === curSongId);
   if (!s) { log("Choisis d'abord un morceau (M1) — puis 📥 Relire le panel.", "ko"); return; }
   log("📥 Relire le panel : lecture de l'état courant du KN2000 pour « " + s.title + " »...", "info");
   const prevCcs = (s.panel && s.panel.ccs) || null; // v2.3 : CC par part conservés (non lisibles au DRQ)
+  const prevMutes = (s.panel && s.panel.mutes) || null; // v2.5 : mutes par part conservés
+  const prevSnd = (s.panel && s.panel.addsnd) || null; // v2.5 : sons Add-on conservés
   s.panel = await readPanel();
   if (prevCcs) s.panel.ccs = prevCcs;
+  if (prevMutes) s.panel.mutes = prevMutes;
+  if (prevSnd) s.panel.addsnd = prevSnd;
   songsSave();
   renderM4();
   log("💾 Panel lu appliqué à « " + s.title + " » (" + Object.keys(s.panel.params).length + " réglage(s)" + (s.panel.ccs ? " + " + Object.keys(s.panel.ccs).length + " CC conservés" : "") + ") — M4 à jour. Pense à 💾 Sauver morceau (M2).", "ok");
