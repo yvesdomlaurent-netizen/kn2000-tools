@@ -13,6 +13,12 @@ Outils :
 
 ## [Non publié] / Unreleased
 
+### APC Live v2.6 — M5 Live & Automation
+- **Nouvel onglet M5 « ⚡ LIVE/AUTO »** : deux usages — **Live** (boutons rapides + armer un timelapse qui déclenche ses actions aux mesures données) et **Apprentissage** (● REC : chaque bouton rapide / pad pressé est horodaté à la mesure du compteur → 💾 Enregistrer-sous en fait un timelapse éditable).
+- **Analyse de la grille** (🔍) : sections depuis les lignes de titres, blocs sans titre = « Part N » renommables (mémorisé par morceau), suffixe « x2 » et blocs `|| xN` comptés pour chaque répétition ; tableau sections / mesures / actions du timelapse sélectionné par type (mutes, rythme, réverb, presets).
+- **Boutons rapides** : ① scènes de mutes ; ② Fill In 1/2 · Intro · Ending · Count In · Stop · Variation (20 60 09, à calibrer) · Break + transport Pianist/Fingered + Memory ; ③ Réverb ON/OFF par part APC ; ④ preset Réverb ; ⑤ preset DSP ; ⑥ macros (suites de commandes, sauvegardées depuis le buffer ● REC).
+- **Pads APC Key 25** (modèle par défaut, note de base réglable) : un Note On mappé déclenche son action — cochable, calibrage terrain des notes à faire.
+- **Timelapses par morceau** (s.timelapses) : armer (▶ — la scène liée s'applique d'abord), éditeur (mesures éditables, ▶ test immédiat, suppression, ajout d'actions), dupliquer, lier à une scène de mutes, supprimer. Rythme : Fill/Intro/Ending/CountIn/Stop en CC82 sur le canal Control (validé terrain).
 ### APC Live v2.5
 - **v2.5.1 (retour terrain 1/11)** : canal par défaut d'APC-Drums = 16 (champ « ch » de la ligne toujours modifiable par morceau). Retour terrain v2.5 : sélecteurs de son Right 1/2/Left ✅ ; **son Chord (20 25 00) ❌ ne réagit pas — à investiguer** ; mutes/scènes/Add-on ✅.
 - **Sonorité Chord** : sélecteur de son sur la ligne Chord (adresse `20 25 00`, numéros Technics) — **à valider terrain**.

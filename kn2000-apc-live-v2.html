@@ -59,6 +59,7 @@
   body[data-view="m2"] [data-mode]:not([data-mode~="m2"]) { display: none; }
   body[data-view="m3"] [data-mode]:not([data-mode~="m3"]) { display: none; }
   body[data-view="m4"] [data-mode]:not([data-mode~="m4"]) { display: none; }
+  body[data-view="m5"] [data-mode]:not([data-mode~="m5"]) { display: none; }
   #modeNav .modeBtn { display: block; } /* la barre d'onglets reste TOUJOURS visible (comme le Sound Editor) — l'ID #modeNav l'emporte sur les règles de masquage ci-dessus */
   .partCard { background: #fafafa; border: 1px solid #ddd; border-radius: 8px; padding: 10px 12px; margin: 6px 0; }
   .partCard .pcLbl { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
@@ -79,7 +80,7 @@
   <span class="badge" id="kbdBadge" title="Liaison KN2000 (badge charte)">🎹 <b id="kbdDot">○</b> KN2000</span>
   <span class="badge" id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   <span style="flex:1"></span>
-  <span><b>🎼 APC Live KN2000</b> <span class="hint">v2.5 — M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties (sons + mutes + CC par part + Add-on)</span></span>
+  <span><b>🎼 APC Live KN2000</b> <span class="hint">v2.6 — M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation</span></span>
   <span style="flex:1"></span>
   <nav class="hubLinks" title="Navigation entre les outils du projet (charte 7i)">
     <a href="index.html">🏠 Hub</a>
@@ -134,6 +135,7 @@
     <button class="modeBtn on" data-mode="m2" title="M2 — Exploitation / Direct scène : sans fioritures, la séquence à jouer au centre">🎼 DIRECT</button>
     <button class="modeBtn" data-mode="m1" title="M1 — Préparation / Entraînement : liste des morceaux, fiches, import/export">📚 MORCEAUX</button>
     <button class="modeBtn" data-mode="m4" title="M4 — Parties du morceau courant : sons et volumes des voies (RIGHT 1/2, LEFT), batterie, APC 1-7 et réglages utiles — retours style panel, ajustables en direct">🎛 PARTIES</button>
+    <button class="modeBtn" data-mode="m5" title="M5 — Live & Automation : analyse de la grille (sections), boutons rapides (rythme, RV, presets), pads APC25, apprentissage ● REC et timelapses horodatés en mesures">⚡ LIVE/AUTO</button>
     <button class="modeBtn" data-mode="m3" title="M3 — Tests & Explorations : canaux, déclenchements, journalisation">🧪 RÉGLAGES &amp; TESTS</button>
   </nav>
   <div id="viewM1" data-mode="m1" class="panel">
@@ -248,6 +250,42 @@ Thème
     <div id="m4Grid"></div>
     <div class="hint">Chaque modification est envoyée au KN2000 (écriture ITW) ET mémorisée dans les réglages du morceau courant — la config vit dans la page, morceau par morceau. « — » = le morceau n'a pas encore de réglages sauvegardés : 💾 Sauver morceau (M2) ou 📥 Relire le panel d'abord.</div>
   </div>
+  <div id="viewM5" data-mode="m5" class="panel">
+    <h2>⚡ Live &amp; Automation — morceau courant (M5)</h2>
+    <div class="row" style="align-items:center">
+      <b id="m5Song" style="font-size:14px">—</b>
+      <span class="hint" id="m5PosLbl">mesure : —</span>
+      <span style="flex:1"></span>
+      <label title="Apprentissage : chaque bouton rapide / pad pressé est horodaté à la mesure courante du compteur — puis 💾 Enregistrer-sous en fait un timelapse éditable"><input type="checkbox" id="m5Rec"> ● REC apprentissage</label>
+      <span class="hint" id="m5RecCount"></span>
+    </div>
+    <div class="row">
+      <button id="m5Analyse" title="Analyse la grille affichée : sections depuis les lignes de titres, blocs sans titre = Part N (renommables), suffixe x2 compté pour chaque répétition">🔍 Analyser la grille</button>
+      <span class="hint">Sections / nb de mesures / actions du timelapse sélectionné par type</span>
+    </div>
+    <div id="m5Sect"></div>
+    <div class="hint" style="margin:8px 0">Boutons rapides — en Live ils agissent immédiatement ; avec ● REC coché, chaque action est AUSSI horodatée dans le buffer (mesure du compteur).</div>
+    <div id="m5Quick"></div>
+    <div class="row" style="margin-top:6px">
+      <label title="Écoute les Note On de l'APC Key 25 : un pad sur une note mappée déclenche son action"><input type="checkbox" id="m5Pads"> 🎹 Pads APC25</label>
+      <label title="Note MIDI du PREMIER pad (les 8 suivants se suivent) — modèle par défaut 48, à calibrer terrain si besoin">note pad 1 <input type="number" id="m5PadBase" value="48" min="1" max="127" style="width:52px"></label>
+      <span class="hint" id="m5PadHint"></span>
+    </div>
+    <h2 style="margin-top:12px">📼 Timelapses (automation par morceau)</h2>
+    <div class="row" style="align-items:center">
+      <select id="m5TlSel" style="max-width:240px" title="Timelapses du morceau courant — actions horodatées en mesures (plusieurs par morceau)"></select>
+      <button id="m5TlArm" title="Arme le timelapse : la scène liée (s'il y en a une) est appliquée d'abord, puis chaque action part quand le compteur atteint sa mesure">▶ Armer</button>
+      <button id="m5TlStop" title="Désarme le timelapse (les actions déjà passées ne sont pas rejouées)">⏹</button>
+      <button id="m5TlEdit" title="Éditeur : mesures éditables, test immédiat, suppression, ajout d'actions">✏️ Éditer</button>
+      <button id="m5TlSave" title="Enregistre le buffer ● REC comme nouveau timelapse (Apprentissage)">💾 Enregistrer-sous</button>
+      <button id="m5TlDup" title="Duplique le timelapse sélectionné">⧉ Dupliquer</button>
+      <button id="m5TlLink" title="Lie le timelapse à une scène de mutes : à l'armement, la scène est appliquée en premier">🔗 Lier à une scène</button>
+      <button id="m5TlDel" title="Supprime le timelapse sélectionné">🗑</button>
+      <span class="hint" id="m5ArmLbl"></span>
+    </div>
+    <div id="m5TlEditBox"></div>
+    <div class="hint">Position = mesure du compteur de la page (horloge F8 du clavier ou interpolation). Macro = suite de commandes réutilisable (rangée ⑥ : le bouton 💾 sauve le buffer REC comme macro).</div>
+  </div>
 </main>
 
 <div id="logWrap" hidden>
@@ -338,7 +376,7 @@ async function initMidi() {
     const bind = () => {
       midiIn = access.inputs.get(rx.value) || null;
       midiOut = access.outputs.get(tx.value) || null;
-      if (midiIn) midiIn.onmidimessage = onMidiMsg;
+      if (midiIn) midiIn.onmidimessage = m5MidiIn;
     };
     rx.onchange = bind; tx.onchange = bind; bind();
     access.onstatechange = () => { fill(rx, [...access.inputs.values()], rx.value); fill(tx, [...access.outputs.values()], tx.value); bind(); };
@@ -1848,10 +1886,342 @@ document.getElementById("m4Reload").onclick = async () => {
   log("💾 Panel lu appliqué à « " + s.title + " » (" + Object.keys(s.panel.params).length + " réglage(s)" + (s.panel.ccs ? " + " + Object.keys(s.panel.ccs).length + " CC conservés" : "") + ") — M4 à jour. Pense à 💾 Sauver morceau (M2).", "ok");
 };
 
+// ═════════ v2.6 — M5 Live & Automation : analyse de grille, boutons rapides, pads APC25, REC apprentissage, timelapses ═════════
+const M5_RHY = { // commandes rythme — CC82 sur le canal Control (validé terrain) pour Fill/Intro/Ending/CountIntro/Stop ; sysex 20 60 xx pour le reste
+  fill1:    { lbl: "Fill In 1",  cc82: 0x01 },
+  fill2:    { lbl: "Fill In 2",  cc82: 0x05 },
+  intro:    { lbl: "Intro",      cc82: 0x03 },
+  ending:   { lbl: "Ending",    cc82: 0x02 },
+  countin:  { lbl: "Count Intro", cc82: 0x07 },
+  stop:     { lbl: "Stop rythme", cc82: 0x00 },
+  variation:{ lbl: "Variation",   key: "20 60 09", tog: true, cal: "valeur à calibrer terrain" },
+  break:    { lbl: "Synchro/Break", key: "20 60 08", tog: true },
+  pianist:  { lbl: "APC Pianist",  key: "20 60 02", val: 0x03 },
+  fingered: { lbl: "APC Fingered", key: "20 60 02", val: 0x02 },
+  memory:   { lbl: "APC Memory",   key: "20 60 03", tog: true }
+};
+const M5_PAD_DEF = [ // modèle par défaut des 8 pads APC Key 25 (note = m5PadBase + index) — actions réaffectables en éditant ce tableau
+  { act: { k: "scene", i: 0 }, lbl: "Scène 1" },
+  { act: { k: "rhythm", id: "fill1" }, lbl: "Fill 1" },
+  { act: { k: "rhythm", id: "fill2" }, lbl: "Fill 2" },
+  { act: { k: "rhythm", id: "intro" }, lbl: "Intro" },
+  { act: { k: "rhythm", id: "ending" }, lbl: "Ending" },
+  { act: { k: "rhythm", id: "variation" }, lbl: "Variation" },
+  { act: { k: "rhythm", id: "break" }, lbl: "Break" },
+  { act: { k: "rhythm", id: "memory" }, lbl: "Memory" }
+];
+const MACRO_KEY = "kn2000-apc-macros-v2";
+function macrosLoad() { try { const a = JSON.parse(localStorage.getItem(MACRO_KEY) || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+function macrosStore(a) { try { localStorage.setItem(MACRO_KEY, JSON.stringify(a)); } catch (e) { log("Écriture localStorage impossible : " + e.message, "ko"); } }
+let m5rec = null; // buffer ● REC : [{m, lbl, act}]
+let m5armed = null, m5armedIdx = 0; // timelapse armé + prochain événement à tirer
+function m5Song() { return songs.songs.find(x => x.id === curSongId) || null; }
+function m5Tls() { const s = m5Song(); if (!s) return null; if (!Array.isArray(s.timelapses)) s.timelapses = []; return s.timelapses; }
+function autoMeas() { const p = posInfo(); return p ? p.meas : 1; }
+
+function qaRun(act) { // exécute une action rapide ; renvoie le libellé si exécutée, null si refusée
+  if (act.k === "scene") { const a = scenesLoad(); const sc = a[act.i]; if (!sc || !sc.mutes) return null; m4SceneApply(act.i); return "Scène « " + sc.name + " »"; }
+  if (act.k === "mute") { const d = M4_ALL().find(x => x.lbl === act.lbl); if (!d) return null; return m4SetMute(d, !!act.on) ? ("Mute " + act.lbl + (act.on ? " ON" : " OFF")) : null; }
+  if (act.k === "rv") { const d = M4_ALL().find(x => x.lbl === act.lbl); if (!d) return null;
+    const ok = d.cid ? addonCC(d, 91, act.on ? 0x7F : 0, "Réverb " + d.lbl) : m4CC(d, 91, act.on ? 0x7F : 0, "Réverb " + d.lbl);
+    return ok ? ("Réverb " + act.lbl + (act.on ? " ON" : " OFF")) : null; }
+  if (act.k === "rhythm") { const r = M5_RHY[act.id]; if (!r) return null;
+    if (r.cc82 !== undefined) { const ch = parseInt(document.getElementById("chDrums").value, 10) || 4;
+      if (!send([0xB0 + ch - 1, 82, r.cc82], "CC82 " + r.lbl)) return null;
+      log("🥁 " + r.lbl + " (CC82=" + r.cc82 + " ch Control " + ch + ").", "ok"); return r.lbl; }
+    const v = r.tog ? ((act.v !== undefined) ? act.v : 1) : r.val;
+    return m4Write(r.key, [v & 0x7f], r.lbl + " → " + v) ? (r.lbl + (r.cal ? " (" + r.cal + ")" : "")) : null; }
+  if (act.k === "preset") { const o = prLoad(); const pr = (o[act.fam] || [])[act.i]; if (!pr) return null;
+    const s = m5Song(); if (!s) { log("Choisis un morceau (M1) avant d'appliquer un preset.", "ko"); return null; }
+    if (!s.panel) s.panel = { tempo: null, params: {} };
+    if (act.fam === "dsp") s.panel.params["20 08 21"] = pr.data.slice(0, 9);
+    else if (act.fam === "reverb") { s.panel.params["20 08 10"] = [pr.data.on & 0x7f]; s.panel.params["20 08 11"] = [pr.data.type & 0x7f]; s.panel.params["20 08 12"] = [pr.data.depth & 0x7f]; }
+    else { s.panel.params["20 60 02"] = [pr.data.type & 0x7f]; s.panel.params["20 60 03"] = [pr.data.mem & 0x7f]; }
+    songsSave(); prApply(act.fam, pr.name); return "Preset " + act.fam + " « " + pr.name + " »"; }
+  if (act.k === "macro") { const a = macrosLoad(); const mc = a[act.i]; if (!mc) return null;
+    let n = 0; for (const c of mc.cmds) if (qaRun(c)) n++;
+    if (n) log("🎬 Macro « " + mc.name + " » exécutée (" + n + "/" + mc.cmds.length + " commande(s)).", "ok");
+    return n ? ("Macro « " + mc.name + " » ×" + n) : null; }
+  return null;
+}
+function qaFire(act, lbl) { // action immédiate + capture REC si l'apprentissage tourne
+  const res = qaRun(act);
+  if (res && m5rec) { m5rec.push({ m: autoMeas(), lbl: lbl || res, act: JSON.parse(JSON.stringify(act)) }); m5RecRefresh(); }
+  return res;
+}
+function m5RecRefresh() { document.getElementById("m5RecCount").textContent = m5rec ? (m5rec.length + " action(s) dans le buffer ● REC") : ""; }
+
+// ---------- Pads APC Key 25 (modèle par défaut, note de base réglable) ----------
+function m5PadNote(i) { const b = parseInt(document.getElementById("m5PadBase").value, 10); return (b >= 1 && b <= 127) ? b + i : 48 + i; }
+function m5MidiIn(ev) { // wrapper du récepteur : les Note On mappés déclenchent les pads (v2.6), tout le reste suit le chemin normal
+  try {
+    if (document.getElementById("m5Pads") && document.getElementById("m5Pads").checked && ev && ev.data) {
+      for (let i = 0; i < M5_PAD_DEF.length; i++) {
+        if (ev.data[0] === 0x90 + (ev.data[0] & 0x0F) && ev.data[1] === m5PadNote(i) && ev.data[2] > 0) {
+          qaFire(M5_PAD_DEF[i].act, "Pad " + (i + 1) + " · " + M5_PAD_DEF[i].lbl);
+          return; // le pad est consommé (pas transmis au lecteur d'accords)
+        }
+      }
+    }
+  } catch (e) {}
+  onMidiMsg(ev);
+}
+
+// ---------- Analyse de la grille : sections, mesures, répétitions ----------
+function m5Analyse() {
+  const s = m5Song();
+  const lines = document.getElementById("progInput").value.split(/\r?\n/);
+  const sects = []; let cur = null, partN = 0, block = null;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line || line.startsWith("//")) continue;
+    const mk = line.match(/^(\|\||!!)\s*(?:[x×]\s*(\d+))?$/);
+    if (mk) { // bloc de répétition : ouverture || — fermeture || xN (les répétitions comptent dans la section courante)
+      if (!block) block = { n: 0 };
+      else { const n = Math.max(1, mk[2] ? parseInt(mk[2]) : 1); if (cur) cur.count += block.n * (n - 1); block = null; }
+      continue;
+    }
+    if (/[|!]/.test(line)) { // ligne de grille : nb de mesures = cellules non vides
+      const cleanL = line.replace(/\/\/.*$/, "");
+      const parts = cleanL.replace(/\d*[|!]\d*/g, "|").replace(/:+/g, "").split(/[|!]/).filter(p => p.trim().length);
+      if (!cur) { partN++; cur = { name: "Part " + partN, auto: "Part " + partN, start: null, count: 0, reps: 1 }; sects.push(cur); }
+      cur.count += parts.length; if (block) block.n += parts.length;
+      continue;
+    }
+    // ligne de titre → NOUVELLE section (suffixe x2 = la section compte 2×)
+    const tm = line.match(/^(.*?)[\s]*[x×]\s*(\d+)$/);
+    const name = (tm ? tm[1] : line).trim(); const reps = tm ? Math.max(1, parseInt(tm[2])) : 1;
+    cur = { name, auto: null, start: null, count: 0, reps }; sects.push(cur); block = null;
+  }
+  let m = 1;
+  for (const sc of sects) { sc.start = m; m += sc.count * sc.reps; }
+  if (!sects.length) { document.getElementById("m5Sect").innerHTML = "<div class=\"hint\">Aucune grille à analyser — saisis des lignes | accords | et des titres de section (M2).</div>"; return; }
+  const names = (s && s.sectNames) || {};
+  const tls = m5Tls() || []; const tl = tls[parseInt(document.getElementById("m5TlSel") && document.getElementById("m5TlSel").value, 10)];
+  const evs = (tl && tl.events) || [];
+  const cnt = (a, b, k) => evs.filter(e => e.m >= a && e.m < b && (k === "preset" ? ["scene", "preset", "macro"].includes(e.act.k) : e.act.k === k)).length;
+  let h = "<table style=\"width:100%;border-collapse:collapse;font-size:13px\">"
+    + "<tr><th style=\"text-align:left\">Section</th><th>Mes.</th><th>Nb</th><th>Mutes</th><th>Rythme</th><th>Réverb</th><th>Presets</th><th></th></tr>";
+  sects.forEach((sc, i) => {
+    const a = sc.start, b = sc.start + sc.count * sc.reps;
+    const nm = names[sc.auto || sc.name] || sc.name;
+    h += "<tr><td style=\"padding:3px 6px;border-bottom:1px solid #eee\">" + nm + (sc.reps > 1 ? " <span class=\"hint\">×" + sc.reps + "</span>" : "") + (sc.auto ? " <span class=\"hint\">(sans titre)</span>" : "") + "</td>"
+      + "<td style=\"text-align:center\">" + a + "</td><td style=\"text-align:center\">" + (sc.count * sc.reps) + "</td>"
+      + "<td style=\"text-align:center\">" + (cnt(a, b, "mute") || "·") + "</td><td style=\"text-align:center\">" + (cnt(a, b, "rhythm") || "·") + "</td>"
+      + "<td style=\"text-align:center\">" + (cnt(a, b, "rv") || "·") + "</td><td style=\"text-align:center\">" + (cnt(a, b, "preset") || "·") + "</td>"
+      + "<td><button data-sectren=\"" + i + "\" title=\"Renommer la section (mémorisé pour le morceau)\">✏️</button></td></tr>";
+  });
+  h += "</table><div class=\"hint\">Total : " + (m - 1) + " mesure(s) avec répétitions. ⚠️ Les blocs || xN comptent ici chaque répétition, mais le compteur de lecture de la page (et le surlignage) numérote les mesures du TEXTE sans doubler les blocs.</div>";
+  document.getElementById("m5Sect").innerHTML = h;
+  window.__m5sects = sects;
+}
+document.getElementById("m5Analyse").onclick = () => m5Analyse();
+
+// ---------- Rendu des boutons rapides (rangées ①-⑥) ----------
+function m5QaBtn(act, lbl, title) { return "<button data-qa='" + JSON.stringify(act) + "' title=\"" + (title || lbl) + "\">" + lbl + "</button>"; }
+function renderM5() {
+  const s = m5Song();
+  document.getElementById("m5Song").textContent = s ? "🎼 " + s.title : "— (choisis un morceau en M1)";
+  const scs = scenesLoad().map((x, i) => ({ x, i })).filter(o => o.x.mutes);
+  const o = prLoad();
+  let h = "";
+  // ① scènes (presets de mutes v2.5)
+  h += "<div class=\"row\"><b style=\"min-width:110px\">① Scènes</b><select id=\"m5SceneSel\" style=\"max-width:200px\">"
+    + (scs.length ? scs.map(o2 => "<option value=\"" + o2.i + "\">" + o2.x.name + "</option>").join("") : "<option value=\"\">— aucune scène v2.5 —</option>") + "</select>"
+    + "<button data-qascene=\"1\" title=\"Applique la scène choisie (jeu de mutes)\">✅</button></div>";
+  // ② rythme + transport
+  h += "<div class=\"row\"><b style=\"min-width:110px\">② Rythme</b>"
+    + m5QaBtn({ k: "rhythm", id: "fill1" }, "Fill 1") + m5QaBtn({ k: "rhythm", id: "fill2" }, "Fill 2")
+    + m5QaBtn({ k: "rhythm", id: "intro" }, "Intro") + m5QaBtn({ k: "rhythm", id: "ending" }, "Ending")
+    + m5QaBtn({ k: "rhythm", id: "variation" }, "Variation") + m5QaBtn({ k: "rhythm", id: "break" }, "Break")
+    + m5QaBtn({ k: "rhythm", id: "countin" }, "Count In") + m5QaBtn({ k: "rhythm", id: "stop" }, "⏹ Stop")
+    + "<span class=\"hint\">|</span>" + m5QaBtn({ k: "rhythm", id: "pianist" }, "Pianist") + m5QaBtn({ k: "rhythm", id: "fingered" }, "Fingered")
+    + m5QaBtn({ k: "rhythm", id: "memory" }, "Memory") + "</div>";
+  // ③ Réverb ON/OFF par part APC (les parts marquées rv)
+  h += "<div class=\"row\"><b style=\"min-width:110px\">③ Réverb</b>";
+  for (const d of M4_DRUMS.filter(x => x.rv)) h += "<button data-qarv=\"" + d.lbl + "\" title=\"Réverb CC91 ON/OFF de " + d.lbl + " (état lu dans la valeur mémorisée)\">RV " + d.lbl + "</button>";
+  h += "</div>";
+  // ④ preset Réverb — ⑤ preset DSP
+  h += "<div class=\"row\"><b style=\"min-width:110px\">④ Réverb</b><select id=\"m5PrReverb\" style=\"max-width:160px\">"
+    + (o.reverb.length ? o.reverb.map((p, i) => "<option value=\"" + i + "\">" + p.name + "</option>").join("") : "<option value=\"\">— aucun preset —</option>")
+    + "</select><button data-qapreset=\"reverb\">✅</button><span class=\"hint\">|</span><b style=\"min-width:60px\">⑤ DSP</b><select id=\"m5PrDsp\" style=\"max-width:160px\">"
+    + (o.dsp.length ? o.dsp.map((p, i) => "<option value=\"" + i + "\">" + p.name + "</option>").join("") : "<option value=\"\">— aucun preset —</option>")
+    + "</select><button data-qapreset=\"dsp\">✅</button></div>";
+  // ⑥ macros (suites de commandes)
+  const mcs = macrosLoad();
+  h += "<div class=\"row\"><b style=\"min-width:110px\">⑥ Macros</b><select id=\"m5MacroSel\" style=\"max-width:160px\">"
+    + (mcs.length ? mcs.map((p, i) => "<option value=\"" + i + "\">" + p.name + "</option>").join("") : "<option value=\"\">— aucune macro —</option>")
+    + "</select><button data-qamacro=\"1\" title=\"Exécute la macro choisie (toutes ses commandes)\">✅</button>"
+    + "<button id=\"m5MacroSave\" title=\"Sauve le buffer ● REC courant comme macro réutilisable\">💾 Macro</button>"
+    + "<button id=\"m5MacroDel\" title=\"Supprime la macro choisie\">🗑</button></div>";
+  document.getElementById("m5Quick").innerHTML = h;
+  document.getElementById("m5PadHint").textContent = "pads : " + M5_PAD_DEF.map((p, i) => m5PadNote(i) + "=" + p.lbl).join(" · ");
+  m5TlSelRefresh();
+  m5RecRefresh();
+  m5ArmLblRefresh();
+}
+document.getElementById("m5Quick").addEventListener("click", (ev) => {
+  const t = ev.target.closest ? ev.target.closest("button, select") : ev.target;
+  if (!t || !t.dataset) return;
+  if (t.id === "m5MacroSave") {
+    if (!m5rec || !m5rec.length) { log("Le buffer ● REC est vide — coche ● REC et joue des actions, puis 💾 Macro.", "info"); return; }
+    const nm = prompt("Nom de la macro (" + m5rec.length + " action(s) du buffer REC) ?");
+    if (nm && nm.trim()) { const a = macrosLoad(); a.push({ name: nm.trim(), cmds: m5rec.map(e => e.act), ts: Date.now() }); macrosStore(a); renderM5(); log("💾 Macro « " + nm.trim() + " » mémorisée (liste globale).", "ok"); }
+    return;
+  }
+  if (t.id === "m5MacroDel") { const sel = document.getElementById("m5MacroSel"); const i = parseInt(sel.value, 10); const a = macrosLoad();
+    if (isNaN(i) || !a[i]) { log("Choisis d'abord une macro.", "info"); return; } log("🗑 Macro « " + a[i].name + " » supprimée.", "info"); a.splice(i, 1); macrosStore(a); renderM5(); return; }
+  if (t.dataset.qascene) { const i = parseInt(document.getElementById("m5SceneSel").value, 10); if (!isNaN(i)) qaFire({ k: "scene", i }); return; }
+  if (t.dataset.qapreset) { const fam = t.dataset.qapreset; const sel = document.getElementById(fam === "reverb" ? "m5PrReverb" : "m5PrDsp"); const i = parseInt(sel.value, 10); if (!isNaN(i)) qaFire({ k: "preset", fam, i }); return; }
+  if (t.dataset.qamacro) { const i = parseInt(document.getElementById("m5MacroSel").value, 10); if (!isNaN(i)) qaFire({ k: "macro", i }); return; }
+  if (t.dataset.qarv) { const lbl = t.dataset.qarv; const d = M4_ALL().find(x => x.lbl === lbl); if (!d) return;
+    const scc = m5Song(); const stored = (scc && scc.panel && scc.panel.ccs && !d.cid) ? scc.panel.ccs[m4ChBase(d) + "|91"] : null;
+    const on = !(stored !== undefined && stored !== null && stored >= 0x40);
+    qaFire({ k: "rv", lbl, on }); return; }
+  if (t.dataset.qa) { let act = null; try { act = JSON.parse(t.dataset.qa); } catch (e) {}
+    if (act && act.k === "rhythm") { const r = M5_RHY[act.id];
+      if (r && r.tog) { // bascule lue dans l'état mémorisé (comme les boutons RV/DSP de M4)
+        const scc = m5Song(); const stored = (scc && scc.panel && scc.panel.params) ? scc.panel.params[r.key] : null;
+        act.v = (stored !== undefined && stored !== null && stored[0] >= 0x40) ? 0 : 1; } }
+    if (act) qaFire(act); return; }
+});
+document.getElementById("m5PadBase").addEventListener("input", renderM5);
+document.getElementById("m5Rec").addEventListener("change", () => {
+  const on = document.getElementById("m5Rec").checked;
+  if (on && !m5rec) { m5rec = []; log("● REC apprentissage ARMÉ — chaque bouton rapide / pad sera horodaté à la mesure du compteur. Décoche puis 💾 Enregistrer-sous pour en faire un timelapse.", "info"); }
+  else if (!on) log("● REC en pause (" + (m5rec ? m5rec.length : 0) + " action(s) dans le buffer) — 💾 Enregistrer-sous (rangée Timelapses) pour clôturer.", "info");
+  m5RecRefresh();
+});
+
+// ---------- Timelapses : stockage par morceau, armer, éditer, dupliquer, lier, supprimer ----------
+function m5TlSelRefresh() {
+  const tls = m5Tls() || []; const el = document.getElementById("m5TlSel"); if (!el) return;
+  el.innerHTML = tls.map((t, i) => "<option value=\"" + i + "\">" + t.name + " (" + (t.events ? t.events.length : 0) + ")</option>").join("") || "<option value=\"\">— aucun timelapse —</option>";
+}
+function m5ArmLblRefresh() {
+  document.getElementById("m5ArmLbl").textContent = m5armed ? ("🎬 « " + m5armed.name + " » armé — prochaine action à la mesure " + ((m5armed.events[m5armedIdx] && m5armed.events[m5armedIdx].m) || "—")) : "";
+}
+function m5TlArm(i) {
+  const tls = m5Tls(); if (!tls) { log("Choisis un morceau (M1) avant d'armer un timelapse.", "ko"); return; }
+  const tl = tls[i]; if (!tl || !tl.events || !tl.events.length) { log("Choisis d'abord un timelapse avec des actions.", "info"); return; }
+  tl.events.sort((a, b) => a.m - b.m);
+  m5armed = tl; m5armedIdx = tl.events.findIndex(e => e.m > autoMeas()); if (m5armedIdx < 0) m5armedIdx = tl.events.length;
+  if (tl.scene !== undefined && tl.scene !== null) { log("🔗 Scène liée appliquée d'abord.", "info"); m4SceneApply(tl.scene); }
+  log("🎬 Timelapse « " + tl.name + " » ARMÉ (" + tl.events.length + " action(s)) — les actions partiront quand le compteur atteindra leur mesure (" + m5armedIdx + " restante(s) maintenant).", "ok");
+  m5ArmLblRefresh();
+}
+setInterval(() => { // v2.6 : poll léger — tir des actions armées + affichage de la mesure courante
+  const el = document.getElementById("m5PosLbl"); if (el) el.textContent = "mesure : " + autoMeas();
+  if (!m5armed) return;
+  const meas = autoMeas();
+  while (m5armedIdx < m5armed.events.length && m5armed.events[m5armedIdx].m <= meas) {
+    const e = m5armed.events[m5armedIdx++];
+    const r = qaRun(e.act);
+    log("🎬 M" + e.m + " : " + (r || "(refusée)") + " — " + e.lbl, r ? "ok" : "info");
+  }
+  if (m5armedIdx >= m5armed.events.length) { log("🎬 Timelapse « " + m5armed.name + " » terminé — désarmé.", "ok"); m5armed = null; }
+  m5ArmLblRefresh();
+}, 250);
+document.getElementById("m5TlArm").onclick = () => m5TlArm(parseInt(document.getElementById("m5TlSel").value, 10));
+document.getElementById("m5TlStop").onclick = () => { if (m5armed) { log("⏹ Timelapse « " + m5armed.name + " » désarmé.", "info"); m5armed = null; m5ArmLblRefresh(); } };
+document.getElementById("m5TlSave").onclick = () => {
+  const tls = m5Tls(); if (!tls) { log("Choisis un morceau (M1) d'abord.", "ko"); return; }
+  if (!m5rec || !m5rec.length) { log("Buffer ● REC vide — coche ● REC, joue tes actions (boutons rapides / pads), puis reviens.", "info"); return; }
+  const nm = prompt("Nom du timelapse (" + m5rec.length + " action(s), de la mesure " + m5rec[0].m + " à " + m5rec[m5rec.length - 1].m + ") ?");
+  if (nm && nm.trim()) {
+    m5rec.sort((a, b) => a.m - b.m);
+    tls.push({ name: nm.trim(), events: m5rec.map(e => ({ m: e.m, lbl: e.lbl, act: e.act })), scene: null, ts: Date.now() });
+    songsSave(); m5TlSelRefresh(); document.getElementById("m5TlSel").value = String(tls.length - 1);
+    m5rec = null; document.getElementById("m5Rec").checked = false; m5RecRefresh();
+    log("💾 Timelapse « " + nm.trim() + " » enregistré pour « " + m5Song().title + " » (éditable par ✏️).", "ok");
+  }
+};
+document.getElementById("m5TlDup").onclick = () => {
+  const tls = m5Tls(); const i = parseInt(document.getElementById("m5TlSel").value, 10); if (!tls || !tls[i]) { log("Choisis d'abord un timelapse.", "info"); return; }
+  tls.push({ ...tls[i], name: tls[i].name + " (copie)", events: tls[i].events.map(e => ({ m: e.m, lbl: e.lbl, act: e.act })), ts: Date.now() });
+  songsSave(); m5TlSelRefresh(); log("⧉ Timelapse dupliqué — renomme-le via l'éditeur si besoin.", "ok");
+};
+document.getElementById("m5TlLink").onclick = () => {
+  const tls = m5Tls(); const i = parseInt(document.getElementById("m5TlSel").value, 10); const tl = tls && tls[i];
+  if (!tl) { log("Choisis d'abord un timelapse.", "info"); return; }
+  const scs = scenesLoad().map((x, j) => ({ x, j })).filter(o => o.x.mutes);
+  if (!scs.length) { log("Aucune scène v2.5 (jeu de mutes) à lier — crée-en une en M4.", "info"); return; }
+  const r = prompt("Numéro de scène à lier à « " + tl.name + " » (0 = délier) ?\n" + scs.map(o => (o.j + 1) + ". " + o.x.name).join("\n"), tl.scene !== undefined && tl.scene !== null ? String(tl.scene + 1) : "0");
+  if (r === null) return; const n = parseInt(r, 10);
+  if (!n) { tl.scene = null; log("🔗 Timelapse « " + tl.name + " » délié de toute scène.", "info"); }
+  else if (scenesLoad()[n - 1]) { tl.scene = n - 1; log("🔗 Timelapse « " + tl.name + " » lié à la scène « " + scenesLoad()[n - 1].name + " » (appliquée à l'armement).", "ok"); }
+  else { log("Numéro de scène inconnu.", "ko"); return; }
+  songsSave();
+};
+document.getElementById("m5TlDel").onclick = () => {
+  const tls = m5Tls(); const i = parseInt(document.getElementById("m5TlSel").value, 10);
+  if (!tls || !tls[i]) { log("Choisis d'abord un timelapse.", "info"); return; }
+  log("🗑 Timelapse « " + tls[i].name + " » supprimé.", "info"); tls.splice(i, 1); songsSave(); m5TlSelRefresh();
+};
+// Éditeur de timelapse : mesures éditables, test immédiat, suppression, ajout d'actions
+function m5AddOpts() { // options d'action pour l'ajout manuel
+  let o = "";
+  for (const d of M4_ALL()) { o += "<option value='" + JSON.stringify({ k: "mute", lbl: d.lbl, on: true }) + "'>Mute " + d.lbl + " ON</option>"
+    + "<option value='" + JSON.stringify({ k: "mute", lbl: d.lbl, on: false }) + "'>Mute " + d.lbl + " OFF</option>"; }
+  for (const id of Object.keys(M5_RHY)) o += "<option value='" + JSON.stringify({ k: "rhythm", id }) + "'>Rythme : " + M5_RHY[id].lbl + "</option>";
+  return o;
+}
+document.getElementById("m5TlEdit").onclick = () => {
+  const tls = m5Tls(); const i = parseInt(document.getElementById("m5TlSel").value, 10); const tl = tls && tls[i];
+  const box = document.getElementById("m5TlEditBox");
+  if (!tl) { box.innerHTML = "<div class=\"hint\">Choisis un timelapse à éditer (ou 💾 Enregistrer-sous depuis le buffer ● REC).</div>"; return; }
+  let h = "<div class=\"row\" style=\"align-items:center\"><b>✏️ " + tl.name + "</b>"
+    + "<button id=\"m5TlRename\" title=\"Renommer\">🏷</button>"
+    + "<span class=\"hint\">la mesure est éditable — les actions partent à leur mesure quand le timelapse est armé</span></div>"
+    + "<table style=\"width:100%;border-collapse:collapse;font-size:13px\">"
+    + "<tr><th style=\"text-align:left\">Mesure</th><th style=\"text-align:left\">Action</th><th></th><th></th></tr>";
+  tl.events.forEach((e, j) => {
+    h += "<tr><td style=\"padding:2px 6px\"><input type=\"number\" data-tlm=\"" + j + "\" value=\"" + e.m + "\" min=\"1\" max=\"999\" style=\"width:64px\"></td>"
+      + "<td style=\"padding:2px 6px;border-bottom:1px solid #eee\">" + e.lbl + "</td>"
+      + "<td><button data-tltest=\"" + j + "\" title=\"Tester l'action MAINTENANT (elle est envoyée au clavier)\">▶</button></td>"
+      + "<td><button data-tldel=\"" + j + "\" title=\"Supprimer cette action\">🗑</button></td></tr>";
+  });
+  h += "</table><div class=\"row\" style=\"margin-top:4px\">➕ à la mesure <input type=\"number\" id=\"m5AddM\" value=\"" + autoMeas() + "\" min=\"1\" max=\"999\" style=\"width:64px\"> "
+    + "<select id=\"m5AddSel\" style=\"max-width:260px\">" + m5AddOpts() + "</select>"
+    + "<button id=\"m5TlAdd\" title=\"Ajoute l'action choisie à la mesure choisie\">➕ Ajouter</button></div>";
+  box.innerHTML = h;
+  document.getElementById("m5TlRename").onclick = () => { const nm = prompt("Nouveau nom ?", tl.name); if (nm && nm.trim()) { tl.name = nm.trim(); songsSave(); m5TlSelRefresh(); document.getElementById("m5TlSel").value = String(i); document.getElementById("m5TlEdit").onclick(); } };
+  document.getElementById("m5TlAdd").onclick = () => {
+    let act = null; try { act = JSON.parse(document.getElementById("m5AddSel").value); } catch (e) {}
+    const m = parseInt(document.getElementById("m5AddM").value, 10) || autoMeas();
+    if (!act) return;
+    const lbl = (act.k === "mute" ? "Mute " + act.lbl + (act.on ? " ON" : " OFF") : (act.k === "rhythm" ? M5_RHY[act.id].lbl : "?"));
+    tl.events.push({ m, lbl, act }); tl.events.sort((a, b) => a.m - b.m); songsSave();
+    log("➕ Action « " + lbl + " » ajoutée à la mesure " + m + " du timelapse « " + tl.name + " ».", "ok");
+    document.getElementById("m5TlSel").value = String(i); document.getElementById("m5TlEdit").onclick();
+  };
+  box.querySelectorAll("[data-tlm]").forEach(inp => inp.addEventListener("change", () => {
+    const j = parseInt(inp.dataset.tlm, 10); let v = parseInt(inp.value, 10); if (!v || v < 1) v = 1;
+    tl.events[j].m = v; tl.events.sort((a, b) => a.m - b.m); songsSave(); document.getElementById("m5TlEdit").onclick();
+  }));
+  box.querySelectorAll("[data-tltest]").forEach(b => b.addEventListener("click", () => {
+    const e = tl.events[parseInt(b.dataset.tltest, 10)]; const r = qaRun(e.act); log("▶ Test : " + (r || "(refusée)") + " — " + e.lbl, r ? "ok" : "info");
+  }));
+  box.querySelectorAll("[data-tldel]").forEach(b => b.addEventListener("click", () => {
+    const j = parseInt(b.dataset.tldel, 10); log("🗑 Action « " + tl.events[j].lbl + " » retirée du timelapse.", "info");
+    tl.events.splice(j, 1); songsSave(); document.getElementById("m5TlSel").value = String(i); document.getElementById("m5TlEdit").onclick();
+  }));
+};
+document.getElementById("m5Sect").addEventListener("click", (ev) => { // renommage des sections (mémorisé par morceau)
+  const t = ev.target.closest ? ev.target.closest("button") : ev.target;
+  if (!t || !t.dataset || t.dataset.sectren === undefined) return;
+  const s = m5Song(); if (!s) return;
+  const rows = document.querySelectorAll("#m5Sect tr"); const r = rows[parseInt(t.dataset.sectren, 10) + 1];
+  const cur = r ? r.cells[0].textContent.replace(/ ×\d+|\(sans titre\)/g, "").trim() : "";
+  const nm = prompt("Nom de la section ?", cur);
+  if (nm && nm.trim()) { if (!s.sectNames) s.sectNames = {}; s.sectNames[cur] = nm.trim(); songsSave(); m5Analyse(); }
+});
+
 const _setModeV2 = setMode;
-setMode = function (m) { _setModeV2(m); if (m === "m4") renderM4(); };
+setMode = function (m) { _setModeV2(m); if (m === "m4") renderM4(); if (m === "m5") { renderM4(); renderM5(); } };
 renderSongs = function () { _rsV2(); renderM1(); renderM4(); };
 renderM4(); // premier rendu M4 dès le chargement — sinon les boutons dynamiques (scènes, presets) n'existent pas encore et leur câblage plante le script
+renderM5(); // v2.6 — idem M5 : boutons rapides, sélecteurs timelapses et pads câblés dès le chargement
 
 log("🎼 APC Live v2 — modes M1 (préparation) · M2 (direct) · M3 (réglages & tests) · M4 (parties). Liste V1 intacte : les deux pages cohabitent (stockage distinct).", "info");
 </script>
