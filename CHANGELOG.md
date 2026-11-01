@@ -13,6 +13,11 @@ Outils :
 
 ## [Non publié] / Unreleased
 
+### APC Live v2.3
+- **Réglages par part en CC** (Reference Guide p.18-19) : Réverb ON/OFF (CC91), DSP ON/OFF (CC94) et Pan (CC10) ajoutés sur les lignes Accomp 1-3, Bass et Chord de l'onglet Parties — émis sur le canal basic de la part (Chord suit le canal accords cible), mémorisés par morceau et renvoyés au rappel de la config.
+- **Volume Chord doublé en CC7** : le curseur et le Mute de la part Chord émettent en plus le volume de canal (CC7) sur le canal Chord — le sysex 20 25 02 ne réagit pas sur le KN2000.
+- Confirmation doc : bank select / Program Change des parts ACCOMP et BASS uniquement en COMPOSER record → les sélecteurs de sons restent en attente d'une méthode.
+
 ### APC Live v2.2 — M4 Parties en pavés + presets Live (DSP / Réverb / APC)
 
 - **M4 restructuré en pavés façon Panel Console** : Clavier (RIGHT 1/2, LEFT — son par nom + volume), Rythme & réglages (rythme, transpose), Réverb (ON/OFF `20 08 10`, type Room1→Echo4 `20 08 11`, profondeur 1-8 `20 08 12`), DSP (bloc complet `20 08 21` SIZ 9 : type Chorus→Phaser + **paramètres dynamiques selon le type** + output + reverb send — cartographie terrain validée empiriquement), APC (type Off/OneFing/Fingered/Pianist `20 60 02` + memory `20 60 03`), Drums & accompagnements (8 lignes Mute/Vol).
