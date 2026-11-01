@@ -14,6 +14,7 @@ Outils :
 ## [Non publié] / Unreleased
 
 ### APC Live v2.5
+- **v2.5.1 (retour terrain 1/11)** : canal par défaut d'APC-Drums = 16 (champ « ch » de la ligne toujours modifiable par morceau). Retour terrain v2.5 : sélecteurs de son Right 1/2/Left ✅ ; **son Chord (20 25 00) ❌ ne réagit pas — à investiguer** ; mutes/scènes/Add-on ✅.
 - **Sonorité Chord** : sélecteur de son sur la ligne Chord (adresse `20 25 00`, numéros Technics) — **à valider terrain**.
 - **Parts Add-on 1/2** : deux canaux libres (défaut 11/12, configurables dans ⚙️ Réglages, champs chAdd1/chAdd2) avec son (CC0/CC32/Program Change), volume CC7, RV CC91, DSP CC94 et Pan CC10 — mémorisés par morceau (s.panel.addsnd), renvoyés au rappel de la config.
 - **Mutes par part** : deux mécaniques — parts APC = CC7 à 0 avec mémorisation du volume d'avant (s.panel.mutePrev) et restauration à l'un-mute ; parts Add-on = flag uniquement, TOUT envoi bloqué tant que la part est muette (addonCC/addonSnd refusent).

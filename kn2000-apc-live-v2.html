@@ -1370,7 +1370,7 @@ function m4Write(key, vals, lbl) {
   return true;
 }
 const M4_PARTS = [ { lbl: "RIGHT 1", n: 0, son: "20 10 00", vol: "20 10 02" }, { lbl: "RIGHT 2", n: 1, son: "20 11 00", vol: "20 11 02" }, { lbl: "LEFT", n: 2, son: "20 12 00", vol: "20 12 02" } ];
-const M4_DRUMS = [ { lbl: "Drums", ch: 16, vol: "20 1F 02" }, { lbl: "Accomp 1", ch: 4, vol: "20 20 02", rv: true }, { lbl: "Accomp 2", ch: 5, vol: "20 21 02", rv: true }, { lbl: "Accomp 3", ch: 6, vol: "20 22 02", rv: true }, { lbl: "Bass", ch: 7, vol: "20 23 02", rv: true }, { lbl: "APC-Drums", ch: null, vol: "20 24 02", rv: true }, { lbl: "Chord", ch: "dyn", vol: "20 25 02", rv: true, dsp: true, pan: true, snd: "20 25 00" }, { lbl: "R.Bass", ch: null, vol: "20 26 02" } ];
+const M4_DRUMS = [ { lbl: "Drums", ch: 16, vol: "20 1F 02" }, { lbl: "Accomp 1", ch: 4, vol: "20 20 02", rv: true }, { lbl: "Accomp 2", ch: 5, vol: "20 21 02", rv: true }, { lbl: "Accomp 3", ch: 6, vol: "20 22 02", rv: true }, { lbl: "Bass", ch: 7, vol: "20 23 02", rv: true }, { lbl: "APC-Drums", ch: null, dflt: 16, vol: "20 24 02", rv: true }, { lbl: "Chord", ch: "dyn", vol: "20 25 02", rv: true, dsp: true, pan: true, snd: "20 25 00" }, { lbl: "R.Bass", ch: null, vol: "20 26 02" } ];
 const M4_ADDON = [ { lbl: "Add-on 1", cid: "chAdd1" }, { lbl: "Add-on 2", cid: "chAdd2" } ]; // v2.5 — parts Add-on : canaux libres (11/12 par défaut, réglables ⚙️), réservés aux séquences MIDI futures du générateur d'événements
 const M4_ALL = () => M4_DRUMS.concat(M4_ADDON);
 // v2.4 — Validation terrain : Réverb CC91 OK sur les parts APC (Accomp 1-3, Bass + APC-Drums) ; DSP CC94 et Pan CC10 OK sur Chord seulement ; sons des parts APC = définis par le rythme (sélecteurs retirés). Canal des parts non relevées (APC-Drums) : renseignable sur la ligne (s.panel.chchans).
@@ -1379,7 +1379,7 @@ function m4ChBase(d) { // canal basic 1-16 ; null = canal à renseigner sur la l
   if (d.ch !== null && d.ch !== undefined) return d.ch;
   const s = songs.songs.find(x => x.id === curSongId);
   const v = (s && s.panel && s.panel.chchans) ? s.panel.chchans[d.lbl] : null;
-  return v ? parseInt(v, 10) : null;
+  return v ? parseInt(v, 10) : (d.dflt || null); // v2.5.1 — défaut par part (APC-Drums = 16, info terrain Yves 1/11)
 }
 function m4CC(d, cc, val, lbl) {
   const s = songs.songs.find(x => x.id === curSongId);
