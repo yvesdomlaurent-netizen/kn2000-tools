@@ -13,6 +13,11 @@ Outils :
 
 ## [Non publié] / Unreleased
 
+### APC Live v2.4
+- **Validation terrain des CC par part** : Réverb CC91 confirmée sur les parts APC — le bouton RV s'étend à APC-Drums (canal à renseigner sur la ligne, mémorisé par morceau).
+- **DSP (CC94) et Pan (CC10) recentrés sur Chord** (fonctionnent sur le canal 8, pas sur les autres parts APC) ; boutons DSP et Pan retirés des lignes Accomp 1-3 et Bass.
+- **Sélecteurs de sons retirés** des lignes Accomp 1-3 et Bass (les sons des parts APC vivent dans le rythme ; bank/PC uniquement en Composer record). Le volume Chord reste doublé en CC7 (validé terrain).
+
 ### APC Live v2.3
 - Correctif v2.3.1 : les boutons RV/DSP lisaient l'état dans le mauvais objet → affichage « ? » permanent et ON envoyé en boucle ; l'état se lit maintenant dans la valeur mémorisée (s.panel.ccs) et le bouton affiche ON/OFF.
 - **Réglages par part en CC** (Reference Guide p.18-19) : Réverb ON/OFF (CC91), DSP ON/OFF (CC94) et Pan (CC10) ajoutés sur les lignes Accomp 1-3, Bass et Chord de l'onglet Parties — émis sur le canal basic de la part (Chord suit le canal accords cible), mémorisés par morceau et renvoyés au rappel de la config.
