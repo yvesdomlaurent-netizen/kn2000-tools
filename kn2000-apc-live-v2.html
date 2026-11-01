@@ -1920,9 +1920,10 @@ function m5Song() { return songs.songs.find(x => x.id === curSongId) || null; }
 function m5Tls() { const s = m5Song(); if (!s) return null; if (!Array.isArray(s.timelapses)) s.timelapses = []; return s.timelapses; }
 function autoMeas() { const p = posInfo(); return p ? p.meas : 1; }
 
+function muteLbl(act) { return act.lbl + (act.on ? " → muet" : " → rétabli"); } // v2.6.2 — libellé sans ambiguïté : c'est la PART qui est muette ou rétablie
 function qaRun(act) { // exécute une action rapide ; renvoie le libellé si exécutée, null si refusée
   if (act.k === "scene") { const a = scenesLoad(); const sc = a[act.i]; if (!sc || !sc.mutes) return null; m4SceneApply(act.i); return "Scène « " + sc.name + " »"; }
-  if (act.k === "mute") { const d = M4_ALL().find(x => x.lbl === act.lbl); if (!d) return null; return m4SetMute(d, !!act.on) ? ("Mute " + act.lbl + (act.on ? " ON" : " OFF")) : null; }
+  if (act.k === "mute") { const d = M4_ALL().find(x => x.lbl === act.lbl); if (!d) return null; return m4SetMute(d, !!act.on) ? muteLbl(act) : null; }
   if (act.k === "rv") { const d = M4_ALL().find(x => x.lbl === act.lbl); if (!d) return null;
     const ok = d.cid ? addonCC(d, 91, act.on ? 0x7F : 0, "Réverb " + d.lbl) : m4CC(d, 91, act.on ? 0x7F : 0, "Réverb " + d.lbl);
     return ok ? ("Réverb " + act.lbl + (act.on ? " ON" : " OFF")) : null; }
@@ -2167,8 +2168,8 @@ document.getElementById("m5TlDel").onclick = () => {
 // Éditeur de timelapse : mesures éditables, test immédiat, suppression, ajout d'actions
 function m5AddOpts() { // options d'action pour l'ajout manuel
   let o = "";
-  for (const d of M4_ALL()) { o += "<option value='" + JSON.stringify({ k: "mute", lbl: d.lbl, on: true }) + "'>Mute " + d.lbl + " ON</option>"
-    + "<option value='" + JSON.stringify({ k: "mute", lbl: d.lbl, on: false }) + "'>Mute " + d.lbl + " OFF</option>"; }
+  for (const d of M4_ALL()) { o += "<option value='" + JSON.stringify({ k: "mute", lbl: d.lbl, on: true }) + "'>🔇 Rendre « " + d.lbl + " » muet</option>"
+    + "<option value='" + JSON.stringify({ k: "mute", lbl: d.lbl, on: false }) + "'>🔊 Rétablir « " + d.lbl + " » (unmute)</option>"; }
   for (const id of Object.keys(M5_RHY)) o += "<option value='" + JSON.stringify({ k: "rhythm", id }) + "'>Rythme : " + M5_RHY[id].lbl + "</option>";
   return o;
 }
@@ -2182,8 +2183,9 @@ document.getElementById("m5TlEdit").onclick = () => {
     + "<table style=\"width:100%;border-collapse:collapse;font-size:13px\">"
     + "<tr><th style=\"text-align:left\">Mesure</th><th style=\"text-align:left\">Action</th><th></th><th></th></tr>";
   tl.events.forEach((e, j) => {
+    const elbl = (e.act && e.act.k === "mute") ? muteLbl(e.act) : e.lbl; // v2.6.2 : les anciens timelapses « Mute X ON/OFF » se réaffichent sans ambiguïté
     h += "<tr><td style=\"padding:2px 6px\"><input type=\"number\" data-tlm=\"" + j + "\" value=\"" + e.m + "\" min=\"1\" max=\"999\" style=\"width:64px\"></td>"
-      + "<td style=\"padding:2px 6px;border-bottom:1px solid #eee\">" + e.lbl + "</td>"
+      + "<td style=\"padding:2px 6px;border-bottom:1px solid #eee\">" + elbl + "</td>"
       + "<td><button data-tltest=\"" + j + "\" title=\"Tester l'action MAINTENANT (elle est envoyée au clavier)\">▶</button></td>"
       + "<td><button data-tldel=\"" + j + "\" title=\"Supprimer cette action\">🗑</button></td></tr>";
   });
@@ -2196,7 +2198,7 @@ document.getElementById("m5TlEdit").onclick = () => {
     let act = null; try { act = JSON.parse(document.getElementById("m5AddSel").value); } catch (e) {}
     const m = parseInt(document.getElementById("m5AddM").value, 10) || autoMeas();
     if (!act) return;
-    const lbl = (act.k === "mute" ? "Mute " + act.lbl + (act.on ? " ON" : " OFF") : (act.k === "rhythm" ? M5_RHY[act.id].lbl : "?"));
+    const lbl = (act.k === "mute" ? muteLbl(act) : (act.k === "rhythm" ? M5_RHY[act.id].lbl : "?"));
     tl.events.push({ m, lbl, act }); tl.events.sort((a, b) => a.m - b.m); songsSave();
     log("➕ Action « " + lbl + " » ajoutée à la mesure " + m + " du timelapse « " + tl.name + " ».", "ok");
     document.getElementById("m5TlSel").value = String(i); document.getElementById("m5TlEdit").onclick();
