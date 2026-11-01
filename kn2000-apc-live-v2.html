@@ -1920,7 +1920,7 @@ function m5Song() { return songs.songs.find(x => x.id === curSongId) || null; }
 function m5Tls() { const s = m5Song(); if (!s) return null; if (!Array.isArray(s.timelapses)) s.timelapses = []; return s.timelapses; }
 function autoMeas() { const p = posInfo(); return p ? p.meas : 1; }
 
-function muteLbl(act) { return act.lbl + (act.on ? " → muet" : " → rétabli"); } // v2.6.2 — libellé sans ambiguïté : c'est la PART qui est muette ou rétablie
+function muteLbl(act) { return "Mute " + act.lbl + (act.on ? " ON" : " OFF"); } // v2.6.3 — ce sont des ACTIONS : Mute X ON = muter X, Mute X OFF = démuter X (libellés d'origine rétablis à la demande d'Yves)
 function qaRun(act) { // exécute une action rapide ; renvoie le libellé si exécutée, null si refusée
   if (act.k === "scene") { const a = scenesLoad(); const sc = a[act.i]; if (!sc || !sc.mutes) return null; m4SceneApply(act.i); return "Scène « " + sc.name + " »"; }
   if (act.k === "mute") { const d = M4_ALL().find(x => x.lbl === act.lbl); if (!d) return null; return m4SetMute(d, !!act.on) ? muteLbl(act) : null; }
@@ -2168,8 +2168,8 @@ document.getElementById("m5TlDel").onclick = () => {
 // Éditeur de timelapse : mesures éditables, test immédiat, suppression, ajout d'actions
 function m5AddOpts() { // options d'action pour l'ajout manuel
   let o = "";
-  for (const d of M4_ALL()) { o += "<option value='" + JSON.stringify({ k: "mute", lbl: d.lbl, on: true }) + "'>🔇 Rendre « " + d.lbl + " » muet</option>"
-    + "<option value='" + JSON.stringify({ k: "mute", lbl: d.lbl, on: false }) + "'>🔊 Rétablir « " + d.lbl + " » (unmute)</option>"; }
+  for (const d of M4_ALL()) { o += "<option value='" + JSON.stringify({ k: "mute", lbl: d.lbl, on: true }) + "'>Mute " + d.lbl + " ON</option>"
+    + "<option value='" + JSON.stringify({ k: "mute", lbl: d.lbl, on: false }) + "'>Mute " + d.lbl + " OFF</option>"; }
   for (const id of Object.keys(M5_RHY)) o += "<option value='" + JSON.stringify({ k: "rhythm", id }) + "'>Rythme : " + M5_RHY[id].lbl + "</option>";
   return o;
 }

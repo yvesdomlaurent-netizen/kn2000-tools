@@ -14,6 +14,7 @@ Outils :
 ## [Non publié] / Unreleased
 
 ### APC Live v2.6 — M5 Live & Automation
+- **v2.6.3** : libellés d'action restaurés — « Mute X ON » = muter X, « Mute X OFF » = démuter X (ce sont des ACTIONS, pas des états ; les libellés v2.6.2 « Rendre/Rétablir » sont retirés à la demande d'Yves).
 - **v2.6.2** : libellés de mute non ambiguës dans les timelapses — « 🔇 Rendre X muet » / « 🔊 Rétablir X (unmute) » remplacent « Mute X ON/OFF » (source de confusion : ON qualifiait le mute, pas la part) ; les timelapses déjà enregistrés se réaffichent avec la nouvelle formulation.
 - **v2.6.1** : bouton « 🧹 Vider le buffer » à côté de ● REC — abandonne les actions capturées sans rien enregistrer (les timelapses déjà sauvegardés restent intacts).
 - **Nouvel onglet M5 « ⚡ LIVE/AUTO »** : deux usages — **Live** (boutons rapides + armer un timelapse qui déclenche ses actions aux mesures données) et **Apprentissage** (● REC : chaque bouton rapide / pad pressé est horodaté à la mesure du compteur → 💾 Enregistrer-sous en fait un timelapse éditable).
