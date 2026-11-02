@@ -666,6 +666,7 @@ function onMidiMsg(ev) {
     } else if (b === 0xFA) { // MIDI Start : repère du premier temps — CALAGE AUTO de la mesure
       log("MIDI Start (FA) — rythme lancé : compteur remis à 1:01:000, horloge CALÉE sur le vrai temps 1.", "ok");
       if (document.getElementById("rtLog").checked) log("MIDI Start (FA) — rythme lancé", "clock");
+      if (m5armed && m5Halted) { m5Halted = false; m5armedIdx = 0; log("🎬 Automation « " + m5armed.name + " » repart du début (compteur remis à 1).", "ok"); m5ArmLblRefresh(); } // v2.6.10 — reste armée après un arrêt : reprise au départ
       pulse = 0; lastF8At = performance.now();
       barAnchor = performance.now() - syncTrim; // FA = début de mesure réel
       posEl.textContent = posStr();
@@ -697,6 +698,7 @@ function onMidiMsg(ev) {
         }
       }
     } else if (b === 0xFB) { // MIDI Continue : reprise de la séquence arrêtée par le dernier FC
+      if (m5armed && m5Halted) { m5Halted = false; log("🎬 Automation « " + m5armed.name + " » reprise (FB) — les actions repartent avec le compteur.", "ok"); m5ArmLblRefresh(); } // v2.6.10
       if (document.getElementById("xport").checked && seqList && !seqQueue) {
         if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; }
         seqOriginBeats = null;
@@ -713,6 +715,7 @@ function onMidiMsg(ev) {
     }
     else if (b === 0xFC) {
       log("MIDI Stop (FC) — rythme arrêté (RX temps réel)", "clock");
+      m5OnFcStop(); // v2.6.10 — compteur de mesures RÉINITIALISÉ à l'arrêt + automation en pause armée (demande Yves)
       if (document.getElementById("xport").checked && seqQueue) {
         lastStopIdx = seqIdx; // mémorisé pour une éventuelle reprise FB Continue
         if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; }
@@ -783,6 +786,7 @@ function send(bytes, what) {
   if (st0 === 0xB0) { const m = { 7: "20 0A 03", 11: "20 0A 04", 10: "20 0A 05", 64: "20 0A 06", 91: "20 0A 07", 93: "20 0A 07", 94: "20 0A 07", 1: "20 0A 08", 0: "20 0A 01", 32: "20 0A 01", 82: "20 0A 0D" }[bytes[1]]; if (m) enNeed([m], what || ("CC" + bytes[1])); if (bytes[1] === 82) txMark("CC82:" + bytes[2]); }
   else if (st0 === 0xC0) enNeed(["20 0A 00"], what || "Program Change");
   else if (bytes[0] >= 0xFA && bytes[0] <= 0xFC) enNeed(["20 04 02"], what || "temps réel FA/FB/FC");
+  if (bytes[0] === 0xFC) m5OnFcStop(true); // v2.6.10 — FC envoyé par la page (⏹ Stop, fin de progression) : compteur réinitialisé + automation en pause armée
   midiOut.send(bytes);
   if (what) log("TX : " + hex(bytes) + "  (" + what + ")");
   return true;
@@ -2043,7 +2047,7 @@ const MACRO_KEY = "kn2000-apc-macros-v2";
 function macrosLoad() { try { const a = JSON.parse(localStorage.getItem(MACRO_KEY) || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
 function macrosStore(a) { try { localStorage.setItem(MACRO_KEY, JSON.stringify(a)); } catch (e) { log("Écriture localStorage impossible : " + e.message, "ko"); } }
 let m5rec = null; // buffer ● REC : [{m, lbl, act}]
-let m5armed = null, m5armedIdx = 0; // timelapse armé + prochain événement à tirer
+let m5armed = null, m5armedIdx = 0, m5Halted = false, m5armedSongId = null; // timelapse armé + prochain événement à tirer ; v2.6.10 : m5Halted = morceau stoppé (FC) — l'automation attend le prochain départ ; m5armedSongId = morceau de l'armement (changement de morceau = désarmement)
 let m5EditTl = null, m5EditTlIdx = -1; // v2.6.6 — timelapse affiché dans l'éditeur (surlignage temps réel)
 function m5Song() { return songs.songs.find(x => x.id === curSongId) || null; }
 function m5Tls() { const s = m5Song(); if (!s) return null; if (!Array.isArray(s.timelapses)) s.timelapses = []; return s.timelapses; }
@@ -2125,11 +2129,26 @@ function m5ItwHuman(adr, vals) { // v2.6.8 — libellé humain d'une annonce/éc
   const v = (vals && vals.length === 1) ? vals[0] : undefined;
   return (h.val && h.val[v] !== undefined) ? (h.n + " " + h.val[v]) : h.n;
 }
+function m5EvLbl(e) { // v2.6.10 — libellé AFFICHÉ d'un événement de timelapse : traduction humaine des anciens libellés « SYSEX … » sans modifier les données stockées + convention Mute (ON = la partie joue)
+  if (e && e.act) {
+    if (e.act.k === "itw") { const hu = m5ItwHuman(e.act.a, e.act.v); if (hu) return hu + " (sysex " + e.act.a + " = " + hex(e.act.v) + ")"; }
+    if (e.act.k === "mute") return muteLbl(e.act);
+  }
+  return e.lbl;
+}
 function m5Cc82State(v) { // v2.6.7 — les CC82 reçus DU CLAVIER pilotent les badges d'état (annonce sortante du clavier : 0=Stop/relâchement, 1=Fill1, 2=Ending, 3=Intro, 5=Fill2, 7=CountIn)
   const t = lastTxSig.get("CC82:" + v); if (t !== undefined && Date.now() - t < 800) return; // écho de nos propres envois < 800 ms : ignoré
   if (v === 0) { ["intro", "ending"].forEach(k => { m5St[M5_RHY[k].key] = 0; }); m5QaRerender(); return; } // stop/relâchement : Intro/Ending retombent OFF
   const rid = CC82_IDS[v]; if (!rid) return; const r = M5_RHY[rid];
   if (r && r.tog && r.key) { m5St[r.key] = 1; m5QaRerender(); } // Intro/Ending annoncés ON par le clavier (Fill/CountIn one-shot : tog absent, pas de badge)
+}
+function m5OnFcStop(tx) { // v2.6.10 — arrêt du morceau (FC reçu du clavier OU envoyé par la page) : compteur de mesures RÉINITIALISÉ + automation en PAUSE ARMÉE (demande Yves)
+  pulse = 0; posMeasOffset = 0; // compteur à la mesure 1
+  if (m5armed) {
+    m5armedIdx = 0; m5Halted = true;
+    log("🎬 Automation « " + m5armed.name + " » : compteur remis à 1 — elle RESTE ARMÉE et repartira du début au prochain départ (FA/FB). ⏹ pour désarmer.", "info");
+    m5ArmLblRefresh();
+  }
 }
 function m5RecCap(kind, chOrAdr, v) {
   if (!m5rec) return;
@@ -2314,13 +2333,14 @@ function m5ArmLblRefresh() { // v2.6.6 — bandeau automation : conditions clair
   if (!m5armed) { el.textContent = m5LastScene ? ("dernière scène appliquée : " + m5LastScene) : ""; return; }
   const ev = m5armed.events[m5armedIdx];
   const scn = (m5armed.scene !== undefined && m5armed.scene !== null) ? ("scène liée : " + ((scenesLoad()[m5armed.scene] || {}).name || "?") + " (appliquée à l'armement)") : "sans scène liée";
-  el.textContent = "⏳ Armé « " + m5armed.name + " » · mesure " + autoMeas() + " · prochaine : " + (ev ? ("M" + ev.m + " " + ev.lbl) : "(terminé)") + " · " + scn + (m5LastScene ? " · dernière scène : " + m5LastScene : "");
+  el.textContent = "⏳ Armé « " + m5armed.name + " » · mesure " + autoMeas() + " · prochaine : " + (ev ? ("M" + ev.m + " " + m5EvLbl(ev)) : "(terminé)") + " · " + scn + (m5LastScene ? " · dernière scène : " + m5LastScene : "");
 }
 function m5TlArm(i) {
   const tls = m5Tls(); if (!tls) { log("Choisis un morceau (M1) avant d'armer un timelapse.", "ko"); return; }
   const tl = tls[i]; if (!tl || !tl.events || !tl.events.length) { log("Choisis d'abord un timelapse avec des actions.", "info"); return; }
   tl.events.sort((a, b) => a.m - b.m);
   m5armed = tl; m5armedIdx = tl.events.findIndex(e => e.m > autoMeas()); if (m5armedIdx < 0) m5armedIdx = tl.events.length;
+  m5Halted = false; m5armedSongId = curSongId; // v2.6.10 — armement lié au morceau courant ; un changement de morceau désarmera
   if (tl.scene !== undefined && tl.scene !== null) { log("🔗 Scène liée appliquée d'abord.", "info"); m4SceneApply(tl.scene); }
   log("🎬 Timelapse « " + tl.name + " » ARMÉ (" + tl.events.length + " action(s)) — chaque action part quand le COMPTEUR de mesures atteint sa mesure (le compteur avance sur l'horloge F8 du clavier : le rythme doit tourner) — " + m5armedIdx + " restante(s) maintenant.", "ok");
   m5ArmLblRefresh();
@@ -2338,16 +2358,18 @@ function m5TlCurRefresh() { // v2.6.6 — éditeur vivant : mesure en cours + li
 setInterval(() => { // v2.6 : poll léger — tir des actions armées + affichage de la mesure courante
   const el = document.getElementById("m5PosLbl"); if (el) el.textContent = "mesure : " + autoMeas();
   m5TlCurRefresh();
+  if (m5armed && m5armedSongId !== null && m5armedSongId !== curSongId) { log("🎬 Changement de morceau — automation « " + m5armed.name + " » désarmée.", "info"); m5armed = null; m5Halted = false; } // v2.6.10 — l'automation ne survit pas au changement de morceau
   if (!m5armed) return;
+  if (m5Halted) { m5ArmLblRefresh(); return; } // v2.6.10 — morceau stoppé (FC) : l'automation reste ARMÉE mais attend le prochain départ (FA/FB)
   const meas = autoMeas();
   while (m5armedIdx < m5armed.events.length && m5armed.events[m5armedIdx].m <= meas) {
     const e = m5armed.events[m5armedIdx++];
     if (e.act && ((e.act.k === "rhythm" && e.act.id === "stop") || (e.act.k === "cc" && e.act.c === 82 && e.act.v === 0))) { // v2.6.9 — un timelapse n'arrête JAMAIS le morceau : les « Stop » capturés (relâchements CC82=0 des Fill) sont ignorés au rejeu — le Stop reste un geste manuel
       log("🎬 M" + e.m + " : ⏹ Stop ignoré au rejeu (un timelapse n'arrête pas le morceau — le Stop reste manuel) — " + e.lbl, "info"); continue; }
     const r = qaRun(e.act);
-    log("🎬 M" + e.m + " : " + (r || "(refusée)") + " — " + e.lbl, r ? "ok" : "info");
+    log("🎬 M" + e.m + " : " + (r || "(refusée)") + " — " + m5EvLbl(e), r ? "ok" : "info");
   }
-  if (m5armedIdx >= m5armed.events.length) { log("🎬 Timelapse « " + m5armed.name + " » terminé — désarmé.", "ok"); m5armed = null; }
+  if (m5armedIdx >= m5armed.events.length) { log("🎬 Timelapse « " + m5armed.name + " » terminé — il RESTE ARMÉ (repartira du début après un arrêt FC puis un départ ; ⏹ pour désarmer).", "ok"); } // v2.6.10 — plus de désarmement automatique
   m5ArmLblRefresh();
 }, 250);
 document.getElementById("m5TlArm").onclick = () => m5TlArm(parseInt(document.getElementById("m5TlSel").value, 10));
@@ -2431,7 +2453,7 @@ document.getElementById("m5TlEdit").onclick = () => {
     + "<table style=\"width:100%;border-collapse:collapse;font-size:13px\">"
     + "<tr><th style=\"text-align:left\">Mesure</th><th style=\"text-align:left\">Action</th><th></th><th></th></tr>";
   tl.events.forEach((e, j) => {
-    const elbl = (e.act && e.act.k === "mute") ? muteLbl(e.act) : e.lbl; // v2.6.2 : les anciens timelapses « Mute X ON/OFF » se réaffichent sans ambiguïté
+    const elbl = m5EvLbl(e); // v2.6.10 — libellé humain : les anciens « SYSEX 20 60 0C = 00 (clavier) » se réaffichent « Fill In 1 OFF (…) », et les Mute suivent la convention ON = la partie joue
     h += "<tr data-tlrow=\"" + j + "\"><td style=\"padding:2px 6px\"><input type=\"number\" data-tlm=\"" + j + "\" value=\"" + e.m + "\" min=\"1\" max=\"999\" style=\"width:64px\"></td>"
       + "<td style=\"padding:2px 6px;border-bottom:1px solid #eee\">" + elbl + "</td>"
       + "<td><button data-tltest=\"" + j + "\" title=\"Tester l'action MAINTENANT (elle est envoyée au clavier)\">▶</button></td>"
@@ -2463,7 +2485,7 @@ document.getElementById("m5TlEdit").onclick = () => {
     tl.events[j].m = v; tl.events.sort((a, b) => a.m - b.m); songsSave(); document.getElementById("m5TlEdit").onclick();
   }));
   box.querySelectorAll("[data-tltest]").forEach(b => b.addEventListener("click", () => {
-    const e = tl.events[parseInt(b.dataset.tltest, 10)]; const r = qaRun(e.act); log("▶ Test : " + (r || "(refusée)") + " — " + e.lbl, r ? "ok" : "info");
+    const e = tl.events[parseInt(b.dataset.tltest, 10)]; const r = qaRun(e.act); log("▶ Test : " + (r || "(refusée)") + " — " + m5EvLbl(e), r ? "ok" : "info");
   }));
   box.querySelectorAll("[data-tldel]").forEach(b => b.addEventListener("click", () => {
     const j = parseInt(b.dataset.tldel, 10); log("🗑 Action « " + tl.events[j].lbl + " » retirée du timelapse.", "info");
