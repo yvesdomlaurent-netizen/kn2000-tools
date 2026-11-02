@@ -135,7 +135,7 @@
     <button class="modeBtn on" data-mode="m2" title="M2 — Exploitation / Direct scène : sans fioritures, la séquence à jouer au centre">🎼 DIRECT</button>
     <button class="modeBtn" data-mode="m1" title="M1 — Préparation / Entraînement : liste des morceaux, fiches, import/export">📚 MORCEAUX</button>
     <button class="modeBtn" data-mode="m4" title="M4 — Parties du morceau courant : sons et volumes des voies (RIGHT 1/2, LEFT), batterie, APC 1-7 et réglages utiles — retours style panel, ajustables en direct">🎛 PARTIES</button>
-    <button class="modeBtn" data-mode="m5" title="M5 — Live & Automation : analyse de la grille (sections), boutons rapides (rythme, RV, presets), pads APC25, apprentissage ● REC et timelapses horodatés en mesures">⚡ LIVE/AUTO</button>
+    <button class="modeBtn" data-mode="m5" title="M5 — Live & Automation : analyse de la grille (sections), boutons rapides (rythme, RV, presets, Rythme 2/3, Multi Style Arranger), pads APC25, apprentissage ● REC et timelapses horodatés en mesure + temps">⚡ LIVE/AUTO</button>
     <button class="modeBtn" data-mode="m3" title="M3 — Tests & Explorations : canaux, déclenchements, journalisation">🧪 RÉGLAGES &amp; TESTS</button>
   </nav>
   <div id="viewM1" data-mode="m1" class="panel">
@@ -267,7 +267,7 @@ Thème
       <b id="m5Song" style="font-size:14px">—</b>
       <span class="hint" id="m5PosLbl">mesure : —</span>
       <span style="flex:1"></span>
-      <label title="Apprentissage : chaque bouton rapide / pad pressé est horodaté à la mesure courante du compteur — les événements REÇUS DU CLAVIER (CC82, annonces sysex ITR) sont aussi capturés (les échos de nos propres envois sont ignorés) — puis 💾 Enregistrer-sous en fait un timelapse éditable"><input type="checkbox" id="m5Rec"> ● REC apprentissage</label>
+      <label title="Apprentissage : chaque bouton rapide / pad pressé est horodaté à la mesure ET au temps (1-4) courants du compteur — les événements REÇUS DU CLAVIER (CC82, annonces sysex ITR) sont aussi capturés (les échos de nos propres envois sont ignorés) — puis 💾 Enregistrer-sous en fait un timelapse éditable"><input type="checkbox" id="m5Rec"> ● REC apprentissage</label>
       <button id="m5RecClear" title="Vide le buffer ● REC sans rien enregistrer (les timelapses déjà sauvegardés restent intacts)">🧹 Vider le buffer</button>
       <span class="hint" id="m5RecCount"></span>
     </div>
@@ -276,7 +276,7 @@ Thème
       <span class="hint">Sections / nb de mesures / actions du timelapse sélectionné par type</span>
     </div>
     <div id="m5Sect"></div>
-    <div class="hint" style="margin:8px 0">Boutons rapides — en Live ils agissent immédiatement ; avec ● REC coché, chaque action est AUSSI horodatée dans le buffer (mesure du compteur).</div>
+    <div class="hint" style="margin:8px 0">Boutons rapides — en Live ils agissent immédiatement ; avec ● REC coché, chaque action est AUSSI horodatée dans le buffer (mesure + temps du compteur).</div>
     <div id="m5Quick"></div>
     <div class="row" style="margin-top:6px">
       <label title="Écoute les Note On de l'APC Key 25 : un pad sur une note mappée déclenche son action"><input type="checkbox" id="m5Pads"> 🎹 Pads APC25</label>
@@ -286,7 +286,7 @@ Thème
     <h2 style="margin-top:12px">📼 Timelapses (automation par morceau)</h2>
     <div class="row" style="align-items:center">
       <select id="m5TlSel" style="max-width:240px" title="Timelapses du morceau courant — actions horodatées en mesures (plusieurs par morceau)"></select>
-      <button id="m5TlArm" title="Arme le timelapse : la scène liée (s'il y en a une) est appliquée d'abord, puis chaque action part quand le compteur atteint sa mesure">▶ Armer</button>
+      <button id="m5TlArm" title="Arme le timelapse : la scène liée (s'il y en a une) est appliquée d'abord, puis chaque action part quand le compteur atteint sa mesure ET son temps (1-4)">▶ Armer</button>
       <button id="m5TlStop" title="Désarme le timelapse (les actions déjà passées ne sont pas rejouées)">⏹</button>
       <button id="m5TlEdit" title="Éditeur : mesures éditables, test immédiat, suppression, ajout d'actions">✏️ Éditer</button>
       <button id="m5TlSave" title="Enregistre le buffer ● REC comme nouveau timelapse (Apprentissage)">💾 Enregistrer-sous</button>
@@ -335,7 +335,7 @@ Thème
       <code>| F . % . | G7 . . . | C . / . NC . . . |</code>
       <br><br><b>▶ Démarrer</b> : (1) tempo imposé au clavier (trame TMP) ; (2) armement Synchro&Break ; (3) séquence — <b>si l'horloge F8 tourne, les accords sont pilotés par le COMPTEUR de pulses</b> : zéro dérive, un changement de tempo à la molette est suivi instantanément, le calage reste collé au compteur affiché (sinon secours au minuteur).
       <br><b>🎛 Transport clavier</b> : FA Start → séquence lancée depuis l'accord 1 pile sur le temps 1 ; FB Continue → reprise de la séquence arrêtée (accord interrompu rejoué) ; FC Stop → arrêt (notes OFF).
-      <br><b>📼 Départ mesure</b> : champ, flèches ⏮ ◀ ▶ ⏭ ou bande glissante — <b>▶ Démarrer part de la mesure choisie</b> (les mesures d'avant ne sont pas envoyées ; 🔁 Repeat y reboucle) ; FA du clavier à l'arrêt → mesure 1 ; FA pendant la lecture → simple réalignage, la lecture continue (le KN2000 émet FA au démarrage de son rythme) ; le grand compteur de position démarre à la mesure de départ (N:01:000) ; le compteur affiche la mesure en cours pendant la lecture.
+      <br><b>📼 Départ mesure</b> : champ, flèches ⏮ ◀ ▶ ⏭ ou bande glissante — <b>▶ Démarrer part de la mesure choisie</b> (les mesures d'avant ne sont pas envoyées ; 🔁 Repeat y reboucle) ; FA du clavier à l'arrêt → mesure 1 ; FA pendant la lecture → simple réalignage, la lecture continue (le KN2000 émet FA au démarrage de son rythme) ; le grand compteur de position démarre à la mesure de départ (N:01:000) ; pendant la lecture, le compteur du deck affiche la <b>mesure JOUÉE</b> (blocs <code>!!x2</code> : les répétitions continuent la numérotation) ; à l'arrêt (FC/Stop), le compteur se fige sur la <b>mesure de départ</b> choisie — pratique pour positionner les événements ● REC à la mesure courante. Les événements de timelapse (M5) sont horodatés <b>mesure + temps</b> (1-4) et partent au temps exact.
       <br><b>🔇 Vrai silence NC</b> : ▶ Démarrer passe l'APC memory OFF ; dès que le FA du clavier confirme le rythme lancé, Synchro&Break est désarmé — <code>NC</code> coupe l'accompagnement sans couper la batterie, l'accord suivant relance (memory laissé OFF : retour à la main au panneau).
       <br><b>🎵 Morceaux</b> : sélectionner un morceau charge sa séquence et <b>envoie sa config au KN2000</b> (tempo, rythme, APC, sons, volumes — aucun rappel Panel Memory : la config vit dans la page, morceau par morceau) ; <b>💾 Sauver morceau</b> capture la séquence affichée + les réglages COURANTS du clavier (lecture panel façon Panel Console) ; ⬇️ Export / ⬆️ Import pour tout emporter en JSON ; un morceau sans séquence sauvegardée VIDE l'écran (seul le titre reste affiché, jamais sauvegardé) ; <b>🔄 Renvoyer au clavier</b> renvoie les réglages panel du morceau courant (vérif clavier).
     </div>
@@ -430,7 +430,7 @@ function anchorEff() { return barAnchor === null ? null : barAnchor + syncTrim; 
 let posMeasOffset = 0; // v0.38 : décalage (en mesures) du compteur de position — ▶ Démarrer à la mesure N → le grand compteur démarre à N:01:000 (retour à zéro à la fin de la progression)
 function posInfo() {
   const pp = ppq();
-  if (m5FcFrozen && !lastF8At) return { meas: 1, beat: 1, tick: 0 }; // v2.6.11 — arrêt (FC) : compteur FIGÉ à la mesure 1 — pas d'interpolation libre (correctif : le compteur continuait de tourner sur le secours Caler après la mise à zéro v2.6.10)
+  if (m5FcFrozen && !lastF8At) return { meas: 1 + posMeasOffset, beat: 1, tick: 0 }; // v2.6.13 — arrêt (FC) : compteur FIGÉ sur la mesure de DÉPART (posMeasOffset = startM-1, voir m5OnFcStop — demande Yves : positionner les événements à la mesure courante) ; v2.6.11 — pas d'interpolation libre (le compteur continuait de tourner sur le secours Caler)
   if (lastF8At || pulse > 0) { // horloge réelle reçue : position COMPTÉE (vraie), figée à l'arrêt
     return { meas: Math.floor(pulse / (pp * 4)) + 1 + posMeasOffset, beat: Math.floor(pulse / pp) % 4 + 1, tick: pulse % pp };
   }
@@ -497,11 +497,12 @@ function markChord(i) { // v0.33 : surligne LA MESURE ENTIÈRE de l'accord en co
   mirrorRender();
   deckLive(ev);
 }
-function deckLive(ev) { // v0.35 : pendant la lecture — compteur « mesure n/total » + remplissage de la bande
+function deckLive(ev) { // v0.35 : pendant la lecture — compteur « mesure n/total » + remplissage de la bande ; v2.6.13 : affiche la mesure JOUÉE (pNo — les blocs !!x2 rejouent les mêmes n° écrits, la mesure jouée continue)
   const mc = document.getElementById("mCount"), tf = document.getElementById("tapeFill");
-  if (ev && ev.mNo && seqMeasures) {
-    mc.textContent = "mesure " + ev.mNo + "/" + seqMeasures;
-    tf.style.width = (ev.mNo * 100 / seqMeasures) + "%";
+  if (ev && (ev.pNo || ev.mNo) && seqMeasures) {
+    const pn = ev.pNo || ev.mNo, tot = seqPlayedMeasures || seqMeasures;
+    mc.textContent = "mesure " + pn + "/" + tot;
+    tf.style.width = (pn * 100 / tot) + "%";
   } else { tf.style.width = "0"; deckIdle(); }
 }
 function deckIdle() { // v0.35 : à l'arrêt — le compteur affiche la mesure de départ choisie et la poignée se positionne dessus
@@ -515,6 +516,7 @@ function loadSeq() { // parse + cum + rendu — appelé par ▶ Démarrer ET par
   if (!seq) { curRange = null; mirrorRender(); deckIdle(); return null; }
   let cum = 0; seq.forEach(s => { s.cum = cum; cum += s.beats; }); seqTotalBeats = cum;
   seqList = seq;
+  try { window.__seqList = seq; } catch (e) {} // v2.6.13 — introspection (harnais de test) : la séquence décodée avec ses mesures JOUÉES (pNo)
   mirrorRender();
   deckIdle();
   log("📋 Séquence chargée : " + seq.length + " événement(s), " + cum + " temps — prête pour ▶ Démarrer ou le transport du clavier (FA Start).", "info");
@@ -547,8 +549,10 @@ function parseSeq() {
       if (!block) block = { items: [] };
       else {
         const n = Math.max(1, mk[2] ? parseInt(mk[2]) : 1);
+        const evNos = block.items.filter(it => it.t === "ev" && it.mNo !== null && it.mNo !== undefined); // v2.6.13 — nb de mesures du bloc (numérotation du texte) : la 2ᵉ passe du bloc || x2 rejoue les MÊMES n° écrits, la mesure JOUÉE continue après
+        const blockMes = evNos.length ? (Math.max(...evNos.map(it => it.mNo)) - Math.min(...evNos.map(it => it.mNo)) + 1) : 0;
         for (let r = 0; r < n; r++) for (const it of block.items) {
-          if (it.t === "ev") { const ev = { ...it, i: seq.length }; seq.push(ev); disp.push(ev); }
+          if (it.t === "ev") { const ev = { ...it, i: seq.length }; if (ev.mNo !== null && ev.mNo !== undefined) ev.pNo = ev.mNo + r * blockMes; seq.push(ev); disp.push(ev); }
           else disp.push(it);
         }
         block = null;
@@ -571,13 +575,14 @@ function parseSeq() {
       }
       for (const e of evs) {
         const r = (e.mIdx !== undefined && e.mIdx < mRanges.length) ? mRanges[e.mIdx] : null;
-        flush({ t: "ev", chord: e.chord, beats: e.beats, label: e.label, mNo: r ? r[0] : null, mRange: r ? [lineStart + r[1], lineStart + r[2]] : [lineStart, lineStart + line.length] });
+        flush({ t: "ev", chord: e.chord, beats: e.beats, label: e.label, mNo: r ? r[0] : null, pNo: r ? r[0] : null, mRange: r ? [lineStart + r[1], lineStart + r[2]] : [lineStart, lineStart + line.length] }); // v2.6.13 — pNo = mesure JOUÉE (mNo au départ ; les blocs répétés l'incrémentent à chaque passe)
       }
       continue;
     }
     flush({ t: "title", text: line });
   }
   seqMeasures = mesNo; // v0.35 : total des mesures du texte (compteur + bande du deck)
+  seqPlayedMeasures = seq.reduce((mx, e) => Math.max(mx, e.pNo || 0), 0); // v2.6.13 : total JOUÉ (blocs répétés comptés n fois) — c'est lui que le deck affiche en lecture
   if (block) {
     log("Bloc de répétition non refermé (|| sans || xN) — son contenu est joué une seule fois.", "info");
     for (const it of block.items) { if (it.t === "ev") { const ev = { ...it, i: seq.length }; seq.push(ev); disp.push(ev); } else disp.push(it); }
@@ -670,7 +675,7 @@ function onMidiMsg(ev) {
       if (document.getElementById("rtLog").checked) log("MIDI Start (FA) — rythme lancé", "clock");
       if (m5armed && m5Halted) { m5Halted = false; m5armedIdx = 0; log("🎬 Automation « " + m5armed.name + " » repart du début (compteur remis à 1).", "ok"); m5ArmLblRefresh(); } // v2.6.10 — reste armée après un arrêt : reprise au départ
       m5FcFrozen = false; // v2.6.11 — départ : le compteur repart (horloge comptée dès les F8, secours Caler autorisé)
-      pulse = 0; lastF8At = performance.now();
+      pulse = 0; posMeasOffset = 0; lastF8At = performance.now(); // v2.6.13 — FA = départ clavier : le compteur repart à la MESURE 1 (l'offset « mesure de départ » du figeage d'arrêt est levé — le KN2000 redémarre son pattern au début)
       barAnchor = performance.now() - syncTrim; // FA = début de mesure réel
       posEl.textContent = posStr();
       // 🎛 TRANSPORT clavier : FA = le rythme du clavier démarre (premier temps 1)
@@ -750,6 +755,7 @@ function onMidiMsg(ev) {
     if (panelCap) panelCap.params[adr] = raw.slice(); // v0.32 : capture pour la sauvegarde du morceau (lecture panel)
     if (EN_MAP[adr] && raw.length) enOnItr(adr, raw[0]); // v2.6.4 : réglages de session (enables p.28) → état + auto-fix
     if (/^20 60 (03|08|09|0A|0B|0C|0D|0E)$/.test(adr) && raw.length) { m5St[adr] = raw[0] & 1; m5QaRerender(); } // v2.6.6/2.6.7 — états live des commandes rythme (annonces du clavier ; v2.6.7 : ajout Memory 20 60 03 — Fill/CountIn one-shot restent sans badge car tog absent)
+    if (adr === "20 00 12" && raw.length) { m5Msa = raw[0] & 3; m5QaRerender(); } // v2.6.13 — Multi Style Arranger : état live du clavier (badge du bouton actif)
     m5RecCap("itw", adr, raw.slice()); // v2.6.5 — capture ● REC des annonces du clavier (l'utilisateur fait le tri)
     const names = { "20 04 02": "REAL TIME COMMAND ENABLE", "20 04 03": "CLOCK SELECT", "20 00 25": "TEMPO (TMP)", "20 0A 25": "APC INPUT", "20 60 08": "SYNCHRO & BREAK" };
     let extra = "";
@@ -999,6 +1005,7 @@ let seqQueue = null, seqIdx = 0, seqTimer = null;
 let seqList = null;        // dernière séquence parsée — le transport FA/FB/FC du clavier peut la (re)lancer
 let seqTotalBeats = 0;     // durée totale de la séquence en noires
 let seqMeasures = 0;       // v0.35 : nombre de mesures de la grille (numérotation = texte) — compteur/bande du deck
+let seqPlayedMeasures = 0; // v2.6.13 : nombre de mesures JOUÉES (blocs || xN comptés n fois) — le deck affiche la mesure jouée en lecture
 let seqOriginPulse = null; // mode compteur F8 : pulse du début de grille de la séquence (null = mode minuteur)
 let seqStartIdx = 0;      // v0.35 : index de l'accord de DÉPART (▶ Démarrer à la mesure N ; Repeat reboucle dessus ; FA/FB → 0)
 let lastStopIdx = null;    // index du prochain accord attendu au moment du dernier FC (pour FB Continue)
@@ -1010,7 +1017,7 @@ function sendRhythmStop() {
 let seqNextAt = 0; // horloge absolue du prochain accord — corrige la dérive des setTimeout en chaîne
 let seqOriginBeats = null; // si Départ calé : position en noires de la séquence sur la grille de l'horloge
 function endSeqLocal() {
-  chordOff(); markChord(-1); sendRhythmStop(); seqQueue = null; seqOriginPulse = null; seqOriginBeats = null; lastStopIdx = null; posMeasOffset = 0; // v0.38 : le compteur de position redevient l'horloge brute après la progression
+  chordOff(); markChord(-1); sendRhythmStop(); seqQueue = null; seqOriginPulse = null; seqOriginBeats = null; lastStopIdx = null; posMeasOffset = m5StopMeas() - 1; // v2.6.13 — à la fin de la progression, le compteur se fige sur la MESURE DE DÉPART (comme au FC — avant : retour à l'horloge brute mesure 1)
   log("=== Fin de la progression — notes OFF + rythme arrêté (CC82 Stop, canal Control " + document.getElementById("chDrums").value + ") ===", "ok");
 }
 function seqPump() {
@@ -1715,14 +1722,17 @@ function renderM4() {
   h += "<div class=\"row\" style=\"flex-wrap:wrap;gap:10px;align-items:stretch\">";
   // ===== PAVÉ Rythme & réglages =====
   { const rb = (p && p["20 60 00"]) || null; const rhy = rb ? matchRhythm(rb[0], rb[1]) : null;
-    let ropts = "";
-    for (const [g, list] of Object.entries(knGroups(KN.rhythms))) { ropts += "<optgroup label=\"" + g + "\">"; for (const e of list) ropts += "<option value=\"" + e[0] + "/" + e[1] + "\"" + (rhy && e[0] === rhy[0] && e[1] === rhy[1] ? " selected" : "") + ">" + e[2] + "</option>"; ropts += "</optgroup>"; }
+    const sp = (s && s.panel) || {}; const cur = sp.rhyCur || 1; // v2.6.13 — Rythme / Rythme 2 / Rythme 3 : variations du morceau + marqueur « actuel » (un seul à la fois)
+    const rOpts = (sel) => { let o = ""; for (const [g, list] of Object.entries(knGroups(KN.rhythms))) { o += "<optgroup label=\"" + g + "\">"; for (const e of list) o += "<option value=\"" + e[0] + "/" + e[1] + "\"" + (sel && e[0] === sel[0] && e[1] === sel[1] ? " selected" : "") + ">" + e[2] + "</option>"; o += "</optgroup>"; } return o; };
+    const curLbl = "<label title=\"Rythme ACTUEL du morceau : coché, il part en direct au clavier ET il est enregistré dans les paramètres du morceau (un seul à la fois)\"><input type=\"radio\" name=\"m4rhycur\"";
     const tr = gv("20 00 02");
     h += "<div class=\"partCard\" style=\"flex:1;min-width:230px\"><div class=\"pcLbl\">Rythme &amp; réglages</div>"
-      + "<div class=\"row\" style=\"margin:4px 0\"><b style=\"width:64px\">Rythme</b><select data-rhy=\"1\" style=\"flex:1;min-width:0\">" + ropts + "</select></div>"
+      + "<div class=\"row\" style=\"margin:4px 0\"><b style=\"width:64px\">Rythme</b><select data-rhy=\"1\" style=\"flex:1;min-width:0\">" + rOpts(rhy) + "</select>" + curLbl + " data-rhycur=\"1\"" + (cur === 1 ? " checked" : "") + "> actuel</label></div>"
+      + "<div class=\"row\" style=\"margin:4px 0\"><b style=\"width:64px\">Rythme 2</b><select data-rhyvar=\"2\" style=\"flex:1;min-width:0\" title=\"Variation 2 : choisie ici, appelée par le bouton Rythme 2 (M5) ou un timelapse — pas envoyée au clavier sauf si marquée actuelle\">" + rOpts(sp.rhy2 ? matchRhythm(sp.rhy2[0], sp.rhy2[1]) : null) + "</select>" + curLbl + " data-rhycur=\"2\"" + (cur === 2 ? " checked" : "") + "> actuel</label></div>"
+      + "<div class=\"row\" style=\"margin:4px 0\"><b style=\"width:64px\">Rythme 3</b><select data-rhyvar=\"3\" style=\"flex:1;min-width:0\" title=\"Variation 3 : choisie ici, appelée par le bouton Rythme 3 (M5) ou un timelapse — pas envoyée au clavier sauf si marquée actuelle\">" + rOpts(sp.rhy3 ? matchRhythm(sp.rhy3[0], sp.rhy3[1]) : null) + "</select>" + curLbl + " data-rhycur=\"3\"" + (cur === 3 ? " checked" : "") + "> actuel</label></div>"
       + "<div class=\"row\" style=\"margin:4px 0\"><b style=\"width:64px\">Transpose</b><select data-key=\"20 00 02\" style=\"flex:1;min-width:0\">"
       + M4_TR.map((t, i) => "<option value=\"" + i + "\"" + ((tr === null ? 5 : tr) === i ? " selected" : "") + ">" + (i === 5 ? "C (aucune)" : t) + "</option>").join("") + "</select></div>"
-      + "<div class=\"hint\">Le rythme part en 2 écritures (enable 20 04 01 puis 20 60 00) ; transpose = 20 00 02 (00=G … 05=C … 0B=F#).</div></div>";
+      + "<div class=\"hint\">Rythmes 2 et 3 = variations pour changer de pattern dans un timelapse (boutons Rythme 2/3 de M5) ; le rythme part en 2 écritures (enable 20 04 01 puis 20 60 00) ; transpose = 20 00 02 (00=G … 05=C … 0B=F#).</div></div>";
   }
   // ===== PAVÉ Réverb (20 08 10/11/12) + presets =====
   { const on = gv("20 08 10"); const ty = gv("20 08 11"); const dp = gv("20 08 12");
@@ -1823,6 +1833,10 @@ function m4DspWrite() {
   m4Write("20 08 21", cur.slice(0, 9), "DSP → " + M4_DSP_T[cur[0]]);
 }
 // ---------- Écouteurs M4 ----------
+function m5RhySend(r, idx) { // v2.6.13 — envoi d'un rythme « actuel » en 2 écritures (enable 20 04 01 puis 20 60 00 via m4Write → enregistré dans les paramètres du morceau)
+  sendItw([0x20, 0x04, 0x01], [0x01]);
+  setTimeout(() => { m4Write("20 60 00", [r[4] & 0x7f, r[5] & 0x7f], "Rythme" + (idx ? " " + idx : "") + " (actuel) → " + r[2]); }, 120);
+}
 document.getElementById("m4Grid").addEventListener("change", (ev) => {
   const t = ev.target;
   if (t.dataset.sndsel) { // sélecteur de son — pavé Clavier (RIGHT 1/2, LEFT) uniquement (v2.4 : sélecteurs des parts APC retirés)
@@ -1843,12 +1857,36 @@ document.getElementById("m4Grid").addEventListener("change", (ev) => {
     else { s.panel.chchans[d.lbl] = v; songsSave(); log("🎛 Canal de « " + d.lbl + " » → " + v + " (mémorisé pour « " + s.title + " »).", "ok"); }
     renderM4(); return;
   }
+  if (t.dataset.rhyvar) { // v2.6.13 — Rythme 2/3 : variation mémorisée pour le morceau (appelée par les boutons Rythme 2/3 de M5 ou un timelapse)
+    const s = songs.songs.find(x => x.id === curSongId);
+    if (!s) { log("🎛 Aucun morceau sélectionné — choisis un morceau (M1).", "ko"); return; }
+    if (!s.panel) s.panel = { tempo: null, params: {} };
+    const idx = parseInt(t.dataset.rhyvar, 10);
+    s.panel["rhy" + idx] = t.value.split("/").map(Number); songsSave();
+    const r = KN.rhythms.find(x => x[0] === s.panel["rhy" + idx][0] && x[1] === s.panel["rhy" + idx][1]);
+    if ((s.panel.rhyCur || 1) === idx && r) { m5RhySend(r, idx); renderM4(); } // marqué actuel → on l'entend tout de suite + il devient le rythme du morceau
+    else log("🎛 Rythme " + idx + " → " + (r ? r[2] : "?") + " (variation mémorisée pour « " + s.title + " » — appelle-la par le bouton Rythme " + idx + " de M5 ou dans un timelapse).", "ok");
+    return;
+  }
+  if (t.dataset.rhycur) { // v2.6.13 — marqueur « actuel » (un seul à la fois) : le rythme coché part en direct ET s'enregistre dans les paramètres du morceau
+    const s = songs.songs.find(x => x.id === curSongId);
+    if (!s) return;
+    if (!s.panel) s.panel = { tempo: null, params: {} };
+    const idx = parseInt(t.dataset.rhycur, 10);
+    s.panel.rhyCur = idx; songsSave();
+    const arr = (idx === 1) ? ((s.panel.params && s.panel.params["20 60 00"]) || null) : s.panel["rhy" + idx]; // v2.6.13 — idx 1 : valeurs SYSEX mémorisées (matchRhythm) ; idx 2/3 : pc/bank du sélecteur
+    const r = (idx === 1) ? (arr ? matchRhythm(arr[0], arr[1]) : null) : (arr ? (KN.rhythms.find(x => x[0] === arr[0] && x[1] === arr[1]) || null) : null);
+    if (r) { m5RhySend(r, idx); log("🎛 Rythme " + idx + " marqué ACTUEL : envoyé au clavier + enregistré comme rythme de « " + s.title + " ».", "ok"); }
+    else log("🎛 Rythme " + idx + " marqué actuel — choisis d'abord son rythme dans la liste " + (idx === 1 ? "« Rythme »." : "« Rythme " + idx + " ».") + " pour l'entendre.", "info");
+    renderM4(); return;
+  }
   if (t.dataset.rhy) {
     const [pc, bk] = t.value.split("/").map(Number);
     const r = KN.rhythms.find(x => x[0] === pc && x[1] === bk);
     if (!r) return;
     sendItw([0x20, 0x04, 0x01], [0x01]);
     setTimeout(() => { m4Write("20 60 00", [r[4] & 0x7f, r[5] & 0x7f], "Rythme → " + r[2]); }, 120);
+    const s0 = songs.songs.find(x => x.id === curSongId); if (s0) { if (!s0.panel) s0.panel = { tempo: null, params: {} }; s0.panel.rhyCur = 1; songsSave(); } // v2.6.13 — le sélecteur principal redevient le rythme actuel
     return;
   }
   if (t.dataset.dsptype !== undefined && t.tagName === "SELECT") { m4DspWrite(); renderM4(); return; }
@@ -2037,6 +2075,7 @@ const M5_RHY = { // v2.6.6 — rangée ② au PROTOCOLE DU PANNEAU (relevé ● 
   memory:   { lbl: "APC Memory",   key: "20 60 03", tog: true }
 };
 let m5St = {}; // v2.6.6 — états ON/OFF LIVE des commandes rythme, pilotés par les annonces ITR du clavier (20 60 08/09/0A-0E) + nos propres envois
+let m5Msa = null; // v2.6.13 — état du Multi Style Arranger (20 00 12 : 0=Off, 1/2/3) — badge du bouton actif de la rangée ② (null = inconnu)
 const M5_PAD_DEF = [ // modèle par défaut des 8 pads APC Key 25 (note = m5PadBase + index) — actions réaffectables en éditant ce tableau
   { act: { k: "scene", i: 0 }, lbl: "Scène 1" },
   { act: { k: "rhythm", id: "fill1" }, lbl: "Fill 1" },
@@ -2079,6 +2118,28 @@ function qaRun(act) { // exécute une action rapide ; renvoie le libellé si ex�
     const res = m4Write(r.key, [v & 0x7f], r.lbl + " → " + v);
     if (res && r.tog) { m5St[r.key] = (v & 1); m5QaRerender(); }
     return res ? (r.lbl + (r.cal ? " (" + r.cal + ")" : "")) : null; }
+  if (act.k === "msa") { // v2.6.13 — Multi Style Arranger (Bible p.28 : 20 00 12, 00=Off / 01-03 = 1/2/3) : écriture ITW, UN seul état actif à la fois
+    const v = act.v & 3, nm = ["Off", "1", "2", "3"][v];
+    if (!sendItw([0x20, 0x00, 0x12], [v])) return null;
+    m5Msa = v; m5QaRerender();
+    log("🎛 Multi Style Arranger → " + nm + " (sysex 20 00 12 = 0" + v + ").", "ok");
+    return "Multi Style Arranger → " + nm; }
+  if (act.k === "rhyvar") { // v2.6.13 — Rythme 2 / Rythme 3 : variations choisies en M4 (s.panel.rhy2/rhy3, stockées pc/bank comme le sélecteur) — changement de pattern insérable dans un timelapse ; PAS mémorisé dans les paramètres du morceau (seul le marqueur « actuel » de M4 enregistre)
+    const s = m5Song(); if (!s) { log("Choisis un morceau (M1) avant d'appeler un rythme.", "ko"); return null; }
+    let r = null;
+    if (act.i === 1) { // Rythme du morceau : paramètre mémorisé 20 60 00 (valeurs sysex), sinon le sélecteur M4
+      const arr = (s.panel && s.panel.params && s.panel.params["20 60 00"]) || null;
+      r = arr ? matchRhythm(arr[0], arr[1]) : null;
+      if (!r) { const selR = document.querySelector("#m4Grid select[data-rhy]"); if (selR && selR.value) { const v = selR.value.split("/").map(Number); r = KN.rhythms.find(x => x[0] === v[0] && x[1] === v[1]) || null; } }
+    } else {
+      const arr = (s.panel && s.panel["rhy" + act.i]) || null;
+      r = arr ? (KN.rhythms.find(x => x[0] === arr[0] && x[1] === arr[1]) || null) : null;
+    }
+    if (!r) { log("Rythme " + act.i + " : aucun rythme choisi — règle-le en M4 (PARTIES, pavé Rythme & réglages).", "ko"); return null; }
+    if (!sendItw([0x20, 0x04, 0x01], [0x01])) return null; // enable temps réel, comme le sélecteur Rythme de M4
+    setTimeout(() => { sendItw([0x20, 0x60, 0x00], [r[4] & 0x7f, r[5] & 0x7f]); }, 120); // 2 écritures, comme data-rhy (20 60 00 = n° du rythme)
+    log("🎛 Rythme " + act.i + " → " + r[2] + " (20 60 00 = " + (r[4] & 0x7f) + " " + (r[5] & 0x7f) + " — variation, non mémorisée dans le morceau).", "ok");
+    return "Rythme " + act.i + " → " + r[2]; }
   if (act.k === "itw") { // v2.6.5 — rejeu d'une annonce capturée : même adresse, mêmes valeurs ; v2.6.8 — libellé humain si l'adresse est connue
     const a = act.a.split(" ").map(x => parseInt(x, 16));
     if (!sendItw(a, act.v)) return null;
@@ -2100,18 +2161,22 @@ function qaRun(act) { // exécute une action rapide ; renvoie le libellé si ex�
 function m5FillOff(act) { // v2.6.12 — Fill In 1/2 : le ON doit être suivi d'un OFF dans le timelapse, sinon le break continue indéfiniment (demande Yves) ; OFF inséré à la MÊME mesure par défaut — déplacé d'une/deux mesures = break plus long
   return (act && act.k === "rhythm" && (act.id === "fill1" || act.id === "fill2")) ? { k: "rhythm", id: act.id, v: 0 } : null;
 }
-function qaFire(act, lbl) { // action immédiate + capture REC si l'apprentissage tourne
+function autoBeat() { const p = posInfo(); return p ? (p.beat || 1) : 1; } // v2.6.13 — temps courant (1-4) du compteur
+function tlSort(a, b) { return (a.m - b.m) || ((a.b || 1) - (b.b || 1)); } // v2.6.13 — tri mesure PUIS temps
+function m5EvPos(e) { return (e.m - 1) + (((e.b || 1) - 1) / 4); } // v2.6.13 — position d'un événement en mesures fractionnaires (temps 1-4)
+function autoPos() { const p = posInfo(); if (!p) return 0; const pp = Math.max(1, ppq()); return ((p.meas - 1) + ((p.beat - 1) + (p.tick || 0) / pp) / 4); } // v2.6.13 — position courante en mesures fractionnaires
+function qaFire(act, lbl) { // action immédiate + capture REC si l'apprentissage tourne ; v2.6.13 — chaque capture emporte le TEMPS (1-4) en plus de la mesure
   const res = qaRun(act);
   if (res && m5Listen) { // v2.6.6 — mode « écoute » de l'éditeur : l'appui est ajouté au timelapse sélectionné (et exécuté)
     m5Listen = false;
     const tls = m5Tls(); const i = parseInt(document.getElementById("m5TlSel").value, 10); const tl = tls && tls[i];
-    if (tl) { const mIns = autoMeas(); tl.events.push({ m: mIns, lbl: lbl || res, act: JSON.parse(JSON.stringify(act)) });
-      const off = m5FillOff(act); if (off) { tl.events.push({ m: mIns, lbl: M5_RHY[off.id].lbl + " OFF (relâchement)", act: off }); log("↳ « " + M5_RHY[off.id].lbl + " OFF » ajouté à la même mesure — déplace-le d'une ou deux mesures pour un break plus long.", "info"); }
-      tl.events.sort((a, b) => a.m - b.m); songsSave(); m5TlSelRefresh(); document.getElementById("m5TlSel").value = String(i);
-      log("🎧 Appui ajouté à « " + tl.name + " » : " + (lbl || res) + " (mesure " + mIns + ").", "ok"); }
+    if (tl) { const mIns = autoMeas(), bIns = autoBeat(); tl.events.push({ m: mIns, b: bIns, lbl: lbl || res, act: JSON.parse(JSON.stringify(act)) });
+      const off = m5FillOff(act); if (off) { tl.events.push({ m: mIns, b: bIns, lbl: M5_RHY[off.id].lbl + " OFF (relâchement)", act: off }); log("↳ « " + M5_RHY[off.id].lbl + " OFF » ajouté à la même mesure — déplace-le d'une ou deux mesures pour un break plus long.", "info"); }
+      tl.events.sort(tlSort); songsSave(); m5TlSelRefresh(); document.getElementById("m5TlSel").value = String(i);
+      log("🎧 Appui ajouté à « " + tl.name + " » : " + (lbl || res) + " (mesure " + mIns + ", temps " + bIns + ").", "ok"); }
   }
-  if (res && m5rec) { const mIns = autoMeas(); m5rec.push({ m: mIns, lbl: lbl || res, act: JSON.parse(JSON.stringify(act)) });
-    const off = m5FillOff(act); if (off) m5rec.push({ m: mIns, lbl: M5_RHY[off.id].lbl + " OFF (relâchement)", act: off });
+  if (res && m5rec) { const mIns = autoMeas(), bIns = autoBeat(); m5rec.push({ m: mIns, b: bIns, lbl: lbl || res, act: JSON.parse(JSON.stringify(act)) });
+    const off = m5FillOff(act); if (off) m5rec.push({ m: mIns, b: bIns, lbl: M5_RHY[off.id].lbl + " OFF (relâchement)", act: off });
     m5RecRefresh(); }
   return res;
 }
@@ -2153,11 +2218,15 @@ function m5Cc82State(v) { // v2.6.7 — les CC82 reçus DU CLAVIER pilotent les 
   const rid = CC82_IDS[v]; if (!rid) return; const r = M5_RHY[rid];
   if (r && r.tog && r.key) { m5St[r.key] = 1; m5QaRerender(); } // Intro/Ending annoncés ON par le clavier (Fill/CountIn one-shot : tog absent, pas de badge)
 }
-function m5OnFcStop(tx) { // v2.6.10 — arrêt du morceau (FC reçu du clavier OU envoyé par la page) : compteur de mesures RÉINITIALISÉ + automation en PAUSE ARMÉE (demande Yves)
-  pulse = 0; posMeasOffset = 0; m5FcFrozen = true; lastF8At = 0; // compteur à la mesure 1, FIGÉ (v2.6.11 — pas d'interpolation libre ; lastF8At=0 aussi pour un FC ENVOYÉ par la page, sinon la position restait « comptée »)
+function m5StopMeas() { // v2.6.13 — mesure de départ du deck M2 (champ 📼 Départ mesure) : c'est là que le compteur se fige à l'arrêt (demande Yves). PAS de clamp à la grille : la mesure de départ peut être au-delà du texte (timelapse = compteur du morceau réel).
+  let n = parseInt(document.getElementById("startM").value, 10); if (!n || n < 1) n = 1;
+  return n;
+}
+function m5OnFcStop(tx) { // v2.6.10 — arrêt du morceau (FC reçu du clavier OU envoyé par la page) : compteur de mesures RÉINITIALISÉ + automation en PAUSE ARMÉE ; v2.6.13 — la réinitialisation se fait sur la MESURE DE DÉPART choisie (au lieu de la mesure 1)
+  pulse = 0; posMeasOffset = m5StopMeas() - 1; m5FcFrozen = true; lastF8At = 0; // compteur FIGÉ sur la mesure de départ (v2.6.11 — pas d'interpolation libre ; lastF8At=0 aussi pour un FC ENVOYÉ par la page, sinon la position restait « comptée »)
   if (m5armed) {
     m5armedIdx = 0; m5Halted = true;
-    log("🎬 Automation « " + m5armed.name + " » : compteur remis à 1 — elle RESTE ARMÉE et repartira du début au prochain départ (FA/FB). ⏹ pour désarmer.", "info");
+    log("🎬 Automation « " + m5armed.name + " » : compteur remis à la mesure de départ " + (posMeasOffset + 1) + " — elle RESTE ARMÉE et repartira du début au prochain départ (FA/FB). ⏹ pour désarmer.", "info");
     m5ArmLblRefresh();
   }
 }
@@ -2172,7 +2241,7 @@ function m5RecCap(kind, chOrAdr, v) {
   if (kind === "itw") { act = { k: "itw", a: chOrAdr, v: v.slice() }; lbl = m5ItwHuman(chOrAdr, v) ? (m5ItwHuman(chOrAdr, v) + " (clavier — sysex " + chOrAdr + " = " + hex(v) + ")") : ("SYSEX " + chOrAdr + " = " + hex(v) + " (clavier)"); } // v2.6.8 — libellé humain quand l'adresse est connue (ex. « Fill In 1 OFF (clavier — sysex 20 60 0C = 00) »)
   else if (CC82_IDS[v] !== undefined) { act = { k: "rhythm", id: CC82_IDS[v] }; const r = M5_RHY[CC82_IDS[v]]; lbl = (r ? r.lbl : "CC82") + " (CC82=" + v + ", clavier ch" + chOrAdr + ")"; }
   else { act = { k: "cc", ch: chOrAdr, c: 82, v: v }; lbl = "CC82 = " + v + " (clavier ch" + chOrAdr + ")"; }
-  m5rec.push({ m: autoMeas(), lbl, act });
+  m5rec.push({ m: autoMeas(), b: autoBeat(), lbl, act });
   m5RecRefresh();
   log("● REC ← clavier : " + lbl, "clock");
 }
@@ -2180,7 +2249,15 @@ function m5RecRefresh() { document.getElementById("m5RecCount").textContent = m5
 function m5QaRerender() { // v2.6.6 — badges d'état des boutons rythme de la rangée ② (sans reconstruire toute la rangée : les sélecteurs ne clignotent pas)
   document.querySelectorAll("#m5Quick button[data-qa]").forEach(b => {
     let act = null; try { act = JSON.parse(b.dataset.qa); } catch (e) {}
-    if (!act || act.k !== "rhythm") return;
+    if (!act) return;
+    if (act.k === "msa") { // v2.6.13 — Multi Style Arranger : badge du bouton ACTIF (un seul à la fois)
+      const nm = ["MSA Off", "MSA 1", "MSA 2", "MSA 3"][act.v & 3];
+      const on = (m5Msa === (act.v & 3));
+      b.textContent = nm + (on ? " ●" : "");
+      b.style.borderColor = on ? "#7a4fd0" : ""; b.style.borderWidth = on ? "2px" : "";
+      return;
+    }
+    if (act.k !== "rhythm") return;
     const r = M5_RHY[act.id]; if (!r || !r.tog) return;
     const v = m5St[r.key];
     b.textContent = r.lbl + (v === 1 ? " ●ON" : "");
@@ -2248,7 +2325,7 @@ function m5Analyse() {
       + "<td style=\"text-align:center\">" + (cnt(a, b, "rv") || "·") + "</td><td style=\"text-align:center\">" + (cnt(a, b, "preset") || "·") + "</td>"
       + "<td><button data-sectren=\"" + i + "\" title=\"Renommer la section (mémorisé pour le morceau)\">✏️</button></td></tr>";
   });
-  h += "</table><div class=\"hint\">Total : " + (m - 1) + " mesure(s) avec répétitions. ⚠️ Les blocs || xN comptent ici chaque répétition, mais le compteur de lecture de la page (et le surlignage) numérote les mesures du TEXTE sans doubler les blocs.</div>";
+  h += "</table><div class=\"hint\">Total : " + (m - 1) + " mesure(s) avec répétitions. Les blocs || xN comptent chaque répétition — depuis la v2.6.13, le compteur du deck (M2) affiche la mesure JOUÉE (les répétitions continuent la numérotation).</div>";
   document.getElementById("m5Sect").innerHTML = h;
   window.__m5sects = sects;
 }
@@ -2273,7 +2350,11 @@ function renderM5() {
     + m5QaBtn({ k: "rhythm", id: "variation" }, "Variation") + m5QaBtn({ k: "rhythm", id: "break" }, "Break")
     + m5QaBtn({ k: "rhythm", id: "countin" }, "Count In") + m5QaBtn({ k: "rhythm", id: "stop" }, "⏹ Stop")
     + "<span class=\"hint\">|</span>" + m5QaBtn({ k: "rhythm", id: "pianist" }, "Pianist") + m5QaBtn({ k: "rhythm", id: "fingered" }, "Fingered")
-    + m5QaBtn({ k: "rhythm", id: "memory" }, "Memory") + "</div>";
+    + m5QaBtn({ k: "rhythm", id: "memory" }, "Memory")
+    + "<span class=\"hint\">|</span>" + m5QaBtn({ k: "rhyvar", i: 1 }, "Rythme 1", "Rythme du morceau (choisi en M4) — retour de pattern après une variation") + m5QaBtn({ k: "rhyvar", i: 2 }, "Rythme 2", "Variation 2 choisie en M4 (PARTIES) — changement de pattern pour le timelapse") + m5QaBtn({ k: "rhyvar", i: 3 }, "Rythme 3", "Variation 3 choisie en M4 (PARTIES) — changement de pattern pour le timelapse")
+    + "<span class=\"hint\">|</span>" + m5QaBtn({ k: "msa", v: 0 }, "MSA Off", "Multi Style Arranger Off (20 00 12 = 00) — un seul état actif à la fois")
+    + m5QaBtn({ k: "msa", v: 1 }, "MSA 1", "Multi Style Arranger 1 (20 00 12 = 01)") + m5QaBtn({ k: "msa", v: 2 }, "MSA 2", "Multi Style Arranger 2 (20 00 12 = 02)") + m5QaBtn({ k: "msa", v: 3 }, "MSA 3", "Multi Style Arranger 3 (20 00 12 = 03)")
+    + "</div>";
   // ③ Réverb ON/OFF par part APC (les parts marquées rv)
   h += "<div class=\"row\"><b style=\"min-width:110px\">③ Réverb</b>";
   for (const d of M4_DRUMS.filter(x => x.rv)) h += "<button data-qarv=\"" + d.lbl + "\" title=\"Réverb CC91 ON/OFF de " + d.lbl + " (état lu dans la valeur mémorisée)\">RV " + d.lbl + "</button>";
@@ -2344,16 +2425,16 @@ function m5ArmLblRefresh() { // v2.6.6 — bandeau automation : conditions clair
   if (!m5armed) { el.textContent = m5LastScene ? ("dernière scène appliquée : " + m5LastScene) : ""; return; }
   const ev = m5armed.events[m5armedIdx];
   const scn = (m5armed.scene !== undefined && m5armed.scene !== null) ? ("scène liée : " + ((scenesLoad()[m5armed.scene] || {}).name || "?") + " (appliquée à l'armement)") : "sans scène liée";
-  el.textContent = "⏳ Armé « " + m5armed.name + " » · mesure " + autoMeas() + " · prochaine : " + (ev ? ("M" + ev.m + " " + m5EvLbl(ev)) : "(terminé)") + " · " + scn + (m5LastScene ? " · dernière scène : " + m5LastScene : "");
+  el.textContent = "⏳ Armé « " + m5armed.name + " » · mesure " + autoMeas() + " · prochaine : " + (ev ? ("M" + ev.m + ":" + (ev.b || 1) + " " + m5EvLbl(ev)) : "(terminé)") + " · " + scn + (m5LastScene ? " · dernière scène : " + m5LastScene : "");
 }
 function m5TlArm(i) {
   const tls = m5Tls(); if (!tls) { log("Choisis un morceau (M1) avant d'armer un timelapse.", "ko"); return; }
   const tl = tls[i]; if (!tl || !tl.events || !tl.events.length) { log("Choisis d'abord un timelapse avec des actions.", "info"); return; }
-  tl.events.sort((a, b) => a.m - b.m);
-  m5armed = tl; m5armedIdx = tl.events.findIndex(e => e.m > autoMeas()); if (m5armedIdx < 0) m5armedIdx = tl.events.length;
+  tl.events.sort(tlSort);
+  m5armed = tl; m5armedIdx = tl.events.findIndex(e => m5EvPos(e) > autoPos()); if (m5armedIdx < 0) m5armedIdx = tl.events.length; // v2.6.13 — saut en position fractionnaire (mesure + temps)
   m5Halted = false; m5armedSongId = curSongId; // v2.6.10 — armement lié au morceau courant ; un changement de morceau désarmera
   if (tl.scene !== undefined && tl.scene !== null) { log("🔗 Scène liée appliquée d'abord.", "info"); m4SceneApply(tl.scene); }
-  log("🎬 Timelapse « " + tl.name + " » ARMÉ (" + tl.events.length + " action(s)) — chaque action part quand le COMPTEUR de mesures atteint sa mesure (le compteur avance sur l'horloge F8 du clavier : le rythme doit tourner) — " + m5armedIdx + " restante(s) maintenant.", "ok");
+  log("🎬 Timelapse « " + tl.name + " » ARMÉ (" + tl.events.length + " action(s)) — chaque action part quand le COMPTEUR atteint sa mesure ET son temps (le compteur avance sur l'horloge F8 du clavier : le rythme doit tourner) — " + m5armedIdx + " restante(s) maintenant.", "ok");
   m5ArmLblRefresh();
 }
 function m5TlCurRefresh() { // v2.6.6 — éditeur vivant : mesure en cours + ligne de la prochaine action surlignée pendant l'exécution
@@ -2373,12 +2454,12 @@ setInterval(() => { // v2.6 : poll léger — tir des actions armées + affichag
   if (!m5armed) return;
   if (m5Halted) { m5ArmLblRefresh(); return; } // v2.6.10 — morceau stoppé (FC) : l'automation reste ARMÉE mais attend le prochain départ (FA/FB)
   const meas = autoMeas();
-  while (m5armedIdx < m5armed.events.length && m5armed.events[m5armedIdx].m <= meas) {
+  while (m5armedIdx < m5armed.events.length && m5EvPos(m5armed.events[m5armedIdx]) <= autoPos()) { // v2.6.13 — déclenchement au TEMPS EXACT (position fractionnaire mesure+temps) ; anciens timelapses sans temps = temps 1
     const e = m5armed.events[m5armedIdx++];
     if (e.act && ((e.act.k === "rhythm" && e.act.id === "stop") || (e.act.k === "cc" && e.act.c === 82 && e.act.v === 0))) { // v2.6.9 — un timelapse n'arrête JAMAIS le morceau : les « Stop » capturés (relâchements CC82=0 des Fill) sont ignorés au rejeu — le Stop reste un geste manuel
-      log("🎬 M" + e.m + " : ⏹ Stop ignoré au rejeu (un timelapse n'arrête pas le morceau — le Stop reste manuel) — " + e.lbl, "info"); continue; }
+      log("🎬 M" + e.m + ":" + (e.b || 1) + " : ⏹ Stop ignoré au rejeu (un timelapse n'arrête pas le morceau — le Stop reste manuel) — " + e.lbl, "info"); continue; }
     const r = qaRun(e.act);
-    log("🎬 M" + e.m + " : " + (r || "(refusée)") + " — " + m5EvLbl(e), r ? "ok" : "info");
+    log("🎬 M" + e.m + ":" + (e.b || 1) + " : " + (r || "(refusée)") + " — " + m5EvLbl(e), r ? "ok" : "info");
   }
   if (m5armedIdx >= m5armed.events.length) { log("🎬 Timelapse « " + m5armed.name + " » terminé — il RESTE ARMÉ (repartira du début après un arrêt FC puis un départ ; ⏹ pour désarmer).", "ok"); } // v2.6.10 — plus de désarmement automatique
   m5ArmLblRefresh();
@@ -2390,8 +2471,8 @@ document.getElementById("m5TlSave").onclick = () => {
   if (!m5rec || !m5rec.length) { log("Buffer ● REC vide — coche ● REC, joue tes actions (boutons rapides / pads), puis reviens.", "info"); return; }
   const nm = prompt("Nom du timelapse (" + m5rec.length + " action(s), de la mesure " + m5rec[0].m + " à " + m5rec[m5rec.length - 1].m + ") ?");
   if (nm && nm.trim()) {
-    m5rec.sort((a, b) => a.m - b.m);
-    tls.push({ name: nm.trim(), events: m5rec.map(e => ({ m: e.m, lbl: e.lbl, act: e.act })), scene: null, ts: Date.now() });
+    m5rec.sort(tlSort);
+    tls.push({ name: nm.trim(), events: m5rec.map(e => ({ m: e.m, b: e.b || 1, lbl: e.lbl, act: e.act })), scene: null, ts: Date.now() });
     songsSave(); m5TlSelRefresh(); document.getElementById("m5TlSel").value = String(tls.length - 1);
     m5rec = null; document.getElementById("m5Rec").checked = false; m5RecRefresh();
     log("💾 Timelapse « " + nm.trim() + " » enregistré pour « " + m5Song().title + " » (éditable par ✏️).", "ok");
@@ -2401,8 +2482,8 @@ document.getElementById("m5TlAppend").onclick = () => { // v2.6.6 — append du 
   const tls = m5Tls(); const i = parseInt(document.getElementById("m5TlSel").value, 10); const tl = tls && tls[i];
   if (!tl) { log("Choisis d'abord le timelapse à compléter (ou 💾 Enregistrer-sous pour en créer un).", "info"); return; }
   if (!m5rec || !m5rec.length) { log("Le buffer ● REC est vide — coche ● REC et joue tes actions d'abord.", "info"); return; }
-  const evs = m5rec.map(e => ({ m: e.m, lbl: e.lbl, act: e.act })).sort((a, b) => a.m - b.m);
-  tl.events = tl.events.concat(evs).sort((a, b) => a.m - b.m);
+  const evs = m5rec.map(e => ({ m: e.m, b: e.b || 1, lbl: e.lbl, act: e.act })).sort(tlSort);
+  tl.events = tl.events.concat(evs).sort(tlSort);
   songsSave(); m5TlSelRefresh(); document.getElementById("m5TlSel").value = String(i);
   log("➕ " + evs.length + " action(s) du buffer ajoutée(s) à « " + tl.name + " » (" + tl.events.length + " au total, triées) — le buffer est conservé (🧹 pour le vider).", "ok");
 };
@@ -2415,15 +2496,15 @@ document.getElementById("m5TlMerge").onclick = () => { // v2.6.6 — fusion d'un
   const n = parseInt(r.trim(), 10);
   const src = (!isNaN(n) && tls[n - 1] && n - 1 !== i) ? tls[n - 1] : tls.find((t, j) => j !== i && t.name.toLowerCase() === r.trim().toLowerCase());
   if (!src) { log("Timelapse source introuvable (ou identique à la cible).", "ko"); return; }
-  const evs = (src.events || []).map(e => ({ m: e.m, lbl: e.lbl, act: e.act }));
-  tl.events = tl.events.concat(evs).sort((a, b) => a.m - b.m);
+  const evs = (src.events || []).map(e => ({ m: e.m, b: e.b || 1, lbl: e.lbl, act: e.act }));
+  tl.events = tl.events.concat(evs).sort(tlSort);
   if (src.scene !== undefined && src.scene !== null && (tl.scene === undefined || tl.scene === null)) tl.scene = src.scene; // la scène liée de la source est reprise si la cible n'en a pas
   songsSave(); m5TlSelRefresh(); document.getElementById("m5TlSel").value = String(i);
   log("⧉ " + evs.length + " action(s) de « " + src.name + " » fusionnée(s) dans « " + tl.name + " » (" + tl.events.length + " au total, triées) — « " + src.name + " » est conservé (supprime-le via 🗑 si besoin).", "ok");
 };
 document.getElementById("m5TlDup").onclick = () => {
   const tls = m5Tls(); const i = parseInt(document.getElementById("m5TlSel").value, 10); if (!tls || !tls[i]) { log("Choisis d'abord un timelapse.", "info"); return; }
-  tls.push({ ...tls[i], name: tls[i].name + " (copie)", events: tls[i].events.map(e => ({ m: e.m, lbl: e.lbl, act: e.act })), ts: Date.now() });
+  tls.push({ ...tls[i], name: tls[i].name + " (copie)", events: tls[i].events.map(e => ({ m: e.m, b: e.b || 1, lbl: e.lbl, act: e.act })), ts: Date.now() });
   songsSave(); m5TlSelRefresh(); log("⧉ Timelapse dupliqué — renomme-le via l'éditeur si besoin.", "ok");
 };
 document.getElementById("m5TlLink").onclick = () => {
@@ -2449,6 +2530,8 @@ function m5AddOpts() { // options d'action pour l'ajout manuel
   for (const d of M4_ALL()) { o += "<option value='" + JSON.stringify({ k: "mute", lbl: d.lbl, on: true }) + "'>Mute " + d.lbl + " OFF (muette)</option>" // v2.6.7 — libellés inversés : ON = la partie joue
     + "<option value='" + JSON.stringify({ k: "mute", lbl: d.lbl, on: false }) + "'>Mute " + d.lbl + " ON (elle joue)</option>"; }
   for (const id of Object.keys(M5_RHY)) o += "<option value='" + JSON.stringify({ k: "rhythm", id }) + "'>Rythme : " + M5_RHY[id].lbl + "</option>";
+  for (const i of [1, 2, 3]) o += "<option value='" + JSON.stringify({ k: "rhyvar", i }) + "'>Rythme " + i + " (variation du morceau — M4)</option>"; // v2.6.13
+  for (const v of [0, 1, 2, 3]) o += "<option value='" + JSON.stringify({ k: "msa", v }) + "'>Multi Style Arranger : " + ["Off", "1", "2", "3"][v] + "</option>"; // v2.6.13
   return o;
 }
 document.getElementById("m5TlEdit").onclick = () => {
@@ -2460,17 +2543,18 @@ document.getElementById("m5TlEdit").onclick = () => {
     + "<span class=\"hint\" id=\"m5TlCur\">mesure en cours : " + autoMeas() + "</span>"
     + "<span style=\"flex:1\"></span>"
     + "<button id=\"m5TlListen\" title=\"Mode écoute : le prochain appui sur un bouton rapide (ou pad) est AJOUTÉ à ce timelapse, à la mesure courante — l'action est aussi exécutée\">🎧 Écouter un appui</button>"
-    + "<span class=\"hint\">la mesure est éditable — les actions partent à leur mesure quand le timelapse est armé ; la prochaine est surlignée</span></div>"
+    + "<span class=\"hint\">la mesure ET le temps (1-4) sont éditables — les actions partent à leur mesure+temps quand le timelapse est armé ; la prochaine est surlignée</span></div>"
     + "<table style=\"width:100%;border-collapse:collapse;font-size:13px\">"
-    + "<tr><th style=\"text-align:left\">Mesure</th><th style=\"text-align:left\">Action</th><th></th><th></th></tr>";
+    + "<tr><th style=\"text-align:left\">Mesure</th><th style=\"text-align:left\">Tps</th><th style=\"text-align:left\">Action</th><th></th><th></th></tr>"; // v2.6.13 — colonne Tps (1-4) : l'action part au temps exact
   tl.events.forEach((e, j) => {
     const elbl = m5EvLbl(e); // v2.6.10 — libellé humain : les anciens « SYSEX 20 60 0C = 00 (clavier) » se réaffichent « Fill In 1 OFF (…) », et les Mute suivent la convention ON = la partie joue
     h += "<tr data-tlrow=\"" + j + "\"><td style=\"padding:2px 6px\"><input type=\"number\" data-tlm=\"" + j + "\" value=\"" + e.m + "\" min=\"1\" max=\"999\" style=\"width:64px\"></td>"
+      + "<td style=\"padding:2px 6px\"><input type=\"number\" data-tlb=\"" + j + "\" value=\"" + (e.b || 1) + "\" min=\"1\" max=\"4\" style=\"width:44px\" title=\"Temps (1-4) où l'action part\"></td>"
       + "<td style=\"padding:2px 6px;border-bottom:1px solid #eee\">" + elbl + "</td>"
       + "<td><button data-tltest=\"" + j + "\" title=\"Tester l'action MAINTENANT (elle est envoyée au clavier)\">▶</button></td>"
       + "<td><button data-tldel=\"" + j + "\" title=\"Supprimer cette action\">🗑</button></td></tr>";
   });
-  h += "</table><div class=\"row\" style=\"margin-top:4px\">➕ à la mesure <input type=\"number\" id=\"m5AddM\" value=\"" + autoMeas() + "\" min=\"1\" max=\"999\" style=\"width:64px\"> "
+  h += "</table><div class=\"row\" style=\"margin-top:4px\">➕ à la mesure <input type=\"number\" id=\"m5AddM\" value=\"" + autoMeas() + "\" min=\"1\" max=\"999\" style=\"width:64px\"> temps <input type=\"number\" id=\"m5AddB\" value=\"" + autoBeat() + "\" min=\"1\" max=\"4\" style=\"width:44px\" title=\"Temps (1-4)\"> "
     + "<select id=\"m5AddSel\" style=\"max-width:260px\">" + m5AddOpts() + "</select>"
     + "<button id=\"m5TlAdd\" title=\"Ajoute l'action choisie à la mesure choisie\">➕ Ajouter</button></div>";
   box.innerHTML = h;
@@ -2485,17 +2569,22 @@ document.getElementById("m5TlEdit").onclick = () => {
   document.getElementById("m5TlAdd").onclick = () => {
     let act = null; try { act = JSON.parse(document.getElementById("m5AddSel").value); } catch (e) {}
     const m = parseInt(document.getElementById("m5AddM").value, 10) || autoMeas();
+    const b = Math.min(4, Math.max(1, parseInt(document.getElementById("m5AddB").value, 10) || 1));
     if (!act) return;
-    const lbl = (act.k === "mute" ? muteLbl(act) : (act.k === "rhythm" ? M5_RHY[act.id].lbl : "?"));
-    tl.events.push({ m, lbl, act });
-    const off = m5FillOff(act); if (off) { tl.events.push({ m, lbl: M5_RHY[off.id].lbl + " OFF (relâchement)", act: off }); log("↳ « " + M5_RHY[off.id].lbl + " OFF » ajouté à la même mesure — déplace-le d'une ou deux mesures pour un break plus long.", "info"); } // v2.6.12
-    tl.events.sort((a, b) => a.m - b.m); songsSave();
-    log("➕ Action « " + lbl + " » ajoutée à la mesure " + m + " du timelapse « " + tl.name + " ».", "ok");
+    const lbl = (act.k === "mute" ? muteLbl(act) : (act.k === "rhythm" ? M5_RHY[act.id].lbl : (act.k === "rhyvar" ? ("Rythme " + act.i) : (act.k === "msa" ? ("Multi Style Arranger " + ["Off", "1", "2", "3"][act.v & 3]) : "?"))));
+    tl.events.push({ m, b, lbl, act });
+    const off = m5FillOff(act); if (off) { tl.events.push({ m, b, lbl: M5_RHY[off.id].lbl + " OFF (relâchement)", act: off }); log("↳ « " + M5_RHY[off.id].lbl + " OFF » ajouté à la même mesure — déplace-le d'une ou deux mesures pour un break plus long.", "info"); } // v2.6.12
+    tl.events.sort(tlSort); songsSave();
+    log("➕ Action « " + lbl + " » ajoutée à la mesure " + m + " temps " + b + " du timelapse « " + tl.name + " ».", "ok");
     document.getElementById("m5TlSel").value = String(i); document.getElementById("m5TlEdit").onclick();
   };
   box.querySelectorAll("[data-tlm]").forEach(inp => inp.addEventListener("change", () => {
     const j = parseInt(inp.dataset.tlm, 10); let v = parseInt(inp.value, 10); if (!v || v < 1) v = 1;
-    tl.events[j].m = v; tl.events.sort((a, b) => a.m - b.m); songsSave(); document.getElementById("m5TlEdit").onclick();
+    tl.events[j].m = v; tl.events.sort(tlSort); songsSave(); document.getElementById("m5TlEdit").onclick();
+  }));
+  box.querySelectorAll("[data-tlb]").forEach(inp => inp.addEventListener("change", () => { // v2.6.13 — édition du temps (1-4)
+    const j = parseInt(inp.dataset.tlb, 10); let v = parseInt(inp.value, 10); if (!v || v < 1) v = 1; if (v > 4) v = 4;
+    tl.events[j].b = v; tl.events.sort(tlSort); songsSave(); document.getElementById("m5TlEdit").onclick();
   }));
   box.querySelectorAll("[data-tltest]").forEach(b => b.addEventListener("click", () => {
     const e = tl.events[parseInt(b.dataset.tltest, 10)]; const r = qaRun(e.act); log("▶ Test : " + (r || "(refusée)") + " — " + m5EvLbl(e), r ? "ok" : "info");
