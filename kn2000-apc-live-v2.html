@@ -44,7 +44,7 @@
   #helpCard { background: #fff; border-radius: 10px; box-shadow: 0 8px 40px rgba(0,0,0,.4); max-width: 860px; width: 100%; max-height: 86vh; overflow-y: auto; padding: 16px 20px; }
   #helpCard .hint { color: #444; }
   #log p { margin: 0; white-space: pre-wrap; word-break: break-all; }
-  #log .ok { color: #7fdba0; } #log .ko { color: #ff8a80; } #log .info { color: #9ab; } #log .clock { color: #b591ff; }
+  #log .ok { color: #7fdba0; } #log .ko { color: #ff8a80; } #log .info { color: #9fc9ff; } #log .clock { color: #b591ff; }
   #logBtn.warn { background: #a33; color: #fff; }
   /* ═════════ V2 : modes M1/M2/M3 + charte P7 ═════════ */
   header .badge { background: #333; border-radius: 12px; padding: 3px 10px; font-size: 12px; }
@@ -239,6 +239,17 @@ Thème
       <label><input type="checkbox" id="drumLog" checked> Journal batterie ch16 (estampillé mesure:temps:pulse)</label>
     </div>
   </details>
+
+  <details open data-mode="m3">
+    <summary>⚙️ Réglages MIDI du KN2000 (enables de session — p.28)</summary>
+    <div class="row" style="align-items:center">
+      <label title="À la connexion et à chaque commande : si un enable requis est OFF, la page le bascule à 01 automatiquement (une fois par session). Décoché : avertissement dans le journal seulement. Les réglages garde-fou (Clock Select, Note Only) ne sont JAMAIS modifiés par la page."><input type="checkbox" id="enAuto" checked> <b>Auto Enable</b></label>
+      <button id="enReadBtn" title="Relit les 19 réglages de session au clavier (DRQ 2B) et rafraîchit le tableau + le test circuit">🔍 Revérifier la session</button>
+      <span class="hint" id="enSummary"></span>
+    </div>
+    <div id="enTable"></div>
+    <div class="hint">Lecture automatique à la sélection du port MIDI. Badge <b style="color:#0a7a0a">ON</b> = la commande liée passe · <b style="color:#c00">OFF</b> = elle sera ignorée par le clavier (Auto Enable la bascule à 01, sauf garde-fous) · <b style="color:#555">?</b> = pas encore lu. Les réglages garde-fou (⚠) ne sont jamais modifiés par la page — tu peux les changer au panneau du clavier.</div>
+  </details>
   <div id="viewM4" data-mode="m4" class="panel">
     <h2>🎛 Parties — morceau courant (M4)</h2>
     <div class="row" style="align-items:center">
@@ -382,6 +393,10 @@ async function initMidi() {
     rx.onchange = bind; tx.onchange = bind; bind();
     access.onstatechange = () => { fill(rx, [...access.inputs.values()], rx.value); fill(tx, [...access.outputs.values()], tx.value); bind(); };
     log("MIDI prêt — " + ins.length + " entrée(s), " + outs.length + " sortie(s).", "ok");
+    // v2.6.4 — démarrage de session : lecture des réglages enable (p.28) puis Auto Enable sur les réponses
+    enSt = {}; enFixed = {}; enRender();
+    log("⚙️ Session : lecture des " + KN_ENABLES.length + " réglages MIDI du KN2000 (p.28)" + (enAutoOn() ? " — Auto Enable ACTIF : les enables requis OFF seront basculés à 01 automatiquement, une seule fois." : " — Auto Enable désactivé : avertissements dans le journal seulement.") + "", "info");
+    enReadAll();
     if (midiOut) { sendTmpN(parseFloat(document.getElementById("bpmMan").value) || 120); log("📤 Tempo imposé au KN2000 au chargement (trame TMP, ♩ du champ BPM manuel).", "info"); }
   } catch (e) { log("Erreur accès MIDI : " + e.message, "ko"); }
 }
@@ -720,6 +735,7 @@ function onMidiMsg(ev) {
     const raw = [];
     for (let i = 12; i + 1 < d.length - 2 && raw.length < siz; i += 2) raw.push(((d[i] << 4) | d[i + 1]) & 0x7F);
     if (panelCap) panelCap.params[adr] = raw.slice(); // v0.32 : capture pour la sauvegarde du morceau (lecture panel)
+    if (EN_MAP[adr] && raw.length) enOnItr(adr, raw[0]); // v2.6.4 : réglages de session (enables p.28) → état + auto-fix
     const names = { "20 04 02": "REAL TIME COMMAND ENABLE", "20 04 03": "CLOCK SELECT", "20 00 25": "TEMPO (TMP)", "20 0A 25": "APC INPUT", "20 60 08": "SYNCHRO & BREAK" };
     let extra = "";
     if (adr === "20 04 02") extra = raw[0] === 1 ? " → temps réel ON (F8 émis)" : " → temps réel OFF (pas de F8 !)";
@@ -731,7 +747,7 @@ function onMidiMsg(ev) {
       if (t !== null) { extra = " → ♩" + t; measuredBpm = t; bpmEl.textContent = t + " BPM"; bpmSrc.textContent = "Tempo lu par DRQ 20 00 25 (réponse ITR)"; }
       else extra = " → candidats ♩" + t1 + " / ♩" + t2 + " (format à confirmer)";
     }
-    log("ITR : " + adr + " = " + hex(raw) + (names[adr] ? "  (" + names[adr] + extra + ")" : ""), "ok");
+    log("ITR : " + adr + " = " + hex(raw) + ((names[adr] || (EN_MAP[adr] && EN_MAP[adr].n)) ? "  (" + (names[adr] || EN_MAP[adr].n) + extra + ")" : ""), "ok");
   }
   else if (ev.data.length >= 2 && st >= 0x80 && st < 0xF0) {
     const chN = (ev.data[0] & 0x0F) + 1;
@@ -753,6 +769,11 @@ function onMidiMsg(ev) {
 
 function send(bytes, what) {
   if (!midiOut) { log("Pas de port TX sélectionné.", "ko"); return false; }
+  // v2.6.4 — enables requis pour les CC/PC et messages temps réel (les sysex sont couverts par sendItw → enItwNeeds)
+  const st0 = bytes[0] & 0xF0;
+  if (st0 === 0xB0) { const m = { 7: "20 0A 03", 11: "20 0A 04", 10: "20 0A 05", 64: "20 0A 06", 91: "20 0A 07", 93: "20 0A 07", 94: "20 0A 07", 1: "20 0A 08", 0: "20 0A 01", 32: "20 0A 01", 82: "20 0A 0D" }[bytes[1]]; if (m) enNeed([m], what || ("CC" + bytes[1])); }
+  else if (st0 === 0xC0) enNeed(["20 0A 00"], what || "Program Change");
+  else if (bytes[0] >= 0xFA && bytes[0] <= 0xFC) enNeed(["20 04 02"], what || "temps réel FA/FB/FC");
   midiOut.send(bytes);
   if (what) log("TX : " + hex(bytes) + "  (" + what + ")");
   return true;
@@ -826,6 +847,92 @@ function sendDrq(a1, a2, a3, label, siz) {
   const ck = body.reduce((x, y) => x ^ y, 0) & 0x7F;
   return send([0xF0, ...body, ck, 0xF7], "DRQ " + hex([a1, a2, a3]) + " SIZ " + siz + " (" + label + ")");
 }
+
+// ═════════ v2.6.4 — Réglages MIDI de session (enables p.28) : lecture DRQ à la connexion, tableau commande↔réglage, Auto Enable ═════════
+const KN_ENABLES = [
+  { a: "20 04 00", n: "NON-REAL TIME SYSEX ENABLE", auto: true, cmds: "sysex non temps réel : sons des parts (20 1n 00), volumes, rythme 20 60 00, réglages du morceau, Part Common 20 0A xx", exp: "Porte d'entrée des commandes sysex « lentes ». Note *2 p.28 : toujours reçu même si OFF, mais ON lève tout doute." },
+  { a: "20 04 01", n: "REAL TIME SYSEX ENABLE", auto: true, cmds: "sysex temps réel : APC 20 60 02-09, Synchro&Break 20 60 08, réverb/DSP 20 08 xx/21, transpose 20 00 02, trame TMP (tempo)", exp: "Sans lui, TOUTES les écritures temps réel sont ignorées par le clavier." },
+  { a: "20 04 02", n: "REAL TIME COMMAND ENABLE", auto: true, cmds: "FA/FB/FC (Start/Continue/Stop) et horloge F8 émise par le clavier", exp: "ON facilite le transport temps réel (validation terrain v0.17)." },
+  { a: "20 04 03", n: "CLOCK SELECT", guard: true, cmds: "—", exp: "00=Internal, 01=MIDI. ⚠ Garde-fou : mode d'horloge, pas un enable — la page ne le bascule JAMAIS (le KN2000 reste maître de son horloge, décision v0.13). Modifiable au panneau du clavier." },
+  { a: "20 0A 00", n: "PROG. CHANGE ENABLE", auto: true, cmds: "Program Change (sons des parts, y compris Add-on)", exp: "Sans lui, les changements de sons par PC sont ignorés." },
+  { a: "20 0A 01", n: "BANK SELECT ENABLE", auto: true, cmds: "CC0/CC32 — banques de sons (avant le PC)", exp: "Nécessaire pour atteindre les sons des autres banques." },
+  { a: "20 0A 02", n: "PITCH BEND ENABLE", auto: true, cmds: "Pitch Bend", exp: "Peu utilisé par la page." },
+  { a: "20 0A 03", n: "VOLUME ENABLE", auto: true, cmds: "CC7 — volume des parts (M4)", exp: "" },
+  { a: "20 0A 04", n: "EXPRESSION ENABLE", auto: true, cmds: "CC11 — expression", exp: "" },
+  { a: "20 0A 05", n: "PAN ENABLE", auto: true, cmds: "CC10 — pan (part Chord)", exp: "" },
+  { a: "20 0A 06", n: "SUSTAIN ENABLE", auto: true, cmds: "CC64 — sustain", exp: "" },
+  { a: "20 0A 07", n: "EFFECT & REVERB ENABLE", auto: true, cmds: "CC91 réverb, CC93/94 effets/DSP (boutons RV des parts, M4/M5)", exp: "" },
+  { a: "20 0A 08", n: "MODULATION ENABLE", auto: true, cmds: "CC1 — modulation", exp: "" },
+  { a: "20 0A 09", n: "TUNING ENABLE", auto: true, cmds: "Accord RPN (peu utilisé)", exp: "" },
+  { a: "20 0A 0A", n: "BEND RANGE ENABLE", auto: true, cmds: "RPN bend range (peu utilisé)", exp: "" },
+  { a: "20 0A 0B", n: "RESET ALL CONTROLLERS ENABLE", auto: true, cmds: "CC121 reset contrôleurs (peu utilisé)", exp: "" },
+  { a: "20 0A 0C", n: "APC MODE ENABLE", auto: true, cmds: "Mode APC Off/OneFinger/Fingered/Pianist (20 60 02) — M2, M4, M5", exp: "LE piège classique : sans lui, le clavier IGNORE les changements de mode APC (constaté terrain, session 19/10)." },
+  { a: "20 0A 0D", n: "FILL IN, INTRO, ENDING ENABLE", auto: true, cmds: "CC82 Fill1/Fill2/Intro/Ending/CountIn/Stop (M3, M5) + sysex 20 60 0A-0E", exp: "Sans lui, les déclenchements rythme par CC82 sont ignorés." },
+  { a: "20 0A 0E", n: "NOTE ONLY", guard: true, cmds: "—", exp: "⚠ Garde-fou : mode de jeu, pas un enable de commande. Modifiable au panneau du clavier." }
+];
+const EN_MAP = {}; KN_ENABLES.forEach(e => EN_MAP[e.a] = e);
+let enSt = {};    // addr → 1 (ON), 0 (OFF), absent = pas encore lu
+let enFixed = {}; // addr déjà basculé ON par Auto Enable dans CETTE session
+function enAutoOn() { return document.getElementById("enAuto").checked; }
+function enReadAll() {
+  if (!midiOut) { log("Pas de port TX sélectionné — impossible de lire les réglages de session.", "ko"); return; }
+  log("🔍 Lecture des " + KN_ENABLES.length + " réglages MIDI de session du KN2000 (DRQ p.28)…", "info");
+  for (const e of KN_ENABLES) { const a = e.a.split(" ").map(x => parseInt(x, 16)); sendDrq(a[0], a[1], a[2], e.n); }
+}
+function enRender() {
+  const t = document.getElementById("enTable"); if (!t) return;
+  let rows = "";
+  for (const e of KN_ENABLES) {
+    const v = enSt[e.a];
+    const badge = v === 1 ? '<b style="color:#0a7a0a">ON</b>' : (v === 0 ? '<b style="color:#c00">OFF</b>' : '<b style="color:#555">?</b>');
+    rows += '<div class="row" style="align-items:flex-start;border-top:1px solid #234;padding:5px 0;margin:0">'
+      + '<span style="min-width:44px">' + badge + (e.guard ? ' ⚠' : '') + '</span>'
+      + '<span style="min-width:220px"><b>' + e.n + '</b><br><span class="hint">' + e.a + '</span></span>'
+      + '<span style="flex:1" class="hint">' + (e.cmds !== "—" ? '<b style="color:#7a9bd0">Commandes dépendantes :</b> ' + e.cmds : '<i>aucune commande de la page</i>')
+      + (e.exp ? '<br>' + e.exp : '') + '</span></div>';
+  }
+  t.innerHTML = rows;
+  const bad = KN_ENABLES.filter(e => enSt[e.a] === 0 && !e.guard).map(e => e.n);
+  const okn = KN_ENABLES.filter(e => enSt[e.a] === 1).length;
+  document.getElementById("enSummary").innerHTML = (bad.length ? '🔴 OFF : ' + bad.join(", ") : '✅ Aucun réglage requis n\'est OFF') + ' <span class="hint">(' + okn + '/' + KN_ENABLES.length + ' lus)</span>';
+}
+function enNeed(addrs, lbl) { // avant une commande : bascule (ou signale) UNE FOIS les enables requis OFF — réglage de session, pas à chaque commande
+  for (const a of addrs) {
+    const e = EN_MAP[a]; if (!e || e.guard) continue;
+    if (enSt[a] !== 0) continue;
+    if (enAutoOn() && !enFixed[a]) {
+      const p = a.split(" ").map(x => parseInt(x, 16));
+      sendItw(p, [0x01]);
+      enFixed[a] = true; enSt[a] = 1; enRender();
+      log("⚙️ " + e.n + " (" + a + ") était OFF → basculé ON automatiquement (Auto Enable) — « " + lbl + " » pourra passer.", "info");
+    } else if (!enAutoOn()) {
+      log("⚠️ " + e.n + " (" + a + ") = OFF au clavier : « " + lbl + " » risque de ne PAS passer. Coche Auto Enable ou active-le au clavier.", "ko");
+    }
+  }
+}
+function enItwNeeds(adrStr, lbl) { // besoins d'une écriture sysex selon son adresse (bible p.28-29)
+  const p = adrStr.split(" ");
+  if (p[0] === "20" && p[1] === "04") return; // les enables eux-mêmes
+  const needs = [];
+  if (p[0] === "20" && (p[1] === "60" || p[1] === "08" || (p[1] === "00" && (p[2] === "02" || p[2] === "12")))) needs.push("20 04 01"); // zone temps réel (QRT) : APC, effets, transpose
+  else if (p[0] === "20") needs.push("20 04 00"); // zone non temps réel
+  if (adrStr === "20 60 02") needs.push("20 0A 0C");
+  if (p[0] === "20" && p[1] === "60" && parseInt(p[2], 16) >= 0x0A && parseInt(p[2], 16) <= 0x0E) needs.push("20 0A 0D");
+  enNeed(needs, lbl || adrStr);
+}
+function enOnItr(adr, v) { // réponse DRQ d'un réglage de session : mémorise l'état + auto-fix éventuel (une fois)
+  const e = EN_MAP[adr]; if (!e) return;
+  const prev = enSt[adr];
+  enSt[adr] = v ? 1 : 0;
+  enRender();
+  if (enSt[adr] === 0 && prev !== 0 && e.auto && enAutoOn() && !enFixed[adr]) enNeed([adr], "réglages de session");
+}
+const enAutoEl = document.getElementById("enAuto");
+try { enAutoEl.checked = localStorage.getItem("kn2000-en-auto") !== "0"; } catch (err) {}
+enAutoEl.onchange = () => { try { localStorage.setItem("kn2000-en-auto", enAutoEl.checked ? "1" : "0"); } catch (err) {}
+  log("⚙️ Auto Enable " + (enAutoEl.checked ? "ACTIVÉ — les enables requis OFF seront basculés à 01 (une fois par session)." : "désactivé — avertissements dans le journal seulement."), "info"); };
+document.getElementById("enReadBtn").onclick = () => enReadAll();
+enRender();
 
 // ---------- Tempo : affichage + boutons ± (trame TMP vers le KN2000) ----------
 function curBpm() { return Math.round(measuredBpm || parseFloat(document.getElementById("bpmMan").value) || 120); }
@@ -1121,6 +1228,7 @@ function readPanel() {
 }
 // ITW multi-octets : f0 50 2C 01 18 10 ADR(3) SIZ(3) DT-nibblisé CN CK f7
 function sendItw(adr, dt) {
+  enItwNeeds(hex(adr), "écriture " + hex(adr)); // v2.6.4 — bascule/signalise l'enable requis si nécessaire (une fois par session)
   const body = [0x50, 0x2C, 0x01, 0x18, 0x10, adr[0], adr[1], adr[2], (dt.length >> 14) & 0x7F, (dt.length >> 7) & 0x7F, dt.length & 0x7F];
   for (const b of dt) body.push((b >> 4) & 0x0F, b & 0x0F);
   body.push(0x00);
