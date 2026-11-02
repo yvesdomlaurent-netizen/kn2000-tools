@@ -267,7 +267,7 @@ Thème
       <b id="m5Song" style="font-size:14px">—</b>
       <span class="hint" id="m5PosLbl">mesure : —</span>
       <span style="flex:1"></span>
-      <label title="Apprentissage : chaque bouton rapide / pad pressé est horodaté à la mesure courante du compteur — puis 💾 Enregistrer-sous en fait un timelapse éditable"><input type="checkbox" id="m5Rec"> ● REC apprentissage</label>
+      <label title="Apprentissage : chaque bouton rapide / pad pressé est horodaté à la mesure courante du compteur — les événements REÇUS DU CLAVIER (CC82, annonces sysex ITR) sont aussi capturés (les échos de nos propres envois sont ignorés) — puis 💾 Enregistrer-sous en fait un timelapse éditable"><input type="checkbox" id="m5Rec"> ● REC apprentissage</label>
       <button id="m5RecClear" title="Vide le buffer ● REC sans rien enregistrer (les timelapses déjà sauvegardés restent intacts)">🧹 Vider le buffer</button>
       <span class="hint" id="m5RecCount"></span>
     </div>
@@ -397,6 +397,10 @@ async function initMidi() {
     enSt = {}; enFixed = {}; enRender();
     log("⚙️ Session : lecture des " + KN_ENABLES.length + " réglages MIDI du KN2000 (p.28)" + (enAutoOn() ? " — Auto Enable ACTIF : les enables requis OFF seront basculés à 01 automatiquement, une seule fois." : " — Auto Enable désactivé : avertissements dans le journal seulement.") + "", "info");
     enReadAll();
+    // v2.6.5 — défauts de session demandés par Yves : PM Expand = Normal (les PM ne changent que les sonorités Left+Right1+2) ; MSA mode = Rhythm (l'MSA orchestre sans toucher aux sonorités)
+    sendItw([0x20, 0x00, 0x11], [0x00]);
+    sendItw([0x20, 0x00, 0x13], [0x01]);
+    log("⚙️ Défauts de session : Panel Memory Expand Mode = Normal (20 00 11 = 00) · Music Style Arranger mode = Rhythm (20 00 13 = 01).", "info");
     if (midiOut) { sendTmpN(parseFloat(document.getElementById("bpmMan").value) || 120); log("📤 Tempo imposé au KN2000 au chargement (trame TMP, ♩ du champ BPM manuel).", "info"); }
   } catch (e) { log("Erreur accès MIDI : " + e.message, "ko"); }
 }
@@ -736,6 +740,7 @@ function onMidiMsg(ev) {
     for (let i = 12; i + 1 < d.length - 2 && raw.length < siz; i += 2) raw.push(((d[i] << 4) | d[i + 1]) & 0x7F);
     if (panelCap) panelCap.params[adr] = raw.slice(); // v0.32 : capture pour la sauvegarde du morceau (lecture panel)
     if (EN_MAP[adr] && raw.length) enOnItr(adr, raw[0]); // v2.6.4 : réglages de session (enables p.28) → état + auto-fix
+    m5RecCap("itw", adr, raw.slice()); // v2.6.5 — capture ● REC des annonces du clavier (l'utilisateur fait le tri)
     const names = { "20 04 02": "REAL TIME COMMAND ENABLE", "20 04 03": "CLOCK SELECT", "20 00 25": "TEMPO (TMP)", "20 0A 25": "APC INPUT", "20 60 08": "SYNCHRO & BREAK" };
     let extra = "";
     if (adr === "20 04 02") extra = raw[0] === 1 ? " → temps réel ON (F8 émis)" : " → temps réel OFF (pas de F8 !)";
@@ -751,6 +756,7 @@ function onMidiMsg(ev) {
   }
   else if (ev.data.length >= 2 && st >= 0x80 && st < 0xF0) {
     const chN = (ev.data[0] & 0x0F) + 1;
+    if (st === 0xB0 && ev.data[1] === 82) m5RecCap("cc82rx", chN, ev.data[2]); // v2.6.5 — capture ● REC des CC82 émis par le clavier
     if (document.getElementById("ccLog").checked && st === 0xB0) {
       const ccNames = { 80: "CC80 mode APC", 82: "CC82 déclenchement (0=Stop, 1=Fill1, 2=Ending, 3=Intro, 5=Fill2, 7=Count Intro)" };
       log("RX ch" + chN + " : CC" + ev.data[1] + " = " + ev.data[2] + (ccNames[ev.data[1]] ? "  (" + ccNames[ev.data[1]] + ")" : ""), "info");
@@ -771,12 +777,21 @@ function send(bytes, what) {
   if (!midiOut) { log("Pas de port TX sélectionné.", "ko"); return false; }
   // v2.6.4 — enables requis pour les CC/PC et messages temps réel (les sysex sont couverts par sendItw → enItwNeeds)
   const st0 = bytes[0] & 0xF0;
-  if (st0 === 0xB0) { const m = { 7: "20 0A 03", 11: "20 0A 04", 10: "20 0A 05", 64: "20 0A 06", 91: "20 0A 07", 93: "20 0A 07", 94: "20 0A 07", 1: "20 0A 08", 0: "20 0A 01", 32: "20 0A 01", 82: "20 0A 0D" }[bytes[1]]; if (m) enNeed([m], what || ("CC" + bytes[1])); }
+  if (st0 === 0xB0) { const m = { 7: "20 0A 03", 11: "20 0A 04", 10: "20 0A 05", 64: "20 0A 06", 91: "20 0A 07", 93: "20 0A 07", 94: "20 0A 07", 1: "20 0A 08", 0: "20 0A 01", 32: "20 0A 01", 82: "20 0A 0D" }[bytes[1]]; if (m) enNeed([m], what || ("CC" + bytes[1])); if (bytes[1] === 82) txMark("CC82:" + bytes[2]); }
   else if (st0 === 0xC0) enNeed(["20 0A 00"], what || "Program Change");
   else if (bytes[0] >= 0xFA && bytes[0] <= 0xFC) enNeed(["20 04 02"], what || "temps réel FA/FB/FC");
   midiOut.send(bytes);
   if (what) log("TX : " + hex(bytes) + "  (" + what + ")");
   return true;
+}
+let lastTxSig = new Map(); // v2.6.5 — signatures TX récentes : la capture ● REC ignore les échos de nos propres envois
+function txMark(sig) { lastTxSig.set(sig, Date.now()); if (lastTxSig.size > 60) lastTxSig.clear(); }
+function sendCc82(v, lbl) { // v2.6.5 — CC82 envoyé sur le canal Control (chDrums) ET le canal 16 (relevé terrain 2/11 : le clavier émet ses propres déclenchements CC82 sur ch16)
+  const ch = parseInt(document.getElementById("chDrums").value, 10) || 4;
+  let ok = false;
+  ok = send([0xB0 + ch - 1, 82, v], "CC82 " + (lbl || ("= " + v)) + " (canal Control " + ch + ")") || ok;
+  if (ch !== 16) ok = send([0xB0 + 15, 82, v], "CC82 " + (lbl || ("= " + v)) + " (canal 16 — canal d'émission du clavier)") || ok;
+  return ok;
 }
 
 // ---------- Écriture sysex d'un paramètre (ITW, SIZ 1) ----------
@@ -914,7 +929,7 @@ function enItwNeeds(adrStr, lbl) { // besoins d'une écriture sysex selon son ad
   const p = adrStr.split(" ");
   if (p[0] === "20" && p[1] === "04") return; // les enables eux-mêmes
   const needs = [];
-  if (p[0] === "20" && (p[1] === "60" || p[1] === "08" || (p[1] === "00" && (p[2] === "02" || p[2] === "12")))) needs.push("20 04 01"); // zone temps réel (QRT) : APC, effets, transpose
+  if (p[0] === "20" && (p[1] === "60" || p[1] === "08" || p[1] === "00")) needs.push("20 04 01"); // zone temps réel (QRT) : APC, effets, système (transpose, PM number/expand, MSA style/mode)
   else if (p[0] === "20") needs.push("20 04 00"); // zone non temps réel
   if (adrStr === "20 60 02") needs.push("20 0A 0C");
   if (p[0] === "20" && p[1] === "60" && parseInt(p[2], 16) >= 0x0A && parseInt(p[2], 16) <= 0x0E) needs.push("20 0A 0D");
@@ -957,9 +972,9 @@ document.getElementById("synOn").onclick = () => { sendSysexParam(0x20, 0x60, 0x
 document.getElementById("synOff").onclick = () => { sendSysexParam(0x20, 0x60, 0x08, 0, "SYNCHRO & BREAK = OFF"); synchroArmed = false; synBadge(); };
 document.getElementById("synRead").onclick = () => sendDrq(0x20, 0x60, 0x08, "SYNCHRO & BREAK (état)", 1);
 document.querySelectorAll(".cc82").forEach(b => b.onclick = () => {
-  const ch = parseInt(document.getElementById("chDrums").value) - 1, v = +b.dataset.v;
+  const v = +b.dataset.v;
   const names = { 0: "Stop", 1: "Fill In 1", 2: "Ending", 3: "Intro", 5: "Fill In 2", 7: "Count Intro" };
-  send([0xB0 | ch, 82, v], "CC82 = " + names[v] + " (canal Control " + (ch + 1) + ")");
+  sendCc82(v, "= " + names[v]);
 });
 document.getElementById("rtStart").onclick = () => send([0xFA], "FA = MIDI Start (temps réel, sans canal)");
 document.getElementById("rtCont").onclick = () => send([0xFB], "FB = MIDI Continue (temps réel, sans canal)");
@@ -977,8 +992,7 @@ let seqOriginPulse = null; // mode compteur F8 : pulse du début de grille de la
 let seqStartIdx = 0;      // v0.35 : index de l'accord de DÉPART (▶ Démarrer à la mesure N ; Repeat reboucle dessus ; FA/FB → 0)
 let lastStopIdx = null;    // index du prochain accord attendu au moment du dernier FC (pour FB Continue)
 function sendRhythmStop() {
-  const ch = parseInt(document.getElementById("chDrums").value) - 1;
-  send([0xB0 | ch, 82, 0], "CC82 = Stop (canal Control " + (ch + 1) + ")");
+  sendCc82(0, "= Stop");
   send([0xFC], "FC = MIDI Stop temps réel — carte d'implémentation : Stop reçu par le KN2000");
   synchroArmed = false; synBadge(); // info terrain Yves 29/10 : le Stop repasse l'état Synchro&Break du clavier sur OFF
 }
@@ -1229,6 +1243,7 @@ function readPanel() {
 // ITW multi-octets : f0 50 2C 01 18 10 ADR(3) SIZ(3) DT-nibblisé CN CK f7
 function sendItw(adr, dt) {
   enItwNeeds(hex(adr), "écriture " + hex(adr)); // v2.6.4 — bascule/signalise l'enable requis si nécessaire (une fois par session)
+  txMark("ITW:" + hex(adr) + ":" + hex(dt)); // v2.6.5 — signature anti-écho pour la capture ● REC
   const body = [0x50, 0x2C, 0x01, 0x18, 0x10, adr[0], adr[1], adr[2], (dt.length >> 14) & 0x7F, (dt.length >> 7) & 0x7F, dt.length & 0x7F];
   for (const b of dt) body.push((b >> 4) & 0x0F, b & 0x0F);
   body.push(0x00);
@@ -2036,11 +2051,16 @@ function qaRun(act) { // exécute une action rapide ; renvoie le libellé si ex�
     const ok = d.cid ? addonCC(d, 91, act.on ? 0x7F : 0, "Réverb " + d.lbl) : m4CC(d, 91, act.on ? 0x7F : 0, "Réverb " + d.lbl);
     return ok ? ("Réverb " + act.lbl + (act.on ? " ON" : " OFF")) : null; }
   if (act.k === "rhythm") { const r = M5_RHY[act.id]; if (!r) return null;
-    if (r.cc82 !== undefined) { const ch = parseInt(document.getElementById("chDrums").value, 10) || 4;
-      if (!send([0xB0 + ch - 1, 82, r.cc82], "CC82 " + r.lbl)) return null;
-      log("🥁 " + r.lbl + " (CC82=" + r.cc82 + " ch Control " + ch + ").", "ok"); return r.lbl; }
+    if (r.cc82 !== undefined) {
+      if (!sendCc82(r.cc82, r.lbl)) return null;
+      log("🥁 " + r.lbl + " (CC82=" + r.cc82 + ", canaux Control + 16).", "ok"); return r.lbl; }
     const v = r.tog ? ((act.v !== undefined) ? act.v : 1) : r.val;
     return m4Write(r.key, [v & 0x7f], r.lbl + " → " + v) ? (r.lbl + (r.cal ? " (" + r.cal + ")" : "")) : null; }
+  if (act.k === "itw") { // v2.6.5 — rejeu d'une annonce capturée : même adresse, mêmes valeurs
+    const a = act.a.split(" ").map(x => parseInt(x, 16));
+    if (!sendItw(a, act.v)) return null;
+    return "SYSEX " + act.a + " = " + hex(act.v); }
+  if (act.k === "cc") { if (!send([0xB0 + act.ch - 1, act.c, act.v], "CC" + act.c + " = " + act.v + " ch" + act.ch)) return null; return "CC" + act.c + " = " + act.v + " ch" + act.ch; }
   if (act.k === "preset") { const o = prLoad(); const pr = (o[act.fam] || [])[act.i]; if (!pr) return null;
     const s = m5Song(); if (!s) { log("Choisis un morceau (M1) avant d'appliquer un preset.", "ko"); return null; }
     if (!s.panel) s.panel = { tempo: null, params: {} };
@@ -2058,6 +2078,22 @@ function qaFire(act, lbl) { // action immédiate + capture REC si l'apprentissag
   const res = qaRun(act);
   if (res && m5rec) { m5rec.push({ m: autoMeas(), lbl: lbl || res, act: JSON.parse(JSON.stringify(act)) }); m5RecRefresh(); }
   return res;
+}
+// ---------- v2.6.5 — capture ● REC des événements venant DU CLAVIER (CC82 reçus + annonces ITR 2C) ----------
+const CC82_IDS = { 1: "fill1", 5: "fill2", 2: "ending", 3: "intro", 7: "countin", 0: "stop" };
+function m5RecCap(kind, chOrAdr, v) {
+  if (!m5rec) return;
+  const now = Date.now();
+  const sig = kind === "itw" ? ("ITW:" + chOrAdr + ":" + hex(v)) : ("CC82:" + v);
+  const t = lastTxSig.get(sig);
+  if (t !== undefined && now - t < 800) return; // écho de notre propre envoi (< 800 ms) : pas de doublon
+  let act, lbl;
+  if (kind === "itw") { act = { k: "itw", a: chOrAdr, v: v.slice() }; lbl = "SYSEX " + chOrAdr + " = " + hex(v) + " (clavier)"; }
+  else if (CC82_IDS[v] !== undefined) { act = { k: "rhythm", id: CC82_IDS[v] }; const r = M5_RHY[CC82_IDS[v]]; lbl = (r ? r.lbl : "CC82") + " (CC82=" + v + ", clavier ch" + chOrAdr + ")"; }
+  else { act = { k: "cc", ch: chOrAdr, c: 82, v: v }; lbl = "CC82 = " + v + " (clavier ch" + chOrAdr + ")"; }
+  m5rec.push({ m: autoMeas(), lbl, act });
+  m5RecRefresh();
+  log("● REC ← clavier : " + lbl, "clock");
 }
 function m5RecRefresh() { document.getElementById("m5RecCount").textContent = m5rec ? (m5rec.length + " action(s) dans le buffer ● REC") : ""; }
 
