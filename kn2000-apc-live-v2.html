@@ -430,6 +430,7 @@ function anchorEff() { return barAnchor === null ? null : barAnchor + syncTrim; 
 let posMeasOffset = 0; // v0.38 : décalage (en mesures) du compteur de position — ▶ Démarrer à la mesure N → le grand compteur démarre à N:01:000 (retour à zéro à la fin de la progression)
 function posInfo() {
   const pp = ppq();
+  if (m5FcFrozen && !lastF8At) return { meas: 1, beat: 1, tick: 0 }; // v2.6.11 — arrêt (FC) : compteur FIGÉ à la mesure 1 — pas d'interpolation libre (correctif : le compteur continuait de tourner sur le secours Caler après la mise à zéro v2.6.10)
   if (lastF8At || pulse > 0) { // horloge réelle reçue : position COMPTÉE (vraie), figée à l'arrêt
     return { meas: Math.floor(pulse / (pp * 4)) + 1 + posMeasOffset, beat: Math.floor(pulse / pp) % 4 + 1, tick: pulse % pp };
   }
@@ -450,6 +451,7 @@ let pulse = 0;
 const activeNotes = new Set();
 function ppq() { return Math.max(1, parseInt(document.getElementById("ppq").value) || 48); }
 let lastF8At = 0;
+let m5FcFrozen = false; // v2.6.11 — arrêt FC : compteur figé à la mesure 1 tant qu'aucune horloge F8 (ou FA/FB) ne revient
 
 function chordOn(c) {
   if (!c) { chordOff(); log("♪ — silence (NC) — accompagnement coupé, le rythme continue (APC memory OFF, Synchro désarmé).", "info"); return; }
@@ -667,6 +669,7 @@ function onMidiMsg(ev) {
       log("MIDI Start (FA) — rythme lancé : compteur remis à 1:01:000, horloge CALÉE sur le vrai temps 1.", "ok");
       if (document.getElementById("rtLog").checked) log("MIDI Start (FA) — rythme lancé", "clock");
       if (m5armed && m5Halted) { m5Halted = false; m5armedIdx = 0; log("🎬 Automation « " + m5armed.name + " » repart du début (compteur remis à 1).", "ok"); m5ArmLblRefresh(); } // v2.6.10 — reste armée après un arrêt : reprise au départ
+      m5FcFrozen = false; // v2.6.11 — départ : le compteur repart (horloge comptée dès les F8, secours Caler autorisé)
       pulse = 0; lastF8At = performance.now();
       barAnchor = performance.now() - syncTrim; // FA = début de mesure réel
       posEl.textContent = posStr();
@@ -699,6 +702,7 @@ function onMidiMsg(ev) {
       }
     } else if (b === 0xFB) { // MIDI Continue : reprise de la séquence arrêtée par le dernier FC
       if (m5armed && m5Halted) { m5Halted = false; log("🎬 Automation « " + m5armed.name + " » reprise (FB) — les actions repartent avec le compteur.", "ok"); m5ArmLblRefresh(); } // v2.6.10
+      m5FcFrozen = false; // v2.6.11 — reprise FB : le compteur repart avec l'horloge
       if (document.getElementById("xport").checked && seqList && !seqQueue) {
         if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; }
         seqOriginBeats = null;
@@ -2143,7 +2147,7 @@ function m5Cc82State(v) { // v2.6.7 — les CC82 reçus DU CLAVIER pilotent les 
   if (r && r.tog && r.key) { m5St[r.key] = 1; m5QaRerender(); } // Intro/Ending annoncés ON par le clavier (Fill/CountIn one-shot : tog absent, pas de badge)
 }
 function m5OnFcStop(tx) { // v2.6.10 — arrêt du morceau (FC reçu du clavier OU envoyé par la page) : compteur de mesures RÉINITIALISÉ + automation en PAUSE ARMÉE (demande Yves)
-  pulse = 0; posMeasOffset = 0; // compteur à la mesure 1
+  pulse = 0; posMeasOffset = 0; m5FcFrozen = true; lastF8At = 0; // compteur à la mesure 1, FIGÉ (v2.6.11 — pas d'interpolation libre ; lastF8At=0 aussi pour un FC ENVOYÉ par la page, sinon la position restait « comptée »)
   if (m5armed) {
     m5armedIdx = 0; m5Halted = true;
     log("🎬 Automation « " + m5armed.name + " » : compteur remis à 1 — elle RESTE ARMÉE et repartira du début au prochain départ (FA/FB). ⏹ pour désarmer.", "info");
