@@ -742,7 +742,7 @@ function onMidiMsg(ev) {
     for (let i = 12; i + 1 < d.length - 2 && raw.length < siz; i += 2) raw.push(((d[i] << 4) | d[i + 1]) & 0x7F);
     if (panelCap) panelCap.params[adr] = raw.slice(); // v0.32 : capture pour la sauvegarde du morceau (lecture panel)
     if (EN_MAP[adr] && raw.length) enOnItr(adr, raw[0]); // v2.6.4 : réglages de session (enables p.28) → état + auto-fix
-    if (/^20 60 (08|09|0A|0B|0C|0D|0E)$/.test(adr) && raw.length) { m5St[adr] = raw[0] & 1; m5QaRerender(); } // v2.6.6 — états live des commandes rythme (annonces du clavier)
+    if (/^20 60 (03|08|09|0A|0B|0C|0D|0E)$/.test(adr) && raw.length) { m5St[adr] = raw[0] & 1; m5QaRerender(); } // v2.6.6/2.6.7 — états live des commandes rythme (annonces du clavier ; v2.6.7 : ajout Memory 20 60 03 — Fill/CountIn one-shot restent sans badge car tog absent)
     m5RecCap("itw", adr, raw.slice()); // v2.6.5 — capture ● REC des annonces du clavier (l'utilisateur fait le tri)
     const names = { "20 04 02": "REAL TIME COMMAND ENABLE", "20 04 03": "CLOCK SELECT", "20 00 25": "TEMPO (TMP)", "20 0A 25": "APC INPUT", "20 60 08": "SYNCHRO & BREAK" };
     let extra = "";
@@ -759,7 +759,7 @@ function onMidiMsg(ev) {
   }
   else if (ev.data.length >= 2 && st >= 0x80 && st < 0xF0) {
     const chN = (ev.data[0] & 0x0F) + 1;
-    if (st === 0xB0 && ev.data[1] === 82) m5RecCap("cc82rx", chN, ev.data[2]); // v2.6.5 — capture ● REC des CC82 émis par le clavier
+    if (st === 0xB0 && ev.data[1] === 82) { m5Cc82State(ev.data[2]); m5RecCap("cc82rx", chN, ev.data[2]); } // v2.6.5 — capture ● REC des CC82 émis par le clavier + v2.6.7 états live
     if (document.getElementById("ccLog").checked && st === 0xB0) {
       const ccNames = { 80: "CC80 mode APC", 82: "CC82 déclenchement (0=Stop, 1=Fill1, 2=Ending, 3=Intro, 5=Fill2, 7=Count Intro)" };
       log("RX ch" + chN + " : CC" + ev.data[1] + " = " + ev.data[2] + (ccNames[ev.data[1]] ? "  (" + ccNames[ev.data[1]] + ")" : ""), "info");
@@ -2016,12 +2016,12 @@ document.getElementById("m4Reload").onclick = async () => {
 
 // ═════════ v2.6 — M5 Live & Automation : analyse de grille, boutons rapides, pads APC25, REC apprentissage, timelapses ═════════
 const M5_RHY = { // v2.6.6 — rangée ② au PROTOCOLE DU PANNEAU (relevé ● REC terrain 2/11 : le panneau commande en sysex 20 60 xx, ON puis auto-relâchement OFF ; le CC82 émis par le clavier n'est qu'une annonce sortante). evt = événement transitoire : envoyé au clavier SANS mémorisation dans les réglages du morceau (restorePanel ne doit pas rejouer un Fill à la sélection).
-  fill1:    { lbl: "Fill In 1",   key: "20 60 0C", tog: true, evt: true },
-  fill2:    { lbl: "Fill In 2",   key: "20 60 0D", tog: true, evt: true },
-  intro:    { lbl: "Intro",       key: "20 60 0A", tog: true, evt: true },
-  countin:  { lbl: "Count Intro", key: "20 60 0B", tog: true, evt: true },
+  fill1:    { lbl: "Fill In 1",   key: "20 60 0C", evt: true }, // v2.6.7 — commande one-shot (info Yves) : le clavier exécute une fois, pas d'état à suivre, pas de badge
+  fill2:    { lbl: "Fill In 2",   key: "20 60 0D", evt: true },
+  intro:    { lbl: "Intro",       key: "20 60 0A", tog: true, evt: true }, // état suivi (badges ITR + CC82 reçus)
+  countin:  { lbl: "Count Intro", key: "20 60 0B", evt: true }, // v2.6.7 — one-shot comme Fill
   ending:   { lbl: "Ending",     key: "20 60 0E", tog: true, evt: true }, // Bible p.29 : Ending 1 = 20 60 0E (le relevé terrain montrait 0A pour Intro/Ending — à confirmer, on suit la Bible pour l'instant)
-  stop:     { lbl: "Stop rythme", cc82: 0x00 },
+  stop:     { lbl: "Stop rythme", fc: true }, // v2.6.7 — FC temps réel (relevé terrain ● REC : le bouton Stop du panneau du clavier émet FC ; le CC82=0 n'est qu'une annonce sortante, ignorée par le clavier en entrée)
   variation:{ lbl: "Variation",   key: "20 60 09", tog: true }, // valeurs 01/00 confirmées terrain (annonces du panneau)
   break:    { lbl: "Synchro/Break", key: "20 60 08", tog: true },
   pianist:  { lbl: "APC Pianist",  key: "20 60 02", val: 0x03 },
@@ -2049,7 +2049,7 @@ function m5Song() { return songs.songs.find(x => x.id === curSongId) || null; }
 function m5Tls() { const s = m5Song(); if (!s) return null; if (!Array.isArray(s.timelapses)) s.timelapses = []; return s.timelapses; }
 function autoMeas() { const p = posInfo(); return p ? p.meas : 1; }
 
-function muteLbl(act) { return "Mute " + act.lbl + (act.on ? " ON" : " OFF"); } // v2.6.3 — ce sont des ACTIONS : Mute X ON = muter X, Mute X OFF = démuter X (libellés d'origine rétablis à la demande d'Yves)
+function muteLbl(act) { return "Mute " + act.lbl + (act.on ? " OFF" : " ON"); } // v2.6.7 — convention Yves (« je veux un café = ON ») : le libellé décrit l'état VOULU de la partie — ON = elle joue (démuter), OFF = elle est muette (muter). act.on=true reste l'action de muter : les timelapses existants gardent leur comportement, seuls les libellés s'inversent.
 function qaRun(act) { // exécute une action rapide ; renvoie le libellé si exécutée, null si refusée
   if (act.k === "scene") { const a = scenesLoad(); const sc = a[act.i]; if (!sc || !sc.mutes) return null; m4SceneApply(act.i); return "Scène « " + sc.name + " »"; }
   if (act.k === "mute") { const d = M4_ALL().find(x => x.lbl === act.lbl); if (!d) return null; return m4SetMute(d, !!act.on) ? muteLbl(act) : null; }
@@ -2057,16 +2057,17 @@ function qaRun(act) { // exécute une action rapide ; renvoie le libellé si ex�
     const ok = d.cid ? addonCC(d, 91, act.on ? 0x7F : 0, "Réverb " + d.lbl) : m4CC(d, 91, act.on ? 0x7F : 0, "Réverb " + d.lbl);
     return ok ? ("Réverb " + act.lbl + (act.on ? " ON" : " OFF")) : null; }
   if (act.k === "rhythm") { const r = M5_RHY[act.id]; if (!r) return null;
-    if (r.cc82 !== undefined) {
-      if (!sendCc82(r.cc82, r.lbl)) return null;
-      log("🥁 " + r.lbl + " (CC82=" + r.cc82 + ", canaux Control + 16).", "ok"); return r.lbl; }
-    const v = r.tog ? ((act.v !== undefined) ? act.v : 1) : r.val;
-    if (r.evt) { // v2.6.6 — événement transitoire du panneau : sysex direct, PAS de mémorisation dans le morceau
+    if (r.fc) { // v2.6.7 — Stop = FC temps réel (relevé terrain : bouton Stop du panneau = FC)
+      if (!send([0xFC], "FC = MIDI Stop (temps réel)")) return null;
+      ["intro", "ending"].forEach(k => { m5St[M5_RHY[k].key] = 0; }); m5QaRerender();
+      log("⏹ " + r.lbl + " envoyé (FC) — le rythme doit s'arrêter, comme au bouton Stop du panneau du clavier.", "ok"); return r.lbl; }
+    const v = (r.tog && act.v !== undefined) ? act.v : (r.val !== undefined ? r.val : 1);
+    if (r.evt) { // v2.6.6/2.6.7 — événement transitoire du panneau : sysex direct, PAS de mémorisation dans le morceau
       const a = r.key.split(" ").map(x => parseInt(x, 16));
       if (!sendItw(a, [v & 0x7f])) return null;
-      m5St[r.key] = (v & 1); m5QaRerender();
-      log("🥁 " + r.lbl + " → " + (v & 1 ? "ON" : "OFF") + " (sysex " + r.key + ", protocole panneau).", "ok");
-      return r.lbl + (v & 1 ? " ON" : " OFF"); }
+      if (r.tog) { m5St[r.key] = (v & 1); m5QaRerender(); } // v2.6.7 — seuls Intro/Ending portent un état ; Fill/CountIn = one-shot sans badge
+      log("🥁 " + r.lbl + (r.tog ? (" → " + (v & 1 ? "ON" : "OFF")) : " (commande unique, exécutée une fois)") + " (sysex " + r.key + ", protocole panneau).", "ok");
+      return r.lbl + (r.tog ? ((v & 1) ? " ON" : " OFF") : ""); }
     const res = m4Write(r.key, [v & 0x7f], r.lbl + " → " + v);
     if (res && r.tog) { m5St[r.key] = (v & 1); m5QaRerender(); }
     return res ? (r.lbl + (r.cal ? " (" + r.cal + ")" : "")) : null; }
@@ -2103,6 +2104,12 @@ let m5Listen = false; // v2.6.6 — mode « écoute » : le prochain appui sur u
 let m5LastScene = ""; // v2.6.6 — dernière scène appliquée (affichée dans le bandeau automation)
 // ---------- v2.6.5 — capture ● REC des événements venant DU CLAVIER (CC82 reçus + annonces ITR 2C) ----------
 const CC82_IDS = { 1: "fill1", 5: "fill2", 2: "ending", 3: "intro", 7: "countin", 0: "stop" };
+function m5Cc82State(v) { // v2.6.7 — les CC82 reçus DU CLAVIER pilotent les badges d'état (annonce sortante du clavier : 0=Stop/relâchement, 1=Fill1, 2=Ending, 3=Intro, 5=Fill2, 7=CountIn)
+  const t = lastTxSig.get("CC82:" + v); if (t !== undefined && Date.now() - t < 800) return; // écho de nos propres envois < 800 ms : ignoré
+  if (v === 0) { ["intro", "ending"].forEach(k => { m5St[M5_RHY[k].key] = 0; }); m5QaRerender(); return; } // stop/relâchement : Intro/Ending retombent OFF
+  const rid = CC82_IDS[v]; if (!rid) return; const r = M5_RHY[rid];
+  if (r && r.tog && r.key) { m5St[r.key] = 1; m5QaRerender(); } // Intro/Ending annoncés ON par le clavier (Fill/CountIn one-shot : tog absent, pas de badge)
+}
 function m5RecCap(kind, chOrAdr, v) {
   if (!m5rec) return;
   const now = Date.now();
@@ -2382,8 +2389,8 @@ document.getElementById("m5TlDel").onclick = () => {
 // Éditeur de timelapse : mesures éditables, test immédiat, suppression, ajout d'actions
 function m5AddOpts() { // options d'action pour l'ajout manuel
   let o = "";
-  for (const d of M4_ALL()) { o += "<option value='" + JSON.stringify({ k: "mute", lbl: d.lbl, on: true }) + "'>Mute " + d.lbl + " ON</option>"
-    + "<option value='" + JSON.stringify({ k: "mute", lbl: d.lbl, on: false }) + "'>Mute " + d.lbl + " OFF</option>"; }
+  for (const d of M4_ALL()) { o += "<option value='" + JSON.stringify({ k: "mute", lbl: d.lbl, on: true }) + "'>Mute " + d.lbl + " OFF (muette)</option>" // v2.6.7 — libellés inversés : ON = la partie joue
+    + "<option value='" + JSON.stringify({ k: "mute", lbl: d.lbl, on: false }) + "'>Mute " + d.lbl + " ON (elle joue)</option>"; }
   for (const id of Object.keys(M5_RHY)) o += "<option value='" + JSON.stringify({ k: "rhythm", id }) + "'>Rythme : " + M5_RHY[id].lbl + "</option>";
   return o;
 }
