@@ -2071,10 +2071,10 @@ function qaRun(act) { // exécute une action rapide ; renvoie le libellé si ex�
     const res = m4Write(r.key, [v & 0x7f], r.lbl + " → " + v);
     if (res && r.tog) { m5St[r.key] = (v & 1); m5QaRerender(); }
     return res ? (r.lbl + (r.cal ? " (" + r.cal + ")" : "")) : null; }
-  if (act.k === "itw") { // v2.6.5 — rejeu d'une annonce capturée : même adresse, mêmes valeurs
+  if (act.k === "itw") { // v2.6.5 — rejeu d'une annonce capturée : même adresse, mêmes valeurs ; v2.6.8 — libellé humain si l'adresse est connue
     const a = act.a.split(" ").map(x => parseInt(x, 16));
     if (!sendItw(a, act.v)) return null;
-    return "SYSEX " + act.a + " = " + hex(act.v); }
+    return m5ItwHuman(act.a, act.v) ? (m5ItwHuman(act.a, act.v) + " (sysex " + act.a + " = " + hex(act.v) + ")") : ("SYSEX " + act.a + " = " + hex(act.v)); }
   if (act.k === "cc") { if (!send([0xB0 + act.ch - 1, act.c, act.v], "CC" + act.c + " = " + act.v + " ch" + act.ch)) return null; return "CC" + act.c + " = " + act.v + " ch" + act.ch; }
   if (act.k === "preset") { const o = prLoad(); const pr = (o[act.fam] || [])[act.i]; if (!pr) return null;
     const s = m5Song(); if (!s) { log("Choisis un morceau (M1) avant d'appliquer un preset.", "ko"); return null; }
@@ -2104,6 +2104,27 @@ let m5Listen = false; // v2.6.6 — mode « écoute » : le prochain appui sur u
 let m5LastScene = ""; // v2.6.6 — dernière scène appliquée (affichée dans le bandeau automation)
 // ---------- v2.6.5 — capture ● REC des événements venant DU CLAVIER (CC82 reçus + annonces ITR 2C) ----------
 const CC82_IDS = { 1: "fill1", 5: "fill2", 2: "ending", 3: "intro", 7: "countin", 0: "stop" };
+const ITR_HUMAN = { // v2.6.8 — traduction humaine des annonces/écritures sysex connues du clavier (adresses de la Bible + relevés terrain)
+  "20 60 02": { n: "APC mode", val: { 0: "OFF", 2: "Fingered", 3: "Pianist" } },
+  "20 60 03": { n: "APC Memory", val: { 0: "OFF", 1: "ON" } },
+  "20 60 04": { n: "Dynamic Accomp", val: { 0: "OFF", 1: "ON" } },
+  "20 60 08": { n: "Synchro & Break", val: { 0: "OFF", 1: "ON" } },
+  "20 60 09": { n: "Variation", val: { 0: "OFF", 1: "ON" } },
+  "20 60 0A": { n: "Intro", val: { 0: "OFF", 1: "ON" } },
+  "20 60 0B": { n: "Count In", val: { 0: "OFF", 1: "ON" } },
+  "20 60 0C": { n: "Fill In 1", val: { 0: "OFF", 1: "ON" } },
+  "20 60 0D": { n: "Fill In 2", val: { 0: "OFF", 1: "ON" } },
+  "20 60 0E": { n: "Ending", val: { 0: "OFF", 1: "ON" } },
+  "20 00 11": { n: "Panel Memory Expand" },
+  "20 00 12": { n: "Music Style Arranger" },
+  "20 00 13": { n: "MSA mode" },
+  "20 00 25": { n: "Tempo" }
+};
+function m5ItwHuman(adr, vals) { // v2.6.8 — libellé humain d'une annonce/écriture sysex connue (null si adresse inconnue) ; le sysex brut reste indiqué entre parenthèses
+  const h = ITR_HUMAN[adr]; if (!h) return null;
+  const v = (vals && vals.length === 1) ? vals[0] : undefined;
+  return (h.val && h.val[v] !== undefined) ? (h.n + " " + h.val[v]) : h.n;
+}
 function m5Cc82State(v) { // v2.6.7 — les CC82 reçus DU CLAVIER pilotent les badges d'état (annonce sortante du clavier : 0=Stop/relâchement, 1=Fill1, 2=Ending, 3=Intro, 5=Fill2, 7=CountIn)
   const t = lastTxSig.get("CC82:" + v); if (t !== undefined && Date.now() - t < 800) return; // écho de nos propres envois < 800 ms : ignoré
   if (v === 0) { ["intro", "ending"].forEach(k => { m5St[M5_RHY[k].key] = 0; }); m5QaRerender(); return; } // stop/relâchement : Intro/Ending retombent OFF
@@ -2117,7 +2138,7 @@ function m5RecCap(kind, chOrAdr, v) {
   const t = lastTxSig.get(sig);
   if (t !== undefined && now - t < 800) return; // écho de notre propre envoi (< 800 ms) : pas de doublon
   let act, lbl;
-  if (kind === "itw") { act = { k: "itw", a: chOrAdr, v: v.slice() }; lbl = "SYSEX " + chOrAdr + " = " + hex(v) + " (clavier)"; }
+  if (kind === "itw") { act = { k: "itw", a: chOrAdr, v: v.slice() }; lbl = m5ItwHuman(chOrAdr, v) ? (m5ItwHuman(chOrAdr, v) + " (clavier — sysex " + chOrAdr + " = " + hex(v) + ")") : ("SYSEX " + chOrAdr + " = " + hex(v) + " (clavier)"); } // v2.6.8 — libellé humain quand l'adresse est connue (ex. « Fill In 1 OFF (clavier — sysex 20 60 0C = 00) »)
   else if (CC82_IDS[v] !== undefined) { act = { k: "rhythm", id: CC82_IDS[v] }; const r = M5_RHY[CC82_IDS[v]]; lbl = (r ? r.lbl : "CC82") + " (CC82=" + v + ", clavier ch" + chOrAdr + ")"; }
   else { act = { k: "cc", ch: chOrAdr, c: 82, v: v }; lbl = "CC82 = " + v + " (clavier ch" + chOrAdr + ")"; }
   m5rec.push({ m: autoMeas(), lbl, act });
