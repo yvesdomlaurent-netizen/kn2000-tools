@@ -2133,6 +2133,7 @@ function m5Cc82State(v) { // v2.6.7 — les CC82 reçus DU CLAVIER pilotent les 
 }
 function m5RecCap(kind, chOrAdr, v) {
   if (!m5rec) return;
+  if (kind === "cc82rx" && v === 0) return; // v2.6.9 — le CC82=0 reçu du clavier est le relâchement (fin de Fill/Intro ou Stop) : JAMAIS stocké — c'est lui qui créait les « Stop rythme » fantômes dans les timelapses (décision Yves)
   const now = Date.now();
   const sig = kind === "itw" ? ("ITW:" + chOrAdr + ":" + hex(v)) : ("CC82:" + v);
   const t = lastTxSig.get(sig);
@@ -2341,6 +2342,8 @@ setInterval(() => { // v2.6 : poll léger — tir des actions armées + affichag
   const meas = autoMeas();
   while (m5armedIdx < m5armed.events.length && m5armed.events[m5armedIdx].m <= meas) {
     const e = m5armed.events[m5armedIdx++];
+    if (e.act && ((e.act.k === "rhythm" && e.act.id === "stop") || (e.act.k === "cc" && e.act.c === 82 && e.act.v === 0))) { // v2.6.9 — un timelapse n'arrête JAMAIS le morceau : les « Stop » capturés (relâchements CC82=0 des Fill) sont ignorés au rejeu — le Stop reste un geste manuel
+      log("🎬 M" + e.m + " : ⏹ Stop ignoré au rejeu (un timelapse n'arrête pas le morceau — le Stop reste manuel) — " + e.lbl, "info"); continue; }
     const r = qaRun(e.act);
     log("🎬 M" + e.m + " : " + (r || "(refusée)") + " — " + e.lbl, r ? "ok" : "info");
   }
