@@ -1174,11 +1174,11 @@ const SETLIST_V2 = [{"id":"ms-0","title":"Misirlou","pm":"0","msid":"0","seq":nu
 // puis réécrites telles quelles (ITW 2C) à la sélection du morceau. Le TEMPO suit la trame TMP.
 const PANEL_READS = [
   [0x20,0x60,0x00,2,"Rythme"], [0x20,0x60,0x02,1,"APC type"], [0x20,0x60,0x03,1,"APC mémoire"],
-  [0x20,0x00,0x02,1,"Transpose"], [0x20,0x10,0x00,2,"Son RIGHT 1"], [0x20,0x11,0x00,2,"Son RIGHT 2"], [0x20,0x12,0x00,2,"Son LEFT"],
+  [0x20,0x00,0x02,1,"Transpose"], [0x20,0x10,0x00,2,"Son RIGHT 1",true], [0x20,0x11,0x00,2,"Son RIGHT 2",true], [0x20,0x12,0x00,2,"Son LEFT",true],
   [0x20,0x10,0x02,1,"Vol RIGHT 1"], [0x20,0x11,0x02,1,"Vol RIGHT 2"], [0x20,0x12,0x02,1,"Vol LEFT"], [0x20,0x1F,0x02,1,"Vol batterie"],
   [0x20,0x20,0x02,1,"Vol APC1"], [0x20,0x21,0x02,1,"Vol APC2"], [0x20,0x22,0x02,1,"Vol APC3"], [0x20,0x23,0x02,1,"Vol APC4"], [0x20,0x24,0x02,1,"Vol APC5"], [0x20,0x25,0x02,1,"Vol APC6"], [0x20,0x26,0x02,1,"Vol APC7"],
-  [0x20,0x08,0x10,1,"Réverb totale"], [0x20,0x0A,0x0C,1,"APC mode enable"]
-];
+  [0x20,0x08,0x10,1,"Réverb totale"], [0x20,0x08,0x11,1,"Réverb type"], [0x20,0x08,0x12,1,"Réverb profondeur"], [0x20,0x08,0x21,9,"DSP (bloc 9 octets)"], [0x20,0x0A,0x0C,1,"APC mode enable"]
+]; // v2.6.15 — ajouts terrain : type + profondeur de réverb (20 08 11/12) et bloc DSP complet (20 08 21, SIZ 9) ; r[5]===true sur les sons = conversion possible des valeurs sélecteur→sysex
 let songs = null, curSongId = null, panelCap = null, seqPlaceholder = null; // panelCap : collecteur pendant la lecture panel ; seqPlaceholder : texte affiché pour un morceau SANS séquence (v0.40 — ne jamais le sauvegarder comme séquence)
 
 function songsLoad() {
@@ -1253,11 +1253,21 @@ function readPanel() {
   for (const r of PANEL_READS) sendDrq(r[0], r[1], r[2], r[4], r[3]);
   return new Promise(res => setTimeout(() => {
     panelCap = null;
+    for (const r of PANEL_READS) { // v2.6.15 — sons du clavier : si la réponse arrive en valeurs du SÉLECTEUR (pc/bank) au lieu des valeurs sysex, on convertit (sinon « pas les bons sons au retour » : l'écriture ITW exige les valeurs sysex)
+      if (r[5] !== true) continue;
+      const adr = hex([r[0], r[1], r[2]]), raw = out.params[adr];
+      if (!raw || raw.length < 2 || matchSound(raw[0], raw[1])) continue;
+      const alt = knFind(raw[0], raw[1]);
+      if (alt) { out.params[adr] = [alt[4] & 0x7F, alt[5] & 0x7F]; log("🎯 " + r[4] + " : réponse du clavier convertie (valeurs sélecteur → sysex) → " + alt[2] + ".", "ok"); }
+      else log("⚠️ " + r[4] + " : valeur " + raw.join(" ") + " non reconnue (ni sysex ni sélecteur) — réglage NON mémorisé pour ce son.", "ko");
+    }
     const got = Object.keys(out.params).length;
     if (got) log("💾 Panel lu : " + got + "/" + PANEL_READS.length + " réglage(s) reçu(s).", "ok");
     else log("⚠️ Aucune réponse du KN2000 (branché ? port RX ?) — seuls la séquence et le tempo ♩" + out.tempo + " sont sauvegardés.", "ko");
+    const miss = PANEL_READS.filter(r => !out.params[hex([r[0], r[1], r[2]])]); // v2.6.15 — diagnostic terrain : lister UNE PAR UNE les demandes restées sans réponse
+    if (got && miss.length) log("⚠️ Sans réponse du KN2000 : " + miss.map(r => r[4] + " (" + hex([r[0], r[1], r[2]]) + ")").join(", ") + ".", "ko");
     res(out);
-  }, 1200));
+  }, 2000)); // v2.6.15 — fenêtre 1200 → 2000 ms : 23 réponses à attendre, pertes one-way connues du KN2000
 }
 // ITW multi-octets : f0 50 2C 01 18 10 ADR(3) SIZ(3) DT-nibblisé CN CK f7
 function sendItw(adr, dt) {
