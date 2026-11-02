@@ -290,6 +290,8 @@ Thème
       <button id="m5TlStop" title="Désarme le timelapse (les actions déjà passées ne sont pas rejouées)">⏹</button>
       <button id="m5TlEdit" title="Éditeur : mesures éditables, test immédiat, suppression, ajout d'actions">✏️ Éditer</button>
       <button id="m5TlSave" title="Enregistre le buffer ● REC comme nouveau timelapse (Apprentissage)">💾 Enregistrer-sous</button>
+      <button id="m5TlAppend" title="Ajoute le contenu du buffer ● REC au timelapse sélectionné (mesures conservées, tout est trié) — le buffer n'est pas vidé">➕ Ajouter le buffer</button>
+      <button id="m5TlMerge" title="Fusionne un autre timelapse dans le sélectionné (événements triés par mesure)">⧉ Fusionner</button>
       <button id="m5TlDup" title="Duplique le timelapse sélectionné">⧉ Dupliquer</button>
       <button id="m5TlLink" title="Lie le timelapse à une scène de mutes : à l'armement, la scène est appliquée en premier">🔗 Lier à une scène</button>
       <button id="m5TlDel" title="Supprime le timelapse sélectionné">🗑</button>
@@ -740,6 +742,7 @@ function onMidiMsg(ev) {
     for (let i = 12; i + 1 < d.length - 2 && raw.length < siz; i += 2) raw.push(((d[i] << 4) | d[i + 1]) & 0x7F);
     if (panelCap) panelCap.params[adr] = raw.slice(); // v0.32 : capture pour la sauvegarde du morceau (lecture panel)
     if (EN_MAP[adr] && raw.length) enOnItr(adr, raw[0]); // v2.6.4 : réglages de session (enables p.28) → état + auto-fix
+    if (/^20 60 (08|09|0A|0B|0C|0D|0E)$/.test(adr) && raw.length) { m5St[adr] = raw[0] & 1; m5QaRerender(); } // v2.6.6 — états live des commandes rythme (annonces du clavier)
     m5RecCap("itw", adr, raw.slice()); // v2.6.5 — capture ● REC des annonces du clavier (l'utilisateur fait le tri)
     const names = { "20 04 02": "REAL TIME COMMAND ENABLE", "20 04 03": "CLOCK SELECT", "20 00 25": "TEMPO (TMP)", "20 0A 25": "APC INPUT", "20 60 08": "SYNCHRO & BREAK" };
     let extra = "";
@@ -1988,6 +1991,7 @@ function m4SceneApply(i) {
   let n = 0;
   for (const d of M4_ALL()) { const want = !!sc.mutes[d.lbl]; if (m4SetMute(d, want) && want) n++; }
   log("✅ Scène « " + sc.name + " » appliquée (" + n + " mute(s) ON, les autres parts rétablies) — mémorisé pour le morceau courant.", "ok");
+  m5LastScene = "« " + sc.name + " » (" + new Date().toLocaleTimeString() + ")"; m5ArmLblRefresh(); // v2.6.6 — bandeau automation
   renderM4();
 }
 document.getElementById("sceneApplyM2").onclick = () => m4SceneApply(parseInt(document.getElementById("sceneSelM2").value, 10));
@@ -2011,19 +2015,20 @@ document.getElementById("m4Reload").onclick = async () => {
 };
 
 // ═════════ v2.6 — M5 Live & Automation : analyse de grille, boutons rapides, pads APC25, REC apprentissage, timelapses ═════════
-const M5_RHY = { // commandes rythme — CC82 sur le canal Control (validé terrain) pour Fill/Intro/Ending/CountIntro/Stop ; sysex 20 60 xx pour le reste
-  fill1:    { lbl: "Fill In 1",  cc82: 0x01 },
-  fill2:    { lbl: "Fill In 2",  cc82: 0x05 },
-  intro:    { lbl: "Intro",      cc82: 0x03 },
-  ending:   { lbl: "Ending",    cc82: 0x02 },
-  countin:  { lbl: "Count Intro", cc82: 0x07 },
+const M5_RHY = { // v2.6.6 — rangée ② au PROTOCOLE DU PANNEAU (relevé ● REC terrain 2/11 : le panneau commande en sysex 20 60 xx, ON puis auto-relâchement OFF ; le CC82 émis par le clavier n'est qu'une annonce sortante). evt = événement transitoire : envoyé au clavier SANS mémorisation dans les réglages du morceau (restorePanel ne doit pas rejouer un Fill à la sélection).
+  fill1:    { lbl: "Fill In 1",   key: "20 60 0C", tog: true, evt: true },
+  fill2:    { lbl: "Fill In 2",   key: "20 60 0D", tog: true, evt: true },
+  intro:    { lbl: "Intro",       key: "20 60 0A", tog: true, evt: true },
+  countin:  { lbl: "Count Intro", key: "20 60 0B", tog: true, evt: true },
+  ending:   { lbl: "Ending",     key: "20 60 0E", tog: true, evt: true }, // Bible p.29 : Ending 1 = 20 60 0E (le relevé terrain montrait 0A pour Intro/Ending — à confirmer, on suit la Bible pour l'instant)
   stop:     { lbl: "Stop rythme", cc82: 0x00 },
-  variation:{ lbl: "Variation",   key: "20 60 09", tog: true, cal: "valeur à calibrer terrain" },
+  variation:{ lbl: "Variation",   key: "20 60 09", tog: true }, // valeurs 01/00 confirmées terrain (annonces du panneau)
   break:    { lbl: "Synchro/Break", key: "20 60 08", tog: true },
   pianist:  { lbl: "APC Pianist",  key: "20 60 02", val: 0x03 },
   fingered: { lbl: "APC Fingered", key: "20 60 02", val: 0x02 },
   memory:   { lbl: "APC Memory",   key: "20 60 03", tog: true }
 };
+let m5St = {}; // v2.6.6 — états ON/OFF LIVE des commandes rythme, pilotés par les annonces ITR du clavier (20 60 08/09/0A-0E) + nos propres envois
 const M5_PAD_DEF = [ // modèle par défaut des 8 pads APC Key 25 (note = m5PadBase + index) — actions réaffectables en éditant ce tableau
   { act: { k: "scene", i: 0 }, lbl: "Scène 1" },
   { act: { k: "rhythm", id: "fill1" }, lbl: "Fill 1" },
@@ -2039,6 +2044,7 @@ function macrosLoad() { try { const a = JSON.parse(localStorage.getItem(MACRO_KE
 function macrosStore(a) { try { localStorage.setItem(MACRO_KEY, JSON.stringify(a)); } catch (e) { log("Écriture localStorage impossible : " + e.message, "ko"); } }
 let m5rec = null; // buffer ● REC : [{m, lbl, act}]
 let m5armed = null, m5armedIdx = 0; // timelapse armé + prochain événement à tirer
+let m5EditTl = null, m5EditTlIdx = -1; // v2.6.6 — timelapse affiché dans l'éditeur (surlignage temps réel)
 function m5Song() { return songs.songs.find(x => x.id === curSongId) || null; }
 function m5Tls() { const s = m5Song(); if (!s) return null; if (!Array.isArray(s.timelapses)) s.timelapses = []; return s.timelapses; }
 function autoMeas() { const p = posInfo(); return p ? p.meas : 1; }
@@ -2055,7 +2061,15 @@ function qaRun(act) { // exécute une action rapide ; renvoie le libellé si ex�
       if (!sendCc82(r.cc82, r.lbl)) return null;
       log("🥁 " + r.lbl + " (CC82=" + r.cc82 + ", canaux Control + 16).", "ok"); return r.lbl; }
     const v = r.tog ? ((act.v !== undefined) ? act.v : 1) : r.val;
-    return m4Write(r.key, [v & 0x7f], r.lbl + " → " + v) ? (r.lbl + (r.cal ? " (" + r.cal + ")" : "")) : null; }
+    if (r.evt) { // v2.6.6 — événement transitoire du panneau : sysex direct, PAS de mémorisation dans le morceau
+      const a = r.key.split(" ").map(x => parseInt(x, 16));
+      if (!sendItw(a, [v & 0x7f])) return null;
+      m5St[r.key] = (v & 1); m5QaRerender();
+      log("🥁 " + r.lbl + " → " + (v & 1 ? "ON" : "OFF") + " (sysex " + r.key + ", protocole panneau).", "ok");
+      return r.lbl + (v & 1 ? " ON" : " OFF"); }
+    const res = m4Write(r.key, [v & 0x7f], r.lbl + " → " + v);
+    if (res && r.tog) { m5St[r.key] = (v & 1); m5QaRerender(); }
+    return res ? (r.lbl + (r.cal ? " (" + r.cal + ")" : "")) : null; }
   if (act.k === "itw") { // v2.6.5 — rejeu d'une annonce capturée : même adresse, mêmes valeurs
     const a = act.a.split(" ").map(x => parseInt(x, 16));
     if (!sendItw(a, act.v)) return null;
@@ -2076,9 +2090,17 @@ function qaRun(act) { // exécute une action rapide ; renvoie le libellé si ex�
 }
 function qaFire(act, lbl) { // action immédiate + capture REC si l'apprentissage tourne
   const res = qaRun(act);
+  if (res && m5Listen) { // v2.6.6 — mode « écoute » de l'éditeur : l'appui est ajouté au timelapse sélectionné (et exécuté)
+    m5Listen = false;
+    const tls = m5Tls(); const i = parseInt(document.getElementById("m5TlSel").value, 10); const tl = tls && tls[i];
+    if (tl) { tl.events.push({ m: autoMeas(), lbl: lbl || res, act: JSON.parse(JSON.stringify(act)) }); tl.events.sort((a, b) => a.m - b.m); songsSave(); m5TlSelRefresh(); document.getElementById("m5TlSel").value = String(i);
+      log("🎧 Appui ajouté à « " + tl.name + " » : " + (lbl || res) + " (mesure " + autoMeas() + ").", "ok"); }
+  }
   if (res && m5rec) { m5rec.push({ m: autoMeas(), lbl: lbl || res, act: JSON.parse(JSON.stringify(act)) }); m5RecRefresh(); }
   return res;
 }
+let m5Listen = false; // v2.6.6 — mode « écoute » : le prochain appui sur un bouton rapide/pad est ajouté au timelapse sélectionné
+let m5LastScene = ""; // v2.6.6 — dernière scène appliquée (affichée dans le bandeau automation)
 // ---------- v2.6.5 — capture ● REC des événements venant DU CLAVIER (CC82 reçus + annonces ITR 2C) ----------
 const CC82_IDS = { 1: "fill1", 5: "fill2", 2: "ending", 3: "intro", 7: "countin", 0: "stop" };
 function m5RecCap(kind, chOrAdr, v) {
@@ -2096,6 +2118,16 @@ function m5RecCap(kind, chOrAdr, v) {
   log("● REC ← clavier : " + lbl, "clock");
 }
 function m5RecRefresh() { document.getElementById("m5RecCount").textContent = m5rec ? (m5rec.length + " action(s) dans le buffer ● REC") : ""; }
+function m5QaRerender() { // v2.6.6 — badges d'état des boutons rythme de la rangée ② (sans reconstruire toute la rangée : les sélecteurs ne clignotent pas)
+  document.querySelectorAll("#m5Quick button[data-qa]").forEach(b => {
+    let act = null; try { act = JSON.parse(b.dataset.qa); } catch (e) {}
+    if (!act || act.k !== "rhythm") return;
+    const r = M5_RHY[act.id]; if (!r || !r.tog) return;
+    const v = m5St[r.key];
+    b.textContent = r.lbl + (v === 1 ? " ●ON" : "");
+    b.style.borderColor = v === 1 ? "#7a4fd0" : ""; b.style.borderWidth = v === 1 ? "2px" : "";
+  });
+}
 
 // ---------- Pads APC Key 25 (modèle par défaut, note de base réglable) ----------
 function m5PadNote(i) { const b = parseInt(document.getElementById("m5PadBase").value, 10); return (b >= 1 && b <= 127) ? b + i : 48 + i; }
@@ -2201,6 +2233,7 @@ function renderM5() {
     + "<button id=\"m5MacroSave\" title=\"Sauve le buffer ● REC courant comme macro réutilisable\">💾 Macro</button>"
     + "<button id=\"m5MacroDel\" title=\"Supprime la macro choisie\">🗑</button></div>";
   document.getElementById("m5Quick").innerHTML = h;
+  m5QaRerender(); // v2.6.6 — badges d'état appliqués dès le rendu
   document.getElementById("m5PadHint").textContent = "pads : " + M5_PAD_DEF.map((p, i) => m5PadNote(i) + "=" + p.lbl).join(" · ");
   m5TlSelRefresh();
   m5RecRefresh();
@@ -2226,9 +2259,7 @@ document.getElementById("m5Quick").addEventListener("click", (ev) => {
     qaFire({ k: "rv", lbl, on }); return; }
   if (t.dataset.qa) { let act = null; try { act = JSON.parse(t.dataset.qa); } catch (e) {}
     if (act && act.k === "rhythm") { const r = M5_RHY[act.id];
-      if (r && r.tog) { // bascule lue dans l'état mémorisé (comme les boutons RV/DSP de M4)
-        const scc = m5Song(); const stored = (scc && scc.panel && scc.panel.params) ? scc.panel.params[r.key] : null;
-        act.v = (stored !== undefined && stored !== null && stored[0] >= 0x40) ? 0 : 1; } }
+      if (r && r.tog) act.v = (m5St[r.key] === 1) ? 0 : 1; } // v2.6.6 — bascule sur l'état LIVE (annonces ITR du clavier) : ON → clic = OFF (annulation)
     if (act) qaFire(act); return; }
 });
 document.getElementById("m5PadBase").addEventListener("input", renderM5);
@@ -2249,8 +2280,12 @@ function m5TlSelRefresh() {
   const tls = m5Tls() || []; const el = document.getElementById("m5TlSel"); if (!el) return;
   el.innerHTML = tls.map((t, i) => "<option value=\"" + i + "\">" + t.name + " (" + (t.events ? t.events.length : 0) + ")</option>").join("") || "<option value=\"\">— aucun timelapse —</option>";
 }
-function m5ArmLblRefresh() {
-  document.getElementById("m5ArmLbl").textContent = m5armed ? ("🎬 « " + m5armed.name + " » armé — prochaine action à la mesure " + ((m5armed.events[m5armedIdx] && m5armed.events[m5armedIdx].m) || "—")) : "";
+function m5ArmLblRefresh() { // v2.6.6 — bandeau automation : conditions claires (armé, mesure, prochaine action, scène liée, dernière scène appliquée)
+  const el = document.getElementById("m5ArmLbl"); if (!el) return;
+  if (!m5armed) { el.textContent = m5LastScene ? ("dernière scène appliquée : " + m5LastScene) : ""; return; }
+  const ev = m5armed.events[m5armedIdx];
+  const scn = (m5armed.scene !== undefined && m5armed.scene !== null) ? ("scène liée : " + ((scenesLoad()[m5armed.scene] || {}).name || "?") + " (appliquée à l'armement)") : "sans scène liée";
+  el.textContent = "⏳ Armé « " + m5armed.name + " » · mesure " + autoMeas() + " · prochaine : " + (ev ? ("M" + ev.m + " " + ev.lbl) : "(terminé)") + " · " + scn + (m5LastScene ? " · dernière scène : " + m5LastScene : "");
 }
 function m5TlArm(i) {
   const tls = m5Tls(); if (!tls) { log("Choisis un morceau (M1) avant d'armer un timelapse.", "ko"); return; }
@@ -2258,11 +2293,22 @@ function m5TlArm(i) {
   tl.events.sort((a, b) => a.m - b.m);
   m5armed = tl; m5armedIdx = tl.events.findIndex(e => e.m > autoMeas()); if (m5armedIdx < 0) m5armedIdx = tl.events.length;
   if (tl.scene !== undefined && tl.scene !== null) { log("🔗 Scène liée appliquée d'abord.", "info"); m4SceneApply(tl.scene); }
-  log("🎬 Timelapse « " + tl.name + " » ARMÉ (" + tl.events.length + " action(s)) — les actions partiront quand le compteur atteindra leur mesure (" + m5armedIdx + " restante(s) maintenant).", "ok");
+  log("🎬 Timelapse « " + tl.name + " » ARMÉ (" + tl.events.length + " action(s)) — chaque action part quand le COMPTEUR de mesures atteint sa mesure (le compteur avance sur l'horloge F8 du clavier : le rythme doit tourner) — " + m5armedIdx + " restante(s) maintenant.", "ok");
   m5ArmLblRefresh();
+}
+function m5TlCurRefresh() { // v2.6.6 — éditeur vivant : mesure en cours + ligne de la prochaine action surlignée pendant l'exécution
+  const box = document.getElementById("m5TlEditBox"); if (!box || !box.innerHTML) return;
+  const cur = document.getElementById("m5TlCur"); if (cur) cur.textContent = "mesure en cours : " + autoMeas();
+  box.querySelectorAll("tr[data-tlrow]").forEach(tr => {
+    const j = parseInt(tr.dataset.tlrow, 10);
+    const on = !!(m5armed && m5EditTl === m5armed && j === m5armedIdx);
+    tr.style.background = on ? "#4a2f8a" : "";
+    tr.style.color = on ? "#fff" : "";
+  });
 }
 setInterval(() => { // v2.6 : poll léger — tir des actions armées + affichage de la mesure courante
   const el = document.getElementById("m5PosLbl"); if (el) el.textContent = "mesure : " + autoMeas();
+  m5TlCurRefresh();
   if (!m5armed) return;
   const meas = autoMeas();
   while (m5armedIdx < m5armed.events.length && m5armed.events[m5armedIdx].m <= meas) {
@@ -2286,6 +2332,30 @@ document.getElementById("m5TlSave").onclick = () => {
     m5rec = null; document.getElementById("m5Rec").checked = false; m5RecRefresh();
     log("💾 Timelapse « " + nm.trim() + " » enregistré pour « " + m5Song().title + " » (éditable par ✏️).", "ok");
   }
+};
+document.getElementById("m5TlAppend").onclick = () => { // v2.6.6 — append du buffer ● REC dans le timelapse sélectionné
+  const tls = m5Tls(); const i = parseInt(document.getElementById("m5TlSel").value, 10); const tl = tls && tls[i];
+  if (!tl) { log("Choisis d'abord le timelapse à compléter (ou 💾 Enregistrer-sous pour en créer un).", "info"); return; }
+  if (!m5rec || !m5rec.length) { log("Le buffer ● REC est vide — coche ● REC et joue tes actions d'abord.", "info"); return; }
+  const evs = m5rec.map(e => ({ m: e.m, lbl: e.lbl, act: e.act })).sort((a, b) => a.m - b.m);
+  tl.events = tl.events.concat(evs).sort((a, b) => a.m - b.m);
+  songsSave(); m5TlSelRefresh(); document.getElementById("m5TlSel").value = String(i);
+  log("➕ " + evs.length + " action(s) du buffer ajoutée(s) à « " + tl.name + " » (" + tl.events.length + " au total, triées) — le buffer est conservé (🧹 pour le vider).", "ok");
+};
+document.getElementById("m5TlMerge").onclick = () => { // v2.6.6 — fusion d'un autre timelapse dans le sélectionné
+  const tls = m5Tls(); const i = parseInt(document.getElementById("m5TlSel").value, 10); const tl = tls && tls[i];
+  if (!tl) { log("Choisis d'abord le timelapse à compléter.", "info"); return; }
+  if (tls.length < 2) { log("Il faut au moins deux timelapses pour fusionner.", "info"); return; }
+  const r = prompt("Fusionner quel timelapse DANS « " + tl.name + " » (numéro ou nom) ?\n" + tls.map((t, j) => (j === i ? "(cible) " : "") + (j + 1) + ". " + t.name + " (" + (t.events ? t.events.length : 0) + " action(s))").join("\n"));
+  if (r === null || !r.trim()) return;
+  const n = parseInt(r.trim(), 10);
+  const src = (!isNaN(n) && tls[n - 1] && n - 1 !== i) ? tls[n - 1] : tls.find((t, j) => j !== i && t.name.toLowerCase() === r.trim().toLowerCase());
+  if (!src) { log("Timelapse source introuvable (ou identique à la cible).", "ko"); return; }
+  const evs = (src.events || []).map(e => ({ m: e.m, lbl: e.lbl, act: e.act }));
+  tl.events = tl.events.concat(evs).sort((a, b) => a.m - b.m);
+  if (src.scene !== undefined && src.scene !== null && (tl.scene === undefined || tl.scene === null)) tl.scene = src.scene; // la scène liée de la source est reprise si la cible n'en a pas
+  songsSave(); m5TlSelRefresh(); document.getElementById("m5TlSel").value = String(i);
+  log("⧉ " + evs.length + " action(s) de « " + src.name + " » fusionnée(s) dans « " + tl.name + " » (" + tl.events.length + " au total, triées) — « " + src.name + " » est conservé (supprime-le via 🗑 si besoin).", "ok");
 };
 document.getElementById("m5TlDup").onclick = () => {
   const tls = m5Tls(); const i = parseInt(document.getElementById("m5TlSel").value, 10); if (!tls || !tls[i]) { log("Choisis d'abord un timelapse.", "info"); return; }
@@ -2323,12 +2393,15 @@ document.getElementById("m5TlEdit").onclick = () => {
   if (!tl) { box.innerHTML = "<div class=\"hint\">Choisis un timelapse à éditer (ou 💾 Enregistrer-sous depuis le buffer ● REC).</div>"; return; }
   let h = "<div class=\"row\" style=\"align-items:center\"><b>✏️ " + tl.name + "</b>"
     + "<button id=\"m5TlRename\" title=\"Renommer\">🏷</button>"
-    + "<span class=\"hint\">la mesure est éditable — les actions partent à leur mesure quand le timelapse est armé</span></div>"
+    + "<span class=\"hint\" id=\"m5TlCur\">mesure en cours : " + autoMeas() + "</span>"
+    + "<span style=\"flex:1\"></span>"
+    + "<button id=\"m5TlListen\" title=\"Mode écoute : le prochain appui sur un bouton rapide (ou pad) est AJOUTÉ à ce timelapse, à la mesure courante — l'action est aussi exécutée\">🎧 Écouter un appui</button>"
+    + "<span class=\"hint\">la mesure est éditable — les actions partent à leur mesure quand le timelapse est armé ; la prochaine est surlignée</span></div>"
     + "<table style=\"width:100%;border-collapse:collapse;font-size:13px\">"
     + "<tr><th style=\"text-align:left\">Mesure</th><th style=\"text-align:left\">Action</th><th></th><th></th></tr>";
   tl.events.forEach((e, j) => {
     const elbl = (e.act && e.act.k === "mute") ? muteLbl(e.act) : e.lbl; // v2.6.2 : les anciens timelapses « Mute X ON/OFF » se réaffichent sans ambiguïté
-    h += "<tr><td style=\"padding:2px 6px\"><input type=\"number\" data-tlm=\"" + j + "\" value=\"" + e.m + "\" min=\"1\" max=\"999\" style=\"width:64px\"></td>"
+    h += "<tr data-tlrow=\"" + j + "\"><td style=\"padding:2px 6px\"><input type=\"number\" data-tlm=\"" + j + "\" value=\"" + e.m + "\" min=\"1\" max=\"999\" style=\"width:64px\"></td>"
       + "<td style=\"padding:2px 6px;border-bottom:1px solid #eee\">" + elbl + "</td>"
       + "<td><button data-tltest=\"" + j + "\" title=\"Tester l'action MAINTENANT (elle est envoyée au clavier)\">▶</button></td>"
       + "<td><button data-tldel=\"" + j + "\" title=\"Supprimer cette action\">🗑</button></td></tr>";
@@ -2337,7 +2410,14 @@ document.getElementById("m5TlEdit").onclick = () => {
     + "<select id=\"m5AddSel\" style=\"max-width:260px\">" + m5AddOpts() + "</select>"
     + "<button id=\"m5TlAdd\" title=\"Ajoute l'action choisie à la mesure choisie\">➕ Ajouter</button></div>";
   box.innerHTML = h;
+  m5EditTl = tl; m5EditTlIdx = i; // v2.6.6 — pour le surlignage temps réel de la prochaine action pendant l'exécution
+  m5TlCurRefresh();
   document.getElementById("m5TlRename").onclick = () => { const nm = prompt("Nouveau nom ?", tl.name); if (nm && nm.trim()) { tl.name = nm.trim(); songsSave(); m5TlSelRefresh(); document.getElementById("m5TlSel").value = String(i); document.getElementById("m5TlEdit").onclick(); } };
+  document.getElementById("m5TlListen").onclick = () => { // v2.6.6 — mode écoute : le prochain appui sur un bouton rapide/pad rejoint ce timelapse
+    m5Listen = !m5Listen;
+    log(m5Listen ? "🎧 Écoute ARMÉE — appuie sur n'importe quel bouton rapide (ou pad) : l'action sera ajoutée à « " + tl.name + " » à la mesure courante (et exécutée). Un seul appui est capturé." : "🎧 Écoute désarmée.", "info");
+    document.getElementById("m5TlListen").style.borderColor = m5Listen ? "#7a4fd0" : ""; document.getElementById("m5TlListen").style.borderWidth = m5Listen ? "2px" : "";
+  };
   document.getElementById("m5TlAdd").onclick = () => {
     let act = null; try { act = JSON.parse(document.getElementById("m5AddSel").value); } catch (e) {}
     const m = parseInt(document.getElementById("m5AddM").value, 10) || autoMeas();
