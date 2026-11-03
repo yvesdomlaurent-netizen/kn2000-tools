@@ -120,7 +120,7 @@
     </div>
     <div class="row">
       <label>Zone de saisie accords — hauteur <select id="gridH" title="HAUTEUR de la zone de saisie de la grille. Android/Chrome n'offre AUCUNE poignée de redimensionnement sur cette zone : ce réglage la remplace. « ½ largeur d'écran » = hauteur au moins égale à la moitié de la largeur de l'écran (demande terrain v2.6.18). Le choix est mémorisé d'une session à l'autre."><option value="s">Compacte (≈ 10 lignes)</option><option value="m" selected>Moyenne (½ largeur d'écran)</option><option value="l">Grande (¾ largeur d'écran)</option><option value="x">Maxi (presque tout l'écran)</option></select></label>
-      <label>— largeur <select id="gridW" title="LARGEUR de la zone de saisie de la grille (v2.6.19 — demande terrain Yves : réglage de la largeur en plus de la hauteur). « 100 % » = toute la place disponible (défaut, comportement d'origine) ; les autres valeurs réduisent la largeur de la zone (le surlignage violet suit automatiquement). Le choix est mémorisé d'une session à l'autre."><option value="w100" selected>100 % (pleine largeur)</option><option value="w90">90 %</option><option value="w75">75 %</option><option value="w50">50 %</option></select></label>
+      <label>— largeur <select id="gridW" title="LARGEUR de la zone de saisie de la grille (v2.6.20 — correctif terrain : « 100 % » donnait la largeur la plus PETITE parce que le style était vidé et la zone retombait en rétrécissement automatique ; désormais 100 % est appliqué EXPLICITEMENT et la zone occupe toute la place). Les pourcentages sont ceux de la largeur disponible ; le choix est mémorisé d'une session à l'autre."><option value="w100" selected>100 % (pleine largeur)</option><option value="w90">90 %</option><option value="w75">75 %</option><option value="w50">50 %</option></select></label>
       <span class="hint">v2.6.18 — choisis ici la taille de la zone de saisie (mémorisée) : sur mobile elle n'a pas de poignée, c'est ici qu'on l'agrandit.</span>
     </div>
   </div>
@@ -202,38 +202,7 @@ Thème
     <div class="hint">▶ Démarrer · 🎛 Transport clavier · 📼 Départ mesure · 🔇 Vrai silence NC · Saisie multi-lignes · 🎵 Morceaux — mode d'emploi complet : bouton <b>❓ Aide</b> du bandeau (en haut de page).</div>
   </div>
 
-  <details open data-mode="m2 m3">
-    <summary>🧭 Mode APC & Synchro&Break (20 60 02 / 20 60 08)</summary>
-    <div class="row">
-      <button class="apcMode" data-v="0">Off</button>
-      <button class="apcMode" data-v="1">OneFinger</button>
-      <button class="apcMode" data-v="2">Fingered</button>
-      <button class="apcMode" data-v="3">Pianist</button>
-      <span class="hint">sysex : 00=Off, 01=OneFinger, 02=Fingered, 03=Pianist</span>
-    </div>
-    <div class="row">
-      <button id="synOn">⚔ Armer Synchro&Break (20 60 08 = 01)</button>
-      <button id="synRead">🔍 Lire l'état (DRQ)</button>
-      <button id="synOff" title="Urgence seulement — le KN2000 part en vrac si on désarme en cours de route">Désarmer (08 = 00)</button>
-    </div>
-    <div class="hint">⚔ L'ITW `20 60 08 = 01` est envoyé à CHAQUE ▶ Démarrer (le Stop repasse l'état OFF au clavier) ; l'outil ne désarme jamais de son côté (bouton « Désarmer » = urgence). Le badge suit armements, Stops et réponses ITR.</div>
-  </details>
-
-  <details data-mode="m3">
-    <summary>🎬 Déclenchements (CC 82, canal Control = 4) & messages temps réel manuels</summary>
-    <div class="row">
-      <button class="cc82" data-v="3">Intro</button>
-      <button class="cc82" data-v="7">Count Intro</button>
-      <button class="cc82" data-v="1">Fill In 1</button>
-      <button class="cc82" data-v="5">Fill In 2</button>
-      <button class="cc82" data-v="2">Ending</button>
-      <button class="cc82" data-v="0">Stop</button>
-      <button id="rtStart">▶ FA Start</button>
-      <button id="rtCont">⏭ FB Continue</button>
-      <button id="rtStop">⏹ FC Stop</button>
-    </div>
-    <div class="hint">CC82 sur le canal Control (ch4). FA/FB/FC = messages temps réel MIDI SANS canal — la carte d'implémentation KN2000 indique Start/Stop/Continue reçus ET émis. Tout est journalisé en « TX : … ».</div>
-  </details>
+  <!-- v2.6.20 — sections « Mode APC & Synchro&Break » et « Déclenchements CC82 » SUPPRIMÉES (demande Yves) : le badge ⚔ Synchro du bandeau reste, ▶ Démarrer arme toujours Synchro&Break, et les déclenchements restent accessibles depuis les boutons rapides M5/timelapses -->
 
   <details data-mode="m3">
     <summary>📡 Journalisation RX (options du journal)</summary>
@@ -997,22 +966,8 @@ document.getElementById("bpmUp").onclick = () => sendTmpN(curBpm() + 1);
 document.getElementById("bpmDn").onclick = () => sendTmpN(curBpm() - 1);
 
 // ---------- Mode APC (sysex 20 60 02) & déclenchements (CC 82) ----------
-document.querySelectorAll(".apcMode").forEach(b => b.onclick = () => {
-  const v = +b.dataset.v;
-  const names = { 0: "Off", 1: "OneFinger", 2: "Fingered", 3: "Pianist" };
-  sendSysexParam(0x20, 0x60, 0x02, v, "APC TYPE = " + names[v]);
-});
-document.getElementById("synOn").onclick = () => { sendSysexParam(0x20, 0x60, 0x08, 1, "SYNCHRO & BREAK = ON — le KN2000 se met en attente"); synchroArmed = true; synBadge(); };
-document.getElementById("synOff").onclick = () => { sendSysexParam(0x20, 0x60, 0x08, 0, "SYNCHRO & BREAK = OFF"); synchroArmed = false; synBadge(); };
-document.getElementById("synRead").onclick = () => sendDrq(0x20, 0x60, 0x08, "SYNCHRO & BREAK (état)", 1);
-document.querySelectorAll(".cc82").forEach(b => b.onclick = () => {
-  const v = +b.dataset.v;
-  const names = { 0: "Stop", 1: "Fill In 1", 2: "Ending", 3: "Intro", 5: "Fill In 2", 7: "Count Intro" };
-  sendCc82(v, "= " + names[v]);
-});
-document.getElementById("rtStart").onclick = () => send([0xFA], "FA = MIDI Start (temps réel, sans canal)");
-document.getElementById("rtCont").onclick = () => send([0xFB], "FB = MIDI Continue (temps réel, sans canal)");
-document.getElementById("rtStop").onclick = () => { send([0xFC], "FC = MIDI Stop (temps réel, sans canal)"); synchroArmed = false; synBadge(); log("⏹ FC envoyé — le rythme doit s'arrêter si le KN2000 reçoit le Stop temps réel (l'état Synchro passe OFF côté clavier : ▶ Démarrer le réarmera).", "info"); };
+// v2.6.20 — sections M3 « Mode APC & Synchro&Break » et « Déclenchements CC82 » supprimées (demande Yves) : leur câblage disparaît avec elles.
+// Le badge ⚔ Synchro (bandeau), l'armement à chaque ▶ Démarrer, le désarmement au Stop clavier et les déclenchements des boutons rapides M5/timelapses restent inchangés (sendCc82/synBadge conservés).
 
 // ---------- Test 2 : progression — Démarrer (tempo TMP imposé → attente clavier → séquence) ----------
 let playTimers = [];
@@ -1492,10 +1447,10 @@ gridHApply();
 // v2.6.19 — LARGEUR de la zone de saisie, réglage distinct de la hauteur (demande terrain Yves : « garde le réglage de hauteur, ajoute le réglage de la LARGEUR »)
 // appliquée au conteneur .editWrap : la textarea (width:100%) ET le calque miroir (inset:0) suivent ensemble → le surlignage violet reste aligné à toutes les largeurs
 const GRID_W_KEY = "kn2000-apc-grid-w-v2";
-function gridWApply() { // w100 = pleine largeur (défaut, style neutre), w90/w75/w50 = 90 %/75 %/50 %
+function gridWApply() { // w100 = 100 % APPLIQUÉ EXPLICITEMENT (v2.6.20 — correctif : « » vidait le style et la zone retombait en rétrécissement auto ≈ 25 % de l'écran), w90/w75/w50 = 90 %/75 %/50 %
   const wrap = document.querySelector(".editWrap"), v = document.getElementById("gridW").value;
   if (!wrap) return;
-  wrap.style.width = (v === "w100") ? "" : (v === "w90") ? "90%" : (v === "w75") ? "75%" : "50%";
+  wrap.style.width = (v === "w100") ? "100%" : (v === "w90") ? "90%" : (v === "w75") ? "75%" : "50%";
 }
 function saveGridW() { try { localStorage.setItem(GRID_W_KEY, document.getElementById("gridW").value); } catch (e) {} }
 document.getElementById("gridW").onchange = () => { saveGridW(); gridWApply(); };
