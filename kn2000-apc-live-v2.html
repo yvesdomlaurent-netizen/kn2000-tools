@@ -119,7 +119,8 @@
       <span class="hint">24 = standard MIDI (comptage de la position). Si la position avance 2× trop lent/vite, essaie 48 ou 12 — ou lance 🩺 Détecter, qui mesure la vraie valeur.</span>
     </div>
     <div class="row">
-      <label>Zone de saisie accords <select id="gridH" title="Taille de la zone de saisie de la grille. Android/Chrome n'offre AUCUNE poignée de redimensionnement sur cette zone : ce réglage la remplace. « ½ largeur d'écran » = hauteur au moins égale à la moitié de la largeur de l'écran (demande terrain v2.6.18). Le choix est mémorisé d'une session à l'autre."><option value="s">Compacte (≈ 10 lignes)</option><option value="m" selected>Moyenne (½ largeur d'écran)</option><option value="l">Grande (¾ largeur d'écran)</option><option value="x">Maxi (presque tout l'écran)</option></select></label>
+      <label>Zone de saisie accords — hauteur <select id="gridH" title="HAUTEUR de la zone de saisie de la grille. Android/Chrome n'offre AUCUNE poignée de redimensionnement sur cette zone : ce réglage la remplace. « ½ largeur d'écran » = hauteur au moins égale à la moitié de la largeur de l'écran (demande terrain v2.6.18). Le choix est mémorisé d'une session à l'autre."><option value="s">Compacte (≈ 10 lignes)</option><option value="m" selected>Moyenne (½ largeur d'écran)</option><option value="l">Grande (¾ largeur d'écran)</option><option value="x">Maxi (presque tout l'écran)</option></select></label>
+      <label>— largeur <select id="gridW" title="LARGEUR de la zone de saisie de la grille (v2.6.19 — demande terrain Yves : réglage de la largeur en plus de la hauteur). « 100 % » = toute la place disponible (défaut, comportement d'origine) ; les autres valeurs réduisent la largeur de la zone (le surlignage violet suit automatiquement). Le choix est mémorisé d'une session à l'autre."><option value="w100" selected>100 % (pleine largeur)</option><option value="w90">90 %</option><option value="w75">75 %</option><option value="w50">50 %</option></select></label>
       <span class="hint">v2.6.18 — choisis ici la taille de la zone de saisie (mémorisée) : sur mobile elle n'a pas de poignée, c'est ici qu'on l'agrandit.</span>
     </div>
   </div>
@@ -1488,6 +1489,18 @@ function saveGridH() { try { localStorage.setItem(GRID_H_KEY, document.getElemen
 document.getElementById("gridH").onchange = () => { saveGridH(); gridHApply(); };
 try { const _g = localStorage.getItem(GRID_H_KEY); if (_g) document.getElementById("gridH").value = _g; } catch (e) {}
 gridHApply();
+// v2.6.19 — LARGEUR de la zone de saisie, réglage distinct de la hauteur (demande terrain Yves : « garde le réglage de hauteur, ajoute le réglage de la LARGEUR »)
+// appliquée au conteneur .editWrap : la textarea (width:100%) ET le calque miroir (inset:0) suivent ensemble → le surlignage violet reste aligné à toutes les largeurs
+const GRID_W_KEY = "kn2000-apc-grid-w-v2";
+function gridWApply() { // w100 = pleine largeur (défaut, style neutre), w90/w75/w50 = 90 %/75 %/50 %
+  const wrap = document.querySelector(".editWrap"), v = document.getElementById("gridW").value;
+  if (!wrap) return;
+  wrap.style.width = (v === "w100") ? "" : (v === "w90") ? "90%" : (v === "w75") ? "75%" : "50%";
+}
+function saveGridW() { try { localStorage.setItem(GRID_W_KEY, document.getElementById("gridW").value); } catch (e) {} }
+document.getElementById("gridW").onchange = () => { saveGridW(); gridWApply(); };
+try { const _w = localStorage.getItem(GRID_W_KEY); if (_w) document.getElementById("gridW").value = _w; } catch (e) {}
+gridWApply();
 
 // ---------- 🗗 Mémorisation de la taille de fenêtre (demande Yves 01/11) ----------
 const WIN_KEY_V2 = "kn2000-apc-win-v2";
