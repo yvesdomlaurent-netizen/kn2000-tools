@@ -403,14 +403,20 @@ async function initMidi() {
     sendItw([0x20, 0x00, 0x11], [0x00]);
     sendItw([0x20, 0x00, 0x13], [0x01]);
     log("⚙️ Défauts de session : Panel Memory Expand Mode = Normal (20 00 11 = 00) · Music Style Arranger mode = Rhythm (20 00 13 = 01).", "info");
-    if (midiOut) { sendTmpN(parseFloat(document.getElementById("bpmMan").value) || 120); log("📤 Tempo imposé au KN2000 au chargement (trame TMP, ♩ du champ BPM manuel).", "info"); }
+    if (midiOut) {
+      sendDrq(0x20, 0x00, 0x25, "TEMPO (TMP) — tempo réel du clavier", 2); // v2.6.16 — LIRE le tempo du KN2000 à la connexion (la réponse ITR met measuredBpm à jour) au lieu de partir du champ manuel
+      const s0 = songById(curSongId); // v2.6.16 — au démarrage, SEUL le tempo du morceau chargé est imposé (demande Yves) ; pas de tempo imposé si le morceau n'en a pas — le clavier garde le sien
+      if (s0 && s0.panel && s0.panel.tempo) { sendTmpN(s0.panel.tempo); log("📤 Tempo du morceau « " + s0.title + " » imposé au KN2000 au chargement (trame TMP, ♩" + s0.panel.tempo + ") — en parallèle, tempo réel du clavier lu par DRQ.", "ok"); }
+      else log("⏱ Démarrage : aucun tempo imposé — lecture du tempo courant du KN2000 (DRQ) ; il servira de référence au compteur et au détecteur de pulses.", "info");
+    }
   } catch (e) { log("Erreur accès MIDI : " + e.message, "ko"); }
 }
 document.getElementById("resetMidi").onclick = () => initMidi();
 
 // ---------- Tempo : exclusivement via la trame TMP (sysex) ----------
 const bpmEl = document.getElementById("bpm"), bpmSrc = document.getElementById("bpmSrc");
-let measuredBpm = null;
+let measuredBpm = null; // tempo LU sur le KN2000 (trame TMP reçue ou DRQ 20 00 25) — seul étalon valable
+let imposedBpm = null; // v2.6.16 — dernier tempo IMPOSÉ par la page (envoyé au clavier, jamais une mesure)
 let synchroArmed = null; // null = inconnu, true = ON (20 60 08 = 01), false = OFF
 function synBadge() {
   const b = document.getElementById("synBadge");
@@ -968,10 +974,12 @@ document.getElementById("enReadBtn").onclick = () => enReadAll();
 enRender();
 
 // ---------- Tempo : affichage + boutons ± (trame TMP vers le KN2000) ----------
-function curBpm() { return Math.round(measuredBpm || parseFloat(document.getElementById("bpmMan").value) || 120); }
+// v2.6.16 — un tempo IMPOSÉ n'est plus une MESURE : measuredBpm ne reflète que ce que le KN2000 a annoncé
+// (trame TMP reçue ou réponse ITR du DRQ 20 00 25) ; imposedBpm = dernier tempo que NOUS avons envoyé.
+function curBpm() { return Math.round(measuredBpm || imposedBpm || parseFloat(document.getElementById("bpmMan").value) || 120); }
 function sendTmpN(n) {
   n = Math.min(300, Math.max(40, Math.round(n)));
-  measuredBpm = n;
+  imposedBpm = n; // v2.6.16 — n'ÉCRASE PLUS measuredBpm : sinon le détecteur de pulses divisait par un tempo que nous avons imposé, pas par celui du clavier (lectures 24/48/72 aléatoires)
   bpmEl.textContent = n + " BPM";
   bpmSrc.textContent = "Tempo imposé au KN2000 (trame TMP)";
   // F0 50 25 DT1 DT2 F7 — DT1 = 4 bits bas envoyé en premier, DT2 = 5 bits hauts (forme miroir de ce que le KN2000 émet)
@@ -1311,10 +1319,20 @@ document.getElementById("songSave").onclick = async () => {
   const prevCcs = (s.panel && s.panel.ccs) || null; // v2.3 : les CC par part ne se lisent pas au DRQ → conservés à la sauvegarde
   const prevMutes = (s.panel && s.panel.mutes) || null; // v2.5 : mutes par part
   const prevSnd = (s.panel && s.panel.addsnd) || null; // v2.5 : sons des parts Add-on
+  const prevRhy = { rhy1: (s.panel && s.panel.rhy1) || null, rhy2: (s.panel && s.panel.rhy2) || null, rhy3: (s.panel && s.panel.rhy3) || null, rhyCur: (s.panel && s.panel.rhyCur) || 1 }; // v2.6.16 — slots Rythme 1/2/3 conservés (retour terrain : Rythme 2/3 s'effacaient à la sauvegarde et retombaient sur 8Bt Standard 1)
   s.panel = await readPanel();
   if (prevCcs) s.panel.ccs = prevCcs;
   if (prevMutes) s.panel.mutes = prevMutes;
   if (prevSnd) s.panel.addsnd = prevSnd;
+  s.panel.rhy1 = prevRhy.rhy1; s.panel.rhy2 = prevRhy.rhy2; s.panel.rhy3 = prevRhy.rhy3; s.panel.rhyCur = prevRhy.rhyCur;
+  { // v2.6.16 — cohérence avec 📥 Relire : le rythme lu au clavier est rangé dans le slot COCHÉ (rhy1/2/3)
+    const rvals = (s.panel.params && s.panel.params["20 60 00"]) || null;
+    if (rvals) {
+      const rr = KN.rhythms.find(x => x[4] === (rvals[0] & 0x7f) && x[5] === (rvals[1] & 0x7f));
+      const cur = s.panel.rhyCur || 1;
+      if (rr) { s.panel["rhy" + cur] = [rr[0], rr[1]]; log("🎛 Rythme lu au clavier : " + rr[2] + " → rangé dans « Rythme " + cur + " » (le coché).", "ok"); }
+    }
+  }
   songsSave();
   renderSongs();
   log("💾 « " + s.title + " » sauvegardé : séquence + " + Object.keys(s.panel.params).length + " réglage(s) panel" + (s.panel.ccs ? " + " + Object.keys(s.panel.ccs).length + " CC" : "") + " (♩" + s.panel.tempo + ").", "ok");
@@ -1431,6 +1449,7 @@ setInterval(connPillUpdate, 1000);
 // standard la plus proche (24/48/96) — fin des réglages au doigt mouillé.
 document.getElementById("ppqDetect").onclick = () => {
   if (typeof midiIn === "undefined" || !midiIn) { log("🩺 Connecte d'abord le MIDI (🔌 Connecter).", "ko"); return; }
+  if (!measuredBpm) { log("🩺 Refusé : le tempo de référence n'a pas été LU sur le KN2000 (annonce TMP ou DRQ 20 00 25). Un tempo imposé par la page ne peut pas servir d'étalon — la lecture serait fausse (24/48/72 aléatoires). Relance 🔍 Lire les réglages ou attends une annonce du clavier.", "ko"); return; } // v2.6.16 — le détecteur ne divise JAMAIS par un tempo imposé
   f8CountV2 = 0;
   const btn = document.getElementById("ppqDetect");
   btn.disabled = true;
@@ -1439,7 +1458,7 @@ document.getElementById("ppqDetect").onclick = () => {
     btn.disabled = false;
     const bpm = curBpm();
     if (f8CountV2 < 24) { log("🩺 " + f8CountV2 + " pulse(s) seulement en 4 s — rythme pas lancé ou horloge muette : lance le rythme puis relance la détection.", "ko"); return; }
-    const est = (f8CountV2 / 4) / (bpm / 60);
+    const est = (f8CountV2 / 4) / (measuredBpm / 60); // v2.6.16 — référence : tempo LU du clavier uniquement (jamais imposé)
     const std = [24, 48, 96].sort((a, b) => Math.abs(a - est) - Math.abs(b - est))[0];
     log("🩺 " + f8CountV2 + " pulses en 4 s à ♩" + bpm + " → ≈ " + est.toFixed(1) + " pulses/noire (standard le plus proche : " + std + ").", "ok");
     if (std !== parseInt(document.getElementById("ppq").value, 10) && confirm("Appliquer pulses/noire = " + std + " ?")) {
