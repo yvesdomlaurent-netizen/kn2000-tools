@@ -416,9 +416,8 @@ document.getElementById("resetMidi").onclick = () => initMidi();
 // ---------- Tempo : exclusivement via la trame TMP (sysex) ----------
 const bpmEl = document.getElementById("bpm"), bpmSrc = document.getElementById("bpmSrc");
 let measuredBpm = null; // tempo LU sur le KN2000 (trame TMP reçue ou DRQ 20 00 25) — seul étalon valable
-let measuredBpmAt = 0; // v2.6.17 — horodatage de la dernière lecture (performance.now) : la PLUS RÉCENTE des deux sources gagne
 let imposedBpm = null; // v2.6.16 — dernier tempo IMPOSÉ par la page (envoyé au clavier, jamais une mesure)
-let imposedBpmAt = 0; // v2.6.17 — horodatage : un tempo lu AVANT l'imposition du morceau est PÉRIMÉ (bug terrain : charger un morceau ♩78 puis ▶ Démarrer renvoyait ♩65 lu à la connexion)
+let bpmSeq = 0, bpmLast = null; // v2.6.17 — le tempo COURANT = la DERNIÈRE vérité connue, imposée OU lue, dans l'ordre chronologique (bug terrain : ♩65 lu au démarrage écrasait ♩78 imposé par le chargement du morceau à ▶ Démarrer)
 let synchroArmed = null; // null = inconnu, true = ON (20 60 08 = 01), false = OFF
 function synBadge() {
   const b = document.getElementById("synBadge");
@@ -749,7 +748,7 @@ function onMidiMsg(ev) {
     const t = ev.data.length >= 6 ? (((ev.data[4] & 0x1f) << 4) | (ev.data[3] & 0x0f)) : null; // DT1 = 4 bits bas, DT2 = 5 bits hauts, ♩=40-300
     if (t !== null && t >= 40 && t <= 300) {
       measuredBpm = t;
-      measuredBpmAt = performance.now(); // v2.6.17 — horodatage de la lecture
+      bpmLast = { v: t, src: "measured", at: ++bpmSeq }; // v2.6.17 — annonce du clavier = nouvelle vérité (elle vient après l'imposition éventuelle)
       bpmEl.textContent = t + " BPM";
       bpmSrc.textContent = "Tempo lu en SYSEX (trame TMP 25 — le KN2000 l'annonce, ex. à la sélection de PM)";
       log("🎹 Tempo du KN2000 : ♩" + t + " (trame TMP)", "ok");
@@ -775,7 +774,7 @@ function onMidiMsg(ev) {
     if (adr === "20 00 25" && raw.length >= 2) {
       const t1 = (raw[1] << 7) | raw[0], t2 = (raw[0] << 7) | raw[1]; // DT1 LSB + DT2 MSB (9 bits) — les 2 sens testés
       const t = (t1 >= 40 && t1 <= 300) ? t1 : ((t2 >= 40 && t2 <= 300) ? t2 : null);
-      if (t !== null) { extra = " → ♩" + t; measuredBpm = t; measuredBpmAt = performance.now(); bpmEl.textContent = t + " BPM"; bpmSrc.textContent = "Tempo lu par DRQ 20 00 25 (réponse ITR)"; }
+      if (t !== null) { extra = " → ♩" + t; measuredBpm = t; bpmLast = { v: t, src: "measured", at: ++bpmSeq }; bpmEl.textContent = t + " BPM"; bpmSrc.textContent = "Tempo lu par DRQ 20 00 25 (réponse ITR)"; } // v2.6.17 — idem DRQ
       else extra = " → candidats ♩" + t1 + " / ♩" + t2 + " (format à confirmer)";
     }
     log("ITR : " + adr + " = " + hex(raw) + ((names[adr] || (EN_MAP[adr] && EN_MAP[adr].n)) ? "  (" + (names[adr] || EN_MAP[adr].n) + extra + ")" : ""), "ok");
@@ -979,14 +978,11 @@ enRender();
 // ---------- Tempo : affichage + boutons ± (trame TMP vers le KN2000) ----------
 // v2.6.16 — un tempo IMPOSÉ n'est plus une MESURE : measuredBpm ne reflète que ce que le KN2000 a annoncé
 // (trame TMP reçue ou réponse ITR du DRQ 20 00 25) ; imposedBpm = dernier tempo que NOUS avons envoyé.
-function curBpm() { // v2.6.17 — la source la PLUS RÉCENTE gagne : une lecture antérieure à l'imposition du morceau est périmée (le clavier EST au tempo imposé, il obéit — validé terrain : le chargement met bien le KN à ♩78)
-  const v = (measuredBpm !== null && measuredBpmAt > imposedBpmAt) ? measuredBpm : ((imposedBpm !== null) ? imposedBpm : null);
-  return Math.round(v || parseFloat(document.getElementById("bpmMan").value) || 120);
-}
+function curBpm() { if (bpmLast && bpmLast.v) return Math.round(bpmLast.v); return Math.round(parseFloat(document.getElementById("bpmMan").value) || 120); } // v2.6.17 — dernière vérité connue (imposée ou lue), PAS toujours la mesure : corrige ♩65 stale > ♩78 du morceau
 function sendTmpN(n) {
   n = Math.min(300, Math.max(40, Math.round(n)));
   imposedBpm = n; // v2.6.16 — n'ÉCRASE PLUS measuredBpm : sinon le détecteur de pulses divisait par un tempo que nous avons imposé, pas par celui du clavier (lectures 24/48/72 aléatoires)
-  imposedBpmAt = performance.now(); // v2.6.17
+  bpmLast = { v: n, src: "imposed", at: ++bpmSeq }; // v2.6.17 — mais l'imposition EST la dernière vérité connue (le KN2000 obéit à la trame TMP) : curBpm() la suit jusqu'à la prochaine annonce du clavier
   bpmEl.textContent = n + " BPM";
   bpmSrc.textContent = "Tempo imposé au KN2000 (trame TMP)";
   // F0 50 25 DT1 DT2 F7 — DT1 = 4 bits bas envoyé en premier, DT2 = 5 bits hauts (forme miroir de ce que le KN2000 émet)
@@ -1457,7 +1453,6 @@ setInterval(connPillUpdate, 1000);
 document.getElementById("ppqDetect").onclick = () => {
   if (typeof midiIn === "undefined" || !midiIn) { log("🩺 Connecte d'abord le MIDI (🔌 Connecter).", "ko"); return; }
   if (!measuredBpm) { log("🩺 Refusé : le tempo de référence n'a pas été LU sur le KN2000 (annonce TMP ou DRQ 20 00 25). Un tempo imposé par la page ne peut pas servir d'étalon — la lecture serait fausse (24/48/72 aléatoires). Relance 🔍 Lire les réglages ou attends une annonce du clavier.", "ko"); return; } // v2.6.16 — le détecteur ne divise JAMAIS par un tempo imposé
-  sendDrq(0x20, 0x00, 0x25, "TEMPO (TMP) — rafraîchissement avant mesure", 2); // v2.6.17 — référence RAFRAÎCHIE au moment de mesurer : une lecture périmée (antérieure à un changement au panneau) fausserait l'estimation
   f8CountV2 = 0;
   const btn = document.getElementById("ppqDetect");
   btn.disabled = true;
