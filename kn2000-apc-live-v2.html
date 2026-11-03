@@ -118,6 +118,10 @@
       <button id="ppqDetect" title="Mesure le rythme réel des F8 reçus pendant 4 s (rythme lancé au clavier) et propose la bonne valeur — fini le réglage au doigt mouillé">🩺 Détecter (4 s)</button>
       <span class="hint">24 = standard MIDI (comptage de la position). Si la position avance 2× trop lent/vite, essaie 48 ou 12 — ou lance 🩺 Détecter, qui mesure la vraie valeur.</span>
     </div>
+    <div class="row">
+      <label>Zone de saisie accords <select id="gridH" title="Taille de la zone de saisie de la grille. Android/Chrome n'offre AUCUNE poignée de redimensionnement sur cette zone : ce réglage la remplace. « ½ largeur d'écran » = hauteur au moins égale à la moitié de la largeur de l'écran (demande terrain v2.6.18). Le choix est mémorisé d'une session à l'autre."><option value="s">Compacte (≈ 10 lignes)</option><option value="m" selected>Moyenne (½ largeur d'écran)</option><option value="l">Grande (¾ largeur d'écran)</option><option value="x">Maxi (presque tout l'écran)</option></select></label>
+      <span class="hint">v2.6.18 — choisis ici la taille de la zone de saisie (mémorisée) : sur mobile elle n'a pas de poignée, c'est ici qu'on l'agrandit.</span>
+    </div>
   </div>
 </div>
 <main>
@@ -1474,6 +1478,16 @@ document.getElementById("ppqDetect").onclick = () => {
 function savePpqV2() { try { localStorage.setItem("kn2000-apc-ppq-v2", document.getElementById("ppq").value); } catch (e) {} }
 try { const _p = parseInt(localStorage.getItem("kn2000-apc-ppq-v2") || "", 10); if (_p >= 1 && _p <= 96) document.getElementById("ppq").value = _p; } catch (e) {}
 document.getElementById("ppq").onchange = savePpqV2;
+// v2.6.18 — taille de la zone de saisie réglable depuis ⚙️ Réglages : Android/Chrome n'offre aucune poignée native sur une textarea (« timbre-poste » terrain)
+const GRID_H_KEY = "kn2000-apc-grid-h-v2";
+function gridHApply() { // m = ½ largeur d'écran (demande terrain), l = ¾, x = plein écran, s = hauteur par défaut (10 rangées) ; le miroir (inset:0) suit automatiquement
+  const el = document.getElementById("progInput"), v = document.getElementById("gridH").value;
+  el.style.height = (v === "s") ? "" : (v === "m") ? "max(280px, 50vw)" : (v === "l") ? "max(400px, 75vw)" : "max(420px, calc(100vh - 160px))";
+}
+function saveGridH() { try { localStorage.setItem(GRID_H_KEY, document.getElementById("gridH").value); } catch (e) {} }
+document.getElementById("gridH").onchange = () => { saveGridH(); gridHApply(); };
+try { const _g = localStorage.getItem(GRID_H_KEY); if (_g) document.getElementById("gridH").value = _g; } catch (e) {}
+gridHApply();
 
 // ---------- 🗗 Mémorisation de la taille de fenêtre (demande Yves 01/11) ----------
 const WIN_KEY_V2 = "kn2000-apc-win-v2";
