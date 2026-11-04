@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test MIDI — KN Bridge</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 1rem auto; padding: 0 .8rem; background: #111; color: #eee; }
+  h1 { font-size: 1.1rem; } h2 { font-size: 1rem; margin: 1.2rem 0 .3rem; color: #8fd; }
+  button { font-size: 1rem; padding: .6rem 1.2rem; margin: .2rem .4rem .2rem 0; border-radius: 8px; border: 0; cursor: pointer; }
+  #connect { background: #2a8; color: #fff; } #send { background: #c72; color: #fff; }
+  ul { padding-left: 1.1rem; } li { margin: .15rem 0; }
+  .in { color: #8fd; } .out { color: #fc8; }
+  #log { background: #000; border: 1px solid #444; border-radius: 8px; padding: .6rem; min-height: 8rem; font-family: monospace; font-size: .85rem; white-space: pre-wrap; }
+  .ok { color: #7f7; } .ko { color: #f77; } .mut { color: #aaa; }
+</style>
+</head>
+<body>
+<h1>🧪 Test MIDI — KN Bridge</h1>
+<p class="mut">Ouvre cette page sur la tablette, appuie sur « Connecter » (autoriser le MIDI), puis regarde les listes. « KN Bridge — Vers Page » en entrée = service actif.</p>
+<button id="connect">Connecter</button>
+<button id="send" hidden>📤 Self-test : envoyer F0 7D 00 08 F7 sur toutes les sorties</button>
+<h2>Entrées (la page écoute ici)</h2>
+<ul id="ins"><li class="mut">— pas connecté —</li></ul>
+<h2>Sorties</h2>
+<ul id="outs"><li class="mut">— pas connecté —</li></ul>
+<h2>Journal (messages reçus + self-test)</h2>
+<div id="log">—</div>
+<script>
+"use strict";
+const logEl = document.getElementById("log");
+const insEl = document.getElementById("ins");
+const outsEl = document.getElementById("outs");
+let access = null;
+function log(s, cls) {
+  const d = document.createElement("div");
+  if (cls) d.className = cls;
+  d.textContent = new Date().toLocaleTimeString() + "  " + s;
+  logEl.appendChild(d);
+  while (logEl.children.length > 200) logEl.removeChild(logEl.firstChild);
+}
+function fmt(e) {
+  return Array.from(e.data).map(b => b.toString(16).padStart(2, "0").toUpperCase()).join(" ");
+}
+function refresh() {
+  insEl.innerHTML = ""; outsEl.innerHTML = "";
+  access.inputs.forEach(p => {
+    const li = document.createElement("li");
+    li.className = "in";
+    li.textContent = p.name + (p.state === "connected" ? "" : " [" + p.state + "]");
+    insEl.appendChild(li);
+  });
+  access.outputs.forEach(p => {
+    const li = document.createElement("li");
+    li.className = "out";
+    li.textContent = p.name + (p.state === "connected" ? "" : " [" + p.state + "]");
+    outsEl.appendChild(li);
+  });
+  if (!insEl.children.length) insEl.innerHTML = '<li class="mut">aucune</li>';
+  if (!outsEl.children.length) outsEl.innerHTML = '<li class="mut">aucune</li>';
+}
+document.getElementById("connect").addEventListener("click", async () => {
+  try {
+    access = await navigator.requestMIDIAccess({ sysex: true });
+  } catch (err) {
+    log("❌ Accès MIDI refusé : " + err.message, "ko");
+    return;
+  }
+  log("✅ Accès MIDI accordé", "ok");
+  access.onstatechange = ev => {
+    log("↻ état : " + ev.port.type + " « " + ev.port.name + " » → " + ev.port.state);
+    refresh();
+  };
+  refresh();
+  access.inputs.forEach(p => {
+    p.onmidimessage = e => log("⬅ " + (p.name || "?") + " : " + fmt(e), "in");
+  });
+  document.getElementById("send").hidden = false;
+  const bridgeIn = Array.from(access.inputs.values()).some(p => /Vers Page|KN Bridge/i.test(p.name || ""));
+  if (bridgeIn) log("✅ KN Bridge VU en entrée — service actif", "ok");
+  else log("⚠️ Pas de « KN Bridge / Vers Page » en entrée — service non vu par Chrome", "ko");
+});
+document.getElementById("send").addEventListener("click", () => {
+  if (!access) return;
+  const msg = [0xF0, 0x7D, 0x00, 0x08, 0xF7];
+  access.outputs.forEach(p => {
+    try { p.send(msg); log("➡ " + p.name + " : F0 7D 00 08 F7", "out"); }
+    catch (e) { log("❌ envoi " + p.name + " : " + e.message, "ko"); }
+  });
+  log("Self-test : si KN Bridge est branché entrée↔sortie, « Vers Page » doit maintenant afficher F0 7D 00 08 F7 ci-dessus.", "mut");
+});
+</script>
+</body>
+</html>
