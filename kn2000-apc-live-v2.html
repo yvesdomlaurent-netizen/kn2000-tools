@@ -81,7 +81,7 @@
   <span class="badge" id="kbdBadge" title="Liaison KN2000 (badge charte)">🎹 <b id="kbdDot">○</b> KN2000</span>
   <span class="badge" id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   <span style="flex:1"></span>
-  <span><b>🎼 APC Live KN2000</b> <span class="hint">v2.6.25 — M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
+  <span><b>🎼 APC Live KN2000</b> <span class="hint">v2.6.26 — M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
   <span style="flex:1"></span>
   <nav class="hubLinks" title="Navigation entre les outils du projet (charte 7i)">
     <a href="index.html">🏠 Hub</a>
@@ -737,6 +737,16 @@ function onMidiMsg(ev) {
     }
   }
   if (ev.data[0] >= 0xF8 && ev.data[0] <= 0xFF) return; // événement temps réel pur : pas d'autre analyse
+  if (ev.data.length === 5 && ev.data[0] === 0xF0 && ev.data[1] === 0x7D && ev.data[4] === 0xF7) { // v2.6.26 — commande MobileSheets reçue : charger le morceau (comme M1 ▶ Direct)
+    const b = ev.data[2] & 0xFF, n = ev.data[3] & 0xFF; // v2.6.26 — octets BRUTS 0-255 (chaîne complète : MS rejoue tel quel, KN2000 ignore l'ID 7D) — les msid vont jusqu'à 152
+    if (msLastSent && msLastSent.b === b && msLastSent.n === n && performance.now() - msLastSent.at < 800) { log("📱 Commande MS F0 7D " + hex([b, n]) + " F7 reçue — ÉCHO de notre propre envoi (via le boîtier), ignorée.", "info"); return; }
+    const cur = songById(curSongId);
+    if (cur && parseInt(cur.msid, 10) === n) { log("📱 Commande MS F0 7D " + hex([b, n]) + " F7 — c'est déjà le morceau courant, rien à charger.", "info"); return; }
+    const s = songs.songs.find(x => parseInt(x.msid, 10) === n);
+    if (s) { log("📱 Commande MS F0 7D " + hex([b, n]) + " F7 — chargement de « " + s.title + " » (banque " + b + ", n° " + n + ").", "ok"); selectSong(s.id, true); }
+    else log("📱 Commande MS F0 7D " + hex([b, n]) + " F7 — aucun morceau msid " + n + " (banque " + b + ") dans la liste.", "ko");
+    return;
+  }
   if (ev.data.length >= 3 && ev.data[0] === 0xF0 && ev.data[1] === 0x50 && ev.data[2] === 0x25) {
     // Trame TMP (tempo) — validée console v1.0.13 : F0 50 25 DT1 DT2 … F7, émise par le KN2000 (ex. à chaque sélection de PM)
     const t = ev.data.length >= 6 ? (((ev.data[4] & 0x1f) << 4) | (ev.data[3] & 0x0f)) : null; // DT1 = 4 bits bas, DT2 = 5 bits hauts, ♩=40-300
@@ -1211,9 +1221,17 @@ function songInfo() {
   if (s.panel) b.push("réglages panel ✓ (♩" + (s.panel.tempo || "?") + (s.panel.savedAt ? ", " + s.panel.savedAt : "") + ")");
   el.textContent = b.join(" · ") || "rien de sauvegardé — 💾 Sauver morceau capturera séquence + réglages";
 }
+let msLastSent = null; // v2.6.26 — garde anti-écho : notre propre commande MS renvoyée par le boîtier ne doit pas recharger le morceau
+function msSendCommand(s) { // v2.6.26 — sysex « commande MobileSheets » : F0 7D <banque> <n°> F7 — 7D = ID non commercial (zéro collision KN2000/APC) ; banque 0 = setlist courante, n° = msid (0-152) ; 255 banques x 255 morceaux possibles
+  const n = parseInt(s.msid, 10);
+  if (isNaN(n) || n < 0 || n > 255) { log("📱 MS : « " + s.title + " » n'a pas de msid exploitable (" + s.msid + ") — commande non envoyée.", "ko"); return; }
+  msLastSent = { b: 0, n: n, at: performance.now() };
+  send([0xF0, 0x7D, 0x00, n & 0xFF, 0xF7], "📱 MS — commande du morceau « " + s.title + " » : F0 7D 00 " + hex([n & 0xFF]) + " F7 (banque 0, n° " + n + ") — à capturer dans MobileSheets en mode écoute");
+}
 function selectSong(id, envoi) {
   const s = songById(id);
   if (!s) return;
+  msSendCommand(s); // v2.6.26 — PREMIER message du chargement (avant stop/panel) : MobileSheets en écoute capture la commande du bon morceau
   // v2.6.23 — retour terrain : charger un morceau pendant une lecture laissait l'ANCIENNE séquence
   // continuer d'envoyer ses accords (seqQueue non purgée → accords ≠ page). Stop complet AVANT le chargement :
   // notes OFF + FC Stop au clavier, purge des minuteurs/compteurs — M1 (« ▶ Direct ») et M2 (sélecteur) passent ici.
@@ -2824,5 +2842,6 @@ log("🎼 APC Live v2 — modes M1 (préparation) · M2 (direct) · M3 (réglage
 </script>
 </body>
 </html>
+
 
 
