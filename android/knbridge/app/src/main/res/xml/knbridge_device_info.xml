@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<devices>
+    <device manufacturer="Yves Laurent" product="KN Bridge">
+        <input-port name="Commande MS" />
+        <output-port name="Vers Page" />
+    </device>
+</devices>

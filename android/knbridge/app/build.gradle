@@ -1,0 +1,22 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'net.yvesdomlaurent.knbridge'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "net.yvesdomlaurent.knbridge"
+        minSdk 23
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+}

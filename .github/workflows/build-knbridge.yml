@@ -1,0 +1,47 @@
+name: build-knbridge
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'android/knbridge/**'
+      - '.github/workflows/build-knbridge.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Build debug APK
+        working-directory: android/knbridge
+        run: gradle assembleDebug --no-daemon
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: knbridge-apk
+          path: android/knbridge/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Publish APK to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: knbridge-v1
+          name: KN Bridge v1.0
+          body: |
+            Appli Android de ports MIDI virtuels pour MobileSheets -> page KN2000.
+            Port d'entrée "Commande MS", port de sortie "Vers Page".
+            APK debug auto-signé : installer via "sources inconnues".
+          files: android/knbridge/app/build/outputs/apk/debug/app-debug.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
