@@ -81,7 +81,7 @@
   <span class="badge" id="kbdBadge" title="Liaison KN2000 (badge charte)">🎹 <b id="kbdDot">○</b> KN2000</span>
   <span class="badge" id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   <span style="flex:1"></span>
-  <span><b>🎼 APC Live KN2000</b> <span class="hint">v2.6.24 — M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
+  <span><b>🎼 APC Live KN2000</b> <span class="hint">v2.6.25 — M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
   <span style="flex:1"></span>
   <nav class="hubLinks" title="Navigation entre les outils du projet (charte 7i)">
     <a href="index.html">🏠 Hub</a>
@@ -1943,9 +1943,12 @@ document.getElementById("m4Grid").addEventListener("change", (ev) => {
     const [pc, bk] = t.value.split("/").map(Number);
     const r = KN.rhythms.find(x => x[0] === pc && x[1] === bk);
     if (!r) return;
-    sendItw([0x20, 0x04, 0x01], [0x01]);
-    setTimeout(() => { m4Write("20 60 00", [r[4] & 0x7f, r[5] & 0x7f], "Rythme → " + r[2]); }, 120);
-    const s0 = songs.songs.find(x => x.id === curSongId); if (s0) { if (!s0.panel) s0.panel = { tempo: null, params: {} }; s0.panel.rhy1 = [pc, bk]; s0.panel.rhyCur = 1; songsSave(); } // v2.6.13/2.6.14 — le sélecteur principal garde SON choix (rhy1) et redevient le rythme actuel
+    const s0 = songs.songs.find(x => x.id === curSongId);
+    if (s0) { if (!s0.panel) s0.panel = { tempo: null, params: {} }; s0.panel.rhy1 = [pc, bk]; songsSave(); } // v2.6.25 — retour terrain : le sélecteur mémorise TOUJOURS son choix (rhy1) mais ne force PLUS rhyCur=1 — la ligne qui joue ne doit pas bouger si sa case « actuel » n'est pas cochée
+    if (!s0 || (s0.panel.rhyCur || 1) === 1) { // envoi au clavier uniquement si Rythme 1 est l'« actuel » (ou pas de morceau) — sinon simple mémorisation
+      sendItw([0x20, 0x04, 0x01], [0x01]);
+      setTimeout(() => { m4Write("20 60 00", [r[4] & 0x7f, r[5] & 0x7f], "Rythme → " + r[2]); }, 120);
+    } else log("🎛 Rythme → " + r[2] + " mémorisé pour « " + (s0.title || "?") + " » SANS envoi (l'actuel est le Rythme " + s0.panel.rhyCur + " — coche « actuel » sur la ligne 1 pour l'entendre).", "info");
     return;
   }
   if (t.dataset.dsptype !== undefined && t.tagName === "SELECT") { m4DspWrite(); renderM4(); return; }
@@ -2697,20 +2700,20 @@ const APC_SURF = [
   { pad: 7, cc: 55, lbl: "Chord" } // v2.6.22 — pad 8 (bas de rangée) + knob 8 = Chord On/Off + volume (canal accords dynamique chChord)
 ];
 const APC_PAD_MODE = 39; // pad 40 (rangée haute) — réservé à la future bascule de mode
-const APC_LED = { red: 0x05, green: 0x21, off: 0x00, white: 0x03, gray: 0x02, blue: 0x45 }; // v2.6.24 — gray = état inconnu (RV/DSP), blue = rythme actuel // v2.6.22 — palette du Sound Editor (vert 0x21 vif) — retour terrain : pads trop faiblement éclairés
+const APC_LED = { red: 0x05, green: 0x21, off: 0x00, white: 0x03, gray: 0x02, blue: 0x45, orange: 0x0D }; // v2.6.25 — orange = RV/DSP ON (retour terrain : le VERT reste réservé aux parts qui jouent) // v2.6.24 — gray = état inconnu (RV/DSP), blue = rythme actuel // v2.6.22 — palette du Sound Editor (vert 0x21 vif) — retour terrain : pads trop faiblement éclairés
 let apcIn = null, apcOut = null, apcReady = false, midiAccess2 = null, apcVol = {};
 const APC_PORTS_KEY = "kn2000-apc-ports-v2"; // v2.6.22 — choix des ports surface mémorisé (les ports H2MIDI Pro portent le même nom)
 function apcLed(note, color) { if (apcOut) { try { apcOut.send([0x96, note & 0x7F, color]); } catch (e) {} } } // v2.6.22 — canal 0x96 = pads RGB solid 100 % (Sound Editor v0.9.2 : 0x90 = 10 % de luminosité, invisible en plein jour)
 function apcPart(i) { return APC_SURF[i] ? M4_DRUMS.find(d => d.lbl === APC_SURF[i].lbl) : null; }
-// v2.6.24 — extension surface : RV par part (rangée au-dessus des mutes, col. 1-6), DSP Chord (8e colonne), Rythme 1/2/3 (colonne Batterie, rangées 1-3 haut→bas)
-const APC_RV_PADS = [ { pad: 8, lbl: "Accomp 1" }, { pad: 9, lbl: "Accomp 2" }, { pad: 10, lbl: "Accomp 3" }, { pad: 11, lbl: "Bass" }, { pad: 12, lbl: "APC-Drums" }, { pad: 13, lbl: "Chord" } ];
-const APC_DSP_PAD = { pad: 15, lbl: "Chord" };
+// v2.6.25 — retour terrain (grille physique confirmée : col. 1-8 gauche→droite, lignes 1-5 HAUT→bas) : RV par part sur la LIGNE 4 (au-dessus des mutes), alignés sur les colonnes des parts (col. 1-5) + RV Chord col. 8 ; DSP Chord LIGNE 3 col. 8 ; Rythme 1/2/3 = colonne Batterie, lignes 1-3
+const APC_RV_PADS = [ { pad: 8, lbl: "Accomp 1" }, { pad: 9, lbl: "Accomp 2" }, { pad: 10, lbl: "Accomp 3" }, { pad: 11, lbl: "Bass" }, { pad: 12, lbl: "APC-Drums" }, { pad: 15, lbl: "Chord" } ]; // v2.6.25 — ligne 4 : col. 1-5 au-dessus des mutes des mêmes parts + col. 8 (au-dessus de Chord On/Off) = RV Chord ; pad 14 (col. 6) libre
+const APC_DSP_PAD = { pad: 23, lbl: "Chord" }; // v2.6.25 — monté d'une ligne : ligne 3, col. 8 (directement au-dessus du RV Chord)
 const APC_RHY_PADS = [{ pad: 36, i: 1 }, { pad: 28, i: 2 }, { pad: 20, i: 3 }]; // rangée 1 (haute) = Rythme 1, puis 2, puis 3
-function apcCcLed(pad, lbl, cc) { // v2.6.24 — LED RV/DSP d'une part : GRIS = état inconnu, VERT = actif, ÉTEINT = coupé
+function apcCcLed(pad, lbl, cc) { // v2.6.25 — LED RV/DSP d'une part : GRIS = état inconnu, ORANGE = actif, ÉTEINT = coupé (le vert reste réservé aux parts qui jouent)
   const s = m5Song(); const part = M4_DRUMS.find(x => x.lbl === lbl);
   const ch = part ? m4ChBase(part) : null;
   const v = (s && s.panel && s.panel.ccs && ch) ? s.panel.ccs[ch + "|" + cc] : null;
-  apcLed(pad, (v === null || v === undefined) ? APC_LED.gray : (v >= 0x40 ? APC_LED.green : APC_LED.off));
+  apcLed(pad, (v === null || v === undefined) ? APC_LED.gray : (v >= 0x40 ? APC_LED.orange : APC_LED.off));
 }
 function apcCcToggle(part, cc) { // v2.6.24 — pad RV/DSP : MÊME logique que les boutons RV/DSP de M4 (état mémorisé inversé, CC sur le canal basic, kit du morceau)
   const scc = m5Song();
@@ -2737,8 +2740,8 @@ function apcRhySelect(idx) { // v2.6.24 — pad Rythme 1/2/3 : marque « actuel 
 function apcLedsSync() { // LEDs = état M4 RÉEL (vert = la part joue, rouge = muette) + pad de mode réservé (blanc) + v2.6.24 : RV/DSP parts + rythme actuel
   for (const a of APC_SURF) apcLed(a.pad, m4MuteState(a.lbl) ? APC_LED.red : APC_LED.green);
   apcLed(APC_PAD_MODE, apcReady ? APC_LED.white : APC_LED.off);
-  for (const a of APC_RV_PADS) apcCcLed(a.pad, a.lbl, 91); // v2.6.24 — RV par part : gris = inconnu, vert = ON, éteint = OFF
-  apcCcLed(APC_DSP_PAD.pad, APC_DSP_PAD.lbl, 94); // v2.6.24 — DSP de la part Chord
+  for (const a of APC_RV_PADS) apcCcLed(a.pad, a.lbl, 91); // v2.6.25 — RV par part : gris = inconnu, orange = ON, éteint = OFF
+  apcCcLed(APC_DSP_PAD.pad, APC_DSP_PAD.lbl, 94); // v2.6.25 — DSP de la part Chord (ligne 3, col. 8)
   const s = m5Song(); const cur = (s && s.panel && s.panel.rhyCur) || 1; // v2.6.24 — Rythme actuel du morceau (défaut 1) : BLEU
   for (const a of APC_RHY_PADS) apcLed(a.pad, cur === a.i ? APC_LED.blue : APC_LED.off);
 }
@@ -2776,7 +2779,7 @@ function apcSurfaceCap(e) { // interception des messages de l'APC — true = con
     if (d[1] === APC_PAD_MODE) { log("🎛 Pad 40 (rangée haute) — RÉSERVÉ à la future bascule Play-Live ↔ Sound (chantier « Sound » à venir).", "info"); return true; }
     const rvp = APC_RV_PADS.find(a => a.pad === d[1]); // v2.6.24 — rangée au-dessus des mutes : RV (CC91) de la part
     if (rvp) { const part = M4_DRUMS.find(x => x.lbl === rvp.lbl); if (part) apcCcToggle(part, 91); return true; }
-    if (d[1] === APC_DSP_PAD.pad) { const part = M4_DRUMS.find(x => x.lbl === APC_DSP_PAD.lbl); if (part) apcCcToggle(part, 94); return true; } // v2.6.24 — 8e colonne : DSP (CC94) de la part Chord
+    if (d[1] === APC_DSP_PAD.pad) { const part = M4_DRUMS.find(x => x.lbl === APC_DSP_PAD.lbl); if (part) apcCcToggle(part, 94); return true; } // v2.6.25 — ligne 3, col. 8 : DSP (CC94) de la part Chord
     const rhyP = APC_RHY_PADS.find(a => a.pad === d[1]); // v2.6.24 — colonne Batterie, rangées hautes : Rythme 1/2/3 (actuel en BLEU)
     if (rhyP) { apcRhySelect(rhyP.i); return true; }
   }
@@ -2808,7 +2811,7 @@ document.getElementById("apcConnect").onclick = () => {
   apcLedsSync();
   apcStateTxt("● APC connecté", true);
   try { localStorage.setItem(APC_PORTS_KEY, JSON.stringify({ apcRx: document.getElementById("apcRx").value, apcTx: document.getElementById("apcTx").value })); } catch (e) {} // v2.6.22 — choix mémorisé pour la prochaine session
-  log("🎛 Surface APC connectée : rangée basse pads 1-5 = mutes (rouge = muette) + pad 8 = Chord On/Off ; rangée au-dessus pads 9-14 = RV par part (gris = inconnu, vert = ON, éteint = OFF) + pad 16 = DSP Chord ; colonne Batterie pads 37/29/21 = Rythme 1/2/3 (bleu = actuel, lu au chargement du morceau) ; knobs 1-5 = volumes, knob 8 = volume Chord. Pad 40 réservé au futur mode Sound.", "ok");
+  log("🎛 Surface APC connectée : ligne 5 (basse) pads 1-5 = mutes (rouge = muette) + pad 8 = Chord On/Off ; ligne 4 (au-dessus) = RV par part, aligné sur les colonnes des parts (pads 9-13) + pad 16 = RV Chord (gris = inconnu, orange = ON, éteint = OFF) ; ligne 3, pad 24 = DSP Chord ; colonne Batterie pads 37/29/21 = Rythme 1/2/3 (bleu = actuel, lu au chargement du morceau) ; knobs 1-5 = volumes, knob 8 = volume Chord. Pad 40 réservé au futur mode Sound.", "ok"); // v2.6.25 — grille physique confirmée + RV orange
 };
 
 const _setModeV2 = setMode;
@@ -2821,4 +2824,5 @@ log("🎼 APC Live v2 — modes M1 (préparation) · M2 (direct) · M3 (réglage
 </script>
 </body>
 </html>
+
 
