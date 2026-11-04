@@ -81,7 +81,7 @@
   <span class="badge" id="kbdBadge" title="Liaison KN2000 (badge charte)">🎹 <b id="kbdDot">○</b> KN2000</span>
   <span class="badge" id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   <span style="flex:1"></span>
-  <span><b>🎼 APC Live KN2000</b> <span class="hint">v2.6.22 — M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
+  <span><b>🎼 APC Live KN2000</b> <span class="hint">v2.6.23 — M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
   <span style="flex:1"></span>
   <nav class="hubLinks" title="Navigation entre les outils du projet (charte 7i)">
     <a href="index.html">🏠 Hub</a>
@@ -1214,6 +1214,15 @@ function songInfo() {
 function selectSong(id, envoi) {
   const s = songById(id);
   if (!s) return;
+  // v2.6.23 — retour terrain : charger un morceau pendant une lecture laissait l'ANCIENNE séquence
+  // continuer d'envoyer ses accords (seqQueue non purgée → accords ≠ page). Stop complet AVANT le chargement :
+  // notes OFF + FC Stop au clavier, purge des minuteurs/compteurs — M1 (« ▶ Direct ») et M2 (sélecteur) passent ici.
+  if (seqQueue || seqTimer || seqOriginPulse !== null || seqOriginBeats !== null) {
+    clearPlay(); if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; }
+    seqQueue = null; chordOff(); seqOriginPulse = null; seqOriginBeats = null; lastStopIdx = null;
+    sendRhythmStop();
+    log("⏹ Lecture en cours arrêtée au changement de morceau (notes OFF + Stop au clavier) — l'ancienne séquence ne se mélange plus au nouveau morceau.", "info");
+  }
   curSongId = id;
   document.getElementById("songSel").value = id;
   if (s.seq) { seqPlaceholder = null; document.getElementById("progInput").value = s.seq; loadSeq(); }
@@ -2730,7 +2739,7 @@ function apcSurfaceCap(e) { // interception des messages de l'APC — true = con
   if (d.length >= 3 && (d[0] & 0xF0) === 0xB0 && (d[0] & 0x0F) === 0 && d[1] >= 48 && d[1] <= 55) { // v2.6.22 — les 8 knobs consommés (1-5 = parts, 8 = Chord, 6-7 silencieux)
     const i = APC_SURF.findIndex(a => a.cc === d[1]), part = apcPart(i);
     if (!part) return true; // knob non attribué : consommé sans action (rien ne fuit vers le KN2000)
-    const inc = (d[2] === 0 || d[2] === 64) ? 0 : (d[2] < 64 ? d[2] : -(d[2] - 64)); // encodeur RELATIF Akai : 01-3F = +n ; 41-7F = -(n-64)
+    const inc = (d[2] === 0 || d[2] === 64) ? 0 : (d[2] < 64 ? d[2] : d[2] - 128); // v2.6.23 — retour terrain : l'APC Key 25 mk2 émet en COMPLÉMENT À DEUX (un cran vers − = 7F = −1) ; l'ancien décodage binaire-offset lisait −63 par cran → volume écrasé à 0 dès le premier cran vers le -
     const cur = (apcVol[APC_SURF[i].lbl] !== undefined) ? apcVol[APC_SURF[i].lbl] : 100;
     const v = Math.max(0, Math.min(127, cur + inc));
     apcVol[APC_SURF[i].lbl] = v;
