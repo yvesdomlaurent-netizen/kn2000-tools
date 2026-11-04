@@ -81,7 +81,7 @@
   <span class="badge" id="kbdBadge" title="Liaison KN2000 (badge charte)">🎹 <b id="kbdDot">○</b> KN2000</span>
   <span class="badge" id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   <span style="flex:1"></span>
-  <span><b>🎼 APC Live KN2000</b> <span class="hint">v2.6.26 — M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
+  <span><b>🎼 APC Live KN2000</b> <span class="hint">v2.6.27 — M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
   <span style="flex:1"></span>
   <nav class="hubLinks" title="Navigation entre les outils du projet (charte 7i)">
     <a href="index.html">🏠 Hub</a>
@@ -174,6 +174,7 @@
       <button id="songAdd" title="Ajouter un morceau à la liste (titre demandé)">➕ Nouveau</button>
       <button id="songSave" title="Sauvegarder dans ce morceau : la séquence affichée + les réglages COURANTS du clavier (lus par DRQ, façon Panel Console)">💾 Sauver morceau</button>
       <button id="songRefresh" title="Rafraîchir : renvoyer au clavier les réglages du morceau courant (tempo, rythme, APC, sons, volumes) pour vérifier la réception sur le clavier">🔄 Renvoyer au clavier</button>
+      <button id="msSend" title="Envoi ISOLÉ de la commande MobileSheets du morceau courant (sysex F0 7D 00 <msid> F7, sur TOUS les ports USB) — pour la capturer dans MobileSheets en mode écoute ; ne recharge pas le morceau, n'envoie rien d'autre au clavier">📱 Commande MS</button>
       <button id="songDel" title="Retirer ce morceau de la liste sauvegardée">🗑️</button>
       <button id="songExport" title="Exporter tous les morceaux (séquences + réglages) en fichier JSON — sauvegarde / transfert">⬇️ Export</button>
       <label style="cursor:pointer" title="Importer des morceaux depuis un fichier JSON exporté (fusion par morceau)">⬆️ Import<input type="file" id="songImport" accept=".json,application/json" hidden></label>
@@ -376,6 +377,10 @@ async function initMidi() {
       midiIn = access.inputs.get(rx.value) || null;
       midiOut = access.outputs.get(tx.value) || null;
       if (midiIn) midiIn.onmidimessage = m5MidiIn;
+      for (const p of access.inputs.values()) { // v2.6.27 — écoute TOUS les ports d'entrée (le boîtier expose 2 ports USB : la commande MS peut arriver sur l'autre que celui du KN2000) ; l'entrée APC dédiée garde son interception ; la garde anti-écho filtre notre propre commande
+        if (apcIn && p.id === apcIn.id) continue;
+        try { p.onmidimessage = m5MidiIn; } catch (e) {}
+      }
     };
     rx.onchange = bind; tx.onchange = bind; bind();
     access.onstatechange = () => { fill(rx, [...access.inputs.values()], rx.value); fill(tx, [...access.outputs.values()], tx.value); apcFill(); bind(); };
@@ -1221,17 +1226,25 @@ function songInfo() {
   if (s.panel) b.push("réglages panel ✓ (♩" + (s.panel.tempo || "?") + (s.panel.savedAt ? ", " + s.panel.savedAt : "") + ")");
   el.textContent = b.join(" · ") || "rien de sauvegardé — 💾 Sauver morceau capturera séquence + réglages";
 }
-let msLastSent = null; // v2.6.26 — garde anti-écho : notre propre commande MS renvoyée par le boîtier ne doit pas recharger le morceau
-function msSendCommand(s) { // v2.6.26 — sysex « commande MobileSheets » : F0 7D <banque> <n°> F7 — 7D = ID non commercial (zéro collision KN2000/APC) ; banque 0 = setlist courante, n° = msid (0-152) ; 255 banques x 255 morceaux possibles
+let msLastSent = null; // garde anti-écho : notre propre commande MS renvoyée par le boîtier ne doit pas recharger le morceau
+function msSendCommand(s) { // v2.6.27 — commande « notre page » : F0 7D <banque> <n°> F7 — 7D = ID non commercial (zéro collision KN2000/APC) ; banque 0 = setlist courante, n° = msid (octets bruts 0-255 : 255 banques x 255 morceaux) ; émission sur TOUS les ports USB du boîtier (MS écoute celui de son choix) — le sysex est inoffensif partout : le KN et l'APC ignorent l'ID 7D
   const n = parseInt(s.msid, 10);
   if (isNaN(n) || n < 0 || n > 255) { log("📱 MS : « " + s.title + " » n'a pas de msid exploitable (" + s.msid + ") — commande non envoyée.", "ko"); return; }
   msLastSent = { b: 0, n: n, at: performance.now() };
-  send([0xF0, 0x7D, 0x00, n & 0xFF, 0xF7], "📱 MS — commande du morceau « " + s.title + " » : F0 7D 00 " + hex([n & 0xFF]) + " F7 (banque 0, n° " + n + ") — à capturer dans MobileSheets en mode écoute");
+  const frame = [0xF0, 0x7D, 0x00, n & 0xFF, 0xF7];
+  let k = 0;
+  if (midiAccess2) { for (const o of midiAccess2.outputs.values()) { try { o.send(frame); k++; } catch (e) {} } }
+  if (!k && midiOut) { try { midiOut.send(frame); k = 1; } catch (e) {} }
+  log("📱 MS — commande du morceau « " + s.title + " » : F0 7D 00 " + hex([n & 0xFF]) + " F7 (banque 0, n° " + n + ") émise sur " + k + " port(s) — à capturer dans MobileSheets en mode écoute.", "info");
 }
+document.getElementById("msSend").onclick = () => { // v2.6.27 — bouton dédié : envoi ISOLÉ de la commande MS (pas de rechargement du morceau, rien d'autre au clavier)
+  const s = songById(curSongId);
+  if (!s) { log("📱 Sélectionne d'abord un morceau (M1/M2) — la commande MS porte son n°.", "ko"); return; }
+  msSendCommand(s);
+};
 function selectSong(id, envoi) {
   const s = songById(id);
   if (!s) return;
-  msSendCommand(s); // v2.6.26 — PREMIER message du chargement (avant stop/panel) : MobileSheets en écoute capture la commande du bon morceau
   // v2.6.23 — retour terrain : charger un morceau pendant une lecture laissait l'ANCIENNE séquence
   // continuer d'envoyer ses accords (seqQueue non purgée → accords ≠ page). Stop complet AVANT le chargement :
   // notes OFF + FC Stop au clavier, purge des minuteurs/compteurs — M1 (« ▶ Direct ») et M2 (sélecteur) passent ici.
@@ -2727,6 +2740,7 @@ function apcPart(i) { return APC_SURF[i] ? M4_DRUMS.find(d => d.lbl === APC_SURF
 const APC_RV_PADS = [ { pad: 8, lbl: "Accomp 1" }, { pad: 9, lbl: "Accomp 2" }, { pad: 10, lbl: "Accomp 3" }, { pad: 11, lbl: "Bass" }, { pad: 12, lbl: "APC-Drums" }, { pad: 15, lbl: "Chord" } ]; // v2.6.25 — ligne 4 : col. 1-5 au-dessus des mutes des mêmes parts + col. 8 (au-dessus de Chord On/Off) = RV Chord ; pad 14 (col. 6) libre
 const APC_DSP_PAD = { pad: 23, lbl: "Chord" }; // v2.6.25 — monté d'une ligne : ligne 3, col. 8 (directement au-dessus du RV Chord)
 const APC_RHY_PADS = [{ pad: 36, i: 1 }, { pad: 28, i: 2 }, { pad: 20, i: 3 }]; // rangée 1 (haute) = Rythme 1, puis 2, puis 3
+const MS_PAD = 16; // v2.6.27 — pad 17 (ligne 2, col. 1) : même envoi isolé que le bouton « 📱 Commande MS » (capture MobileSheets)
 function apcCcLed(pad, lbl, cc) { // v2.6.25 — LED RV/DSP d'une part : GRIS = état inconnu, ORANGE = actif, ÉTEINT = coupé (le vert reste réservé aux parts qui jouent)
   const s = m5Song(); const part = M4_DRUMS.find(x => x.lbl === lbl);
   const ch = part ? m4ChBase(part) : null;
@@ -2795,6 +2809,7 @@ function apcSurfaceCap(e) { // interception des messages de l'APC — true = con
       return true;
     }
     if (d[1] === APC_PAD_MODE) { log("🎛 Pad 40 (rangée haute) — RÉSERVÉ à la future bascule Play-Live ↔ Sound (chantier « Sound » à venir).", "info"); return true; }
+    if (d[1] === MS_PAD) { const s0 = m5Song(); if (!s0) log("📱 Pad 17 : aucun morceau sélectionné (choisis-en un en M1).", "ko"); else { msSendCommand(s0); log("📱 Pad 17 — commande MS du morceau courant renvoyée seule (morceau et clavier inchangés).", "ok"); } return true; } // v2.6.27
     const rvp = APC_RV_PADS.find(a => a.pad === d[1]); // v2.6.24 — rangée au-dessus des mutes : RV (CC91) de la part
     if (rvp) { const part = M4_DRUMS.find(x => x.lbl === rvp.lbl); if (part) apcCcToggle(part, 91); return true; }
     if (d[1] === APC_DSP_PAD.pad) { const part = M4_DRUMS.find(x => x.lbl === APC_DSP_PAD.lbl); if (part) apcCcToggle(part, 94); return true; } // v2.6.25 — ligne 3, col. 8 : DSP (CC94) de la part Chord
@@ -2829,7 +2844,7 @@ document.getElementById("apcConnect").onclick = () => {
   apcLedsSync();
   apcStateTxt("● APC connecté", true);
   try { localStorage.setItem(APC_PORTS_KEY, JSON.stringify({ apcRx: document.getElementById("apcRx").value, apcTx: document.getElementById("apcTx").value })); } catch (e) {} // v2.6.22 — choix mémorisé pour la prochaine session
-  log("🎛 Surface APC connectée : ligne 5 (basse) pads 1-5 = mutes (rouge = muette) + pad 8 = Chord On/Off ; ligne 4 (au-dessus) = RV par part, aligné sur les colonnes des parts (pads 9-13) + pad 16 = RV Chord (gris = inconnu, orange = ON, éteint = OFF) ; ligne 3, pad 24 = DSP Chord ; colonne Batterie pads 37/29/21 = Rythme 1/2/3 (bleu = actuel, lu au chargement du morceau) ; knobs 1-5 = volumes, knob 8 = volume Chord. Pad 40 réservé au futur mode Sound.", "ok"); // v2.6.25 — grille physique confirmée + RV orange
+  log("🎛 Surface APC connectée : ligne 5 (basse) pads 1-5 = mutes (rouge = muette) + pad 8 = Chord On/Off ; ligne 4 (au-dessus) = RV par part, aligné sur les colonnes des parts (pads 9-13) + pad 16 = RV Chord (gris = inconnu, orange = ON, éteint = OFF) ; ligne 3, pad 24 = DSP Chord ; colonne Batterie pads 37/29/21 = Rythme 1/2/3 (bleu = actuel, lu au chargement du morceau) ; knobs 1-5 = volumes, knob 8 = volume Chord. Pad 17 = envoi isolé de la commande MobileSheets (comme le bouton 📱 Commande MS). Pad 40 réservé au futur mode Sound.", "ok"); // v2.6.27 — + pad 17 MS
 };
 
 const _setModeV2 = setMode;
@@ -2842,6 +2857,7 @@ log("🎼 APC Live v2 — modes M1 (préparation) · M2 (direct) · M3 (réglage
 </script>
 </body>
 </html>
+
 
 
 
