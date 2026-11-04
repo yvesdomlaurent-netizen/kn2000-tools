@@ -50,6 +50,7 @@
   header .badge { background: #333; border-radius: 12px; padding: 3px 10px; font-size: 12px; }
   .hubLinks a { color: #8cf; margin: 0 4px; text-decoration: none; font-size: 12px; }
   #cfg { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 8px 12px; margin: 0 0 10px; }
+  #cfg select { min-width: 250px; max-width: 420px; } /* v2.6.22 — retour terrain : les noms de ports (« H2MIDI Pro MIDI 1/2 ») étaient tronqués, impossible de voir le n° de port */
   .bigscreen { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 12px 16px; margin: 0 0 6px; }
   #bpmSrc { margin-bottom: 8px; }
   #modeNav { display: flex; gap: 6px; margin: 0 0 10px; }
@@ -80,7 +81,7 @@
   <span class="badge" id="kbdBadge" title="Liaison KN2000 (badge charte)">🎹 <b id="kbdDot">○</b> KN2000</span>
   <span class="badge" id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   <span style="flex:1"></span>
-  <span><b>🎼 APC Live KN2000</b> <span class="hint">v2.6.21 — M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
+  <span><b>🎼 APC Live KN2000</b> <span class="hint">v2.6.22 — M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
   <span style="flex:1"></span>
   <nav class="hubLinks" title="Navigation entre les outils du projet (charte 7i)">
     <a href="index.html">🏠 Hub</a>
@@ -105,7 +106,7 @@
     Surface RX <select id="apcRx" title="Port USB de l'APC d'où viennent les pads/knobs (port contrôle — via le boîtier H2MIDI Pro)"></select>
     LEDs TX <select id="apcTx" title="Port USB de l'APC où la page pilote les LEDs (port contrôle)"></select>
     <button id="apcConnect" title="Relie les ports choisis, ouvre la session LEDs Akai, synchronise les LEDs avec les mutes M4 et lit les volumes initiaux">🔌 Connecter l'APC</button>
-    <span class="hint">pads 1-5 (rangée basse) = mutes Accomp 1/2/3 · Basse · Batterie (LED rouge = muette, verte = joue) ; knobs 1-5 = volumes (CC 48-52 relatifs convertis en CC7 absolu)</span>
+    <span class="hint">pads 1-5 = mutes Accomp 1/2/3 · Basse · Batterie, pad 8 = Chord On/Off (LED rouge = muette, verte = joue) ; knobs 1-5 = volumes, knob 8 = volume Chord (encodeurs relatifs → CC7 absolu)</span>
     <span id="apcState" style="font-weight:bold">○ APC déconnecté</span>
   </div>
   <div style="border-top:1px solid #e3e3e3;margin-top:8px;padding-top:8px">
@@ -645,7 +646,16 @@ setInterval(() => {
   }
 }, 500);
 
+let syxAcc = null; // v2.6.22 — tampon de réassemblage sysex : le H2MIDI Pro peut découper une trame F0…F7 en plusieurs événements MIDI
 function onMidiMsg(ev) {
+  if (syxAcc !== null || (ev.data && ev.data.length && ev.data[0] === 0xF0 && ev.data[ev.data.length - 1] !== 0xF7)) { // v2.6.22 — fragments : accumulation jusqu au F7 final
+    if (!ev.data || !ev.data.length) return;
+    if (syxAcc === null) syxAcc = Array.from(ev.data); else for (const b of ev.data) syxAcc.push(b);
+    if (syxAcc[syxAcc.length - 1] !== 0xF7) { if (syxAcc.length > 4096) syxAcc = null; return; }
+    const data = syxAcc; syxAcc = null;
+    log("🧩 Trame sysex réassemblée (" + data.length + " octets) — le boîtier découpe les trames longues en fragments.", "info");
+    ev = { data };
+  }
   const st = ev.data[0] & 0xF0;
   // ⚠️ v0.27 — BUG CORRIGÉ : les temps réel sont des MONO-OCTETS ; l'ancien test
   // (data[0] & 0xF0) === 0xF8 était TOUJOURS FAUX (0xF8 & 0xF0 = 0xF0) → les F8/FA
@@ -1422,7 +1432,9 @@ setInterval(connPillUpdate, 1000);
 // standard la plus proche (24/48/96) — fin des réglages au doigt mouillé.
 document.getElementById("ppqDetect").onclick = () => {
   if (typeof midiIn === "undefined" || !midiIn) { log("🩺 Connecte d'abord le MIDI (🔌 Connecter).", "ko"); return; }
-  if (!measuredBpm) { log("🩺 Refusé : le tempo de référence n'a pas été LU sur le KN2000 (annonce TMP ou DRQ 20 00 25). Un tempo imposé par la page ne peut pas servir d'étalon — la lecture serait fausse (24/48/72 aléatoires). Relance 🔍 Lire les réglages ou attends une annonce du clavier.", "ko"); return; } // v2.6.16 — le détecteur ne divise JAMAIS par un tempo imposé
+  if (!measuredBpm && !(bpmLast && bpmLast.v)) { log("🩺 Refusé : aucun tempo de référence (ni annonce TMP/DRQ lue, ni tempo connu). Connecte le KN2000, ouvre M3 → 🔍 Lire les réglages, puis réessaie.", "ko"); return; }
+  const refBpm = measuredBpm || Math.round(bpmLast.v); // v2.6.22 — retour terrain : sans annonce TMP/DRQ (boîtier H2MIDI Pro), on divise par le dernier tempo CONNU — mesure INDICATIVE
+  if (!measuredBpm) log("🩺 Aucune annonce TMP/DRQ reçue du clavier — la mesure utilise le dernier tempo connu ♩" + refBpm + " (" + (bpmLast.src === "imposed" ? "imposé par la page" : "lu") + ") : résultat INDICATIF (faux si le clavier est réellement sur un autre tempo).", "info");
   f8CountV2 = 0;
   const btn = document.getElementById("ppqDetect");
   btn.disabled = true;
@@ -1431,7 +1443,7 @@ document.getElementById("ppqDetect").onclick = () => {
     btn.disabled = false;
     const bpm = curBpm();
     if (f8CountV2 < 24) { log("🩺 " + f8CountV2 + " pulse(s) seulement en 4 s — rythme pas lancé ou horloge muette : lance le rythme puis relance la détection.", "ko"); return; }
-    const est = (f8CountV2 / 4) / (measuredBpm / 60); // v2.6.16 — référence : tempo LU du clavier uniquement (jamais imposé)
+    const est = (f8CountV2 / 4) / (refBpm / 60); // v2.6.22 — référence : tempo LU si dispo, sinon dernier tempo CONNU
     const std = [24, 48, 96].sort((a, b) => Math.abs(a - est) - Math.abs(b - est))[0];
     log("🩺 " + f8CountV2 + " pulses en 4 s à ♩" + bpm + " → ≈ " + est.toFixed(1) + " pulses/noire (standard le plus proche : " + std + ").", "ok");
     if (std !== parseInt(document.getElementById("ppq").value, 10) && confirm("Appliquer pulses/noire = " + std + " ?")) {
@@ -2669,29 +2681,38 @@ const APC_SURF = [
   { pad: 1, cc: 49, lbl: "Accomp 2" },
   { pad: 2, cc: 50, lbl: "Accomp 3" },
   { pad: 3, cc: 51, lbl: "Bass" },
-  { pad: 4, cc: 52, lbl: "Drums" }
+  { pad: 4, cc: 52, lbl: "Drums" },
+  { pad: 7, cc: 55, lbl: "Chord" } // v2.6.22 — pad 8 (bas de rangée) + knob 8 = Chord On/Off + volume (canal accords dynamique chChord)
 ];
 const APC_PAD_MODE = 39; // pad 40 (rangée haute) — réservé à la future bascule de mode
-const APC_LED = { red: 0x05, green: 0x0F, off: 0x00, white: 0x03 };
+const APC_LED = { red: 0x05, green: 0x21, off: 0x00, white: 0x03 }; // v2.6.22 — palette du Sound Editor (vert 0x21 vif) — retour terrain : pads trop faiblement éclairés
 let apcIn = null, apcOut = null, apcReady = false, midiAccess2 = null, apcVol = {};
-function apcLed(note, color) { if (apcOut) { try { apcOut.send([0x90, note & 0x7F, color]); } catch (e) {} } }
+const APC_PORTS_KEY = "kn2000-apc-ports-v2"; // v2.6.22 — choix des ports surface mémorisé (les ports H2MIDI Pro portent le même nom)
+function apcLed(note, color) { if (apcOut) { try { apcOut.send([0x96, note & 0x7F, color]); } catch (e) {} } } // v2.6.22 — canal 0x96 = pads RGB solid 100 % (Sound Editor v0.9.2 : 0x90 = 10 % de luminosité, invisible en plein jour)
 function apcPart(i) { return APC_SURF[i] ? M4_DRUMS.find(d => d.lbl === APC_SURF[i].lbl) : null; }
 function apcLedsSync() { // LEDs = état M4 RÉEL (vert = la part joue, rouge = muette) + pad de mode réservé (blanc)
   for (const a of APC_SURF) apcLed(a.pad, m4MuteState(a.lbl) ? APC_LED.red : APC_LED.green);
   apcLed(APC_PAD_MODE, apcReady ? APC_LED.white : APC_LED.off);
 }
 function apcStateTxt(t, ok) { const el = document.getElementById("apcState"); if (el) { el.textContent = t; el.style.color = ok ? "#0a7a0a" : "#a33"; } }
-function apcFill() { // sélecteurs de ports de la surface (pré-sélection du port dont le nom contient « APC »)
+function apcFill() { // v2.6.22 — sélecteurs surface : (1) port nommé « APC », sinon (2) dernier choix mémorisé, sinon (3) le port NON utilisé par le KN2000 (H2MIDI Pro : port 2 dédié à l'APC)
   if (!midiAccess2) return;
-  const f = (sel, list) => {
+  let saved = null; try { saved = JSON.parse(localStorage.getItem(APC_PORTS_KEY) || "null"); } catch (e) {}
+  const f = (sel, list, knSel) => {
     if (!sel) return;
-    const prev = sel.value; sel.innerHTML = "";
+    sel.innerHTML = "";
     list.forEach(p => { const o = document.createElement("option"); o.value = p.id; o.textContent = p.name || p.id; sel.appendChild(o); });
+    const has = v => v && [...sel.options].some(o => o.value === v);
     const hit = list.find(p => /APC/i.test(p.name || ""));
-    if (hit) sel.value = hit.id; else if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+    if (hit) { sel.value = hit.id; return; }
+    if (saved && has(saved[sel.id])) { sel.value = saved[sel.id]; return; }
+    if (knSel && knSel.value) {
+      const alt = [...sel.options].find(o => o.value !== knSel.value);
+      if (alt) { sel.value = alt.value; log("🎛 Surface APC : ports au même nom (« H2MIDI Pro ») — le port DIFFÉRENT de celui du KN2000 est pré-sélectionné ; corrige si besoin puis 🔌 Connecter l'APC (le choix est mémorisé).", "info"); }
+    }
   };
-  f(document.getElementById("apcRx"), [...midiAccess2.inputs.values()]);
-  f(document.getElementById("apcTx"), [...midiAccess2.outputs.values()]);
+  f(document.getElementById("apcRx"), [...midiAccess2.inputs.values()], document.getElementById("rx"));
+  f(document.getElementById("apcTx"), [...midiAccess2.outputs.values()], document.getElementById("tx"));
 }
 function apcSurfaceCap(e) { // interception des messages de l'APC — true = consommé (non transmis au lecteur KN2000)
   if (!apcReady || !e || !e.data) return false;
@@ -2701,19 +2722,19 @@ function apcSurfaceCap(e) { // interception des messages de l'APC — true = con
     if (i >= 0) { // bascule mute de la part — MÊME mécanique que M4 (CC7=0 / volume d'avant restauré, mémorisé dans le morceau)
       const part = apcPart(i);
       const want = !m4MuteState(APC_SURF[i].lbl);
-      if (part && m4SetMute(part, want)) log("🎛 Pad " + (i + 1) + " → Mute " + APC_SURF[i].lbl + " " + (want ? "OFF (muette, LED rouge)" : "ON (elle joue, LED verte)") + ".", "ok");
+      if (part && m4SetMute(part, want)) log("🎛 Pad " + (APC_SURF[i].pad + 1) + " → Mute " + APC_SURF[i].lbl + " " + (want ? "OFF (muette, LED rouge)" : "ON (elle joue, LED verte)") + ".", "ok");
       return true;
     }
     if (d[1] === APC_PAD_MODE) { log("🎛 Pad 40 (rangée haute) — RÉSERVÉ à la future bascule Play-Live ↔ Sound (chantier « Sound » à venir).", "info"); return true; }
   }
-  if (d.length >= 3 && (d[0] & 0xF0) === 0xB0 && (d[0] & 0x0F) === 0 && d[1] >= 48 && d[1] <= 52) {
-    const i = d[1] - 48, part = apcPart(i);
-    if (!part) return true;
+  if (d.length >= 3 && (d[0] & 0xF0) === 0xB0 && (d[0] & 0x0F) === 0 && d[1] >= 48 && d[1] <= 55) { // v2.6.22 — les 8 knobs consommés (1-5 = parts, 8 = Chord, 6-7 silencieux)
+    const i = APC_SURF.findIndex(a => a.cc === d[1]), part = apcPart(i);
+    if (!part) return true; // knob non attribué : consommé sans action (rien ne fuit vers le KN2000)
     const inc = (d[2] === 0 || d[2] === 64) ? 0 : (d[2] < 64 ? d[2] : -(d[2] - 64)); // encodeur RELATIF Akai : 01-3F = +n ; 41-7F = -(n-64)
     const cur = (apcVol[APC_SURF[i].lbl] !== undefined) ? apcVol[APC_SURF[i].lbl] : 100;
     const v = Math.max(0, Math.min(127, cur + inc));
     apcVol[APC_SURF[i].lbl] = v;
-    if (inc !== 0) m4CC(part, 7, v, "🎛 Knob " + (i + 1) + " · volume " + APC_SURF[i].lbl); // CC7 mémorisé dans le kit du morceau (comme M4)
+    if (inc !== 0) m4CC(part, 7, v, "🎛 Knob " + (d[1] - 47) + " · volume " + APC_SURF[i].lbl); // CC7 mémorisé dans le kit du morceau (comme M4)
     return true;
   }
   return false;
@@ -2733,7 +2754,8 @@ document.getElementById("apcConnect").onclick = () => {
   }
   apcLedsSync();
   apcStateTxt("● APC connecté", true);
-  log("🎛 Surface APC connectée : pads 1-5 (rangée basse) = mutes Accomp 1/2/3 · Basse · Batterie (LED rouge = muette, verte = joue) ; knobs 1-5 = volumes. Pad 40 (rangée haute) réservé au futur mode Sound.", "ok");
+  try { localStorage.setItem(APC_PORTS_KEY, JSON.stringify({ apcRx: document.getElementById("apcRx").value, apcTx: document.getElementById("apcTx").value })); } catch (e) {} // v2.6.22 — choix mémorisé pour la prochaine session
+  log("🎛 Surface APC connectée : pads 1-5 = mutes Accomp 1/2/3 · Basse · Batterie, pad 8 = Chord On/Off (LED rouge = muette, verte = joue) ; knobs 1-5 = volumes, knob 8 = volume Chord. Pad 40 (rangée haute) réservé au futur mode Sound.", "ok");
 };
 
 const _setModeV2 = setMode;
@@ -2746,3 +2768,4 @@ log("🎼 APC Live v2 — modes M1 (préparation) · M2 (direct) · M3 (réglage
 </script>
 </body>
 </html>
+
