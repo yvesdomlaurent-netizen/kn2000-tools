@@ -64,13 +64,12 @@ jobs:
       - name: Publish APK to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: knbridge-v2
-          name: KN Bridge v1.2
+          tag_name: knbridge-v3
+          name: KN Bridge v1.3
           body: |
-            KN Bridge v1.2 : ports virtuels + routage USB parametrable + Bluetooth MIDI (MobileSheets) + panneau de controle avec moniteur MIDI.
+            KN Bridge v1.3 : routage PAR PORT (TX/RX sur les ports (0) et (1) du boitier separes).
             Port d'entrée "Commande MS", port de sortie "Vers Page".
-            APK debug signe avec cle stable : les mises a jour s'installent par-dessus.
-            POUR LA PREMIERE FOIS : desinstaller l'ancienne version avant d'installer.
+            APK debug signe avec cle stable : s'installe par-dessus la v1.2.
           files: android/knbridge/app/build/outputs/apk/debug/app-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

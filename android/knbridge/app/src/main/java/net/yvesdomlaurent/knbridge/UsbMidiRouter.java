@@ -15,7 +15,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/** Ouvre les périphériques USB choisis (boîtier CME…) et route vers/depuis le port virtuel. */
+/** Ouvre les PORTS USB choisis (boîtier CME (0)/(1)…) et route vers/depuis le port virtuel.
+ *  L'exclusivité Android est PAR PORT : MS peut écrire sur le (1) pendant qu'on écrit le (0). */
 public class UsbMidiRouter {
     private final Context ctx;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -61,7 +62,7 @@ public class UsbMidiRouter {
     }
 
     /** Liste les numéros de ports du type demandé (TYPE_INPUT ou TYPE_OUTPUT). */
-    private static List<Integer> portNumbers(MidiDeviceInfo info, int type) {
+    public static List<Integer> portNumbers(MidiDeviceInfo info, int type) {
         List<Integer> out = new ArrayList<>();
         for (MidiDeviceInfo.PortInfo p : info.getPorts()) {
             if (p.getType() == type) out.add(p.getPortNumber());
@@ -75,34 +76,39 @@ public class UsbMidiRouter {
         final String name = info.getProperties() != null
             ? info.getProperties().getString(MidiDeviceInfo.PROPERTY_NAME, "USB " + info.getId())
             : "USB " + info.getId();
-        final boolean tx = Bus.deviceEnabled(ctx, name, true);   // page -> appareil
-        final boolean rx = Bus.deviceEnabled(ctx, name, false);  // appareil -> page
-        if (!tx && !rx) return;
+        final List<Integer> inPorts = portNumbers(info, MidiDeviceInfo.PortInfo.TYPE_INPUT);
+        final List<Integer> outPorts = portNumbers(info, MidiDeviceInfo.PortInfo.TYPE_OUTPUT);
+        boolean anyTx = false, anyRx = false;
+        for (int p : inPorts) anyTx = anyTx || Bus.portEnabled(ctx, name, p, true);
+        for (int p : outPorts) anyRx = anyRx || Bus.portEnabled(ctx, name, p, false);
+        if (!anyTx && !anyRx) {
+            Bus.log("USB « " + name + " » : aucun port actif — coche TX/RX par port dans le panneau");
+            return;
+        }
         mm.openDevice(info, device -> {
             if (device == null) { Bus.log("✗ Ouverture impossible : " + name); return; }
             synchronized (openDevices) { openDevices.add(device); }
-            Bus.log("✚ USB « " + name + " » connecté" + (tx ? " [TX]" : "") + (rx ? " [RX]" : ""));
-            if (tx) {
-                for (int portNum : portNumbers(info, MidiDeviceInfo.PortInfo.TYPE_INPUT)) {
-                    final MidiInputPort in = device.openInputPort(portNum);
-                    if (in == null) continue;
-                    synchronized (inputPorts) { inputPorts.add(in); }
-                    Bus.addUsbSink((msg, off, cnt, ts) -> {
-                        try { in.send(msg, off, cnt, ts); }
-                        catch (IOException e) { Bus.log("⚠ écriture USB : " + e); }
-                    });
-                }
+            for (int p : inPorts) {
+                if (!Bus.portEnabled(ctx, name, p, true)) continue;
+                final MidiInputPort in = device.openInputPort(p);
+                if (in == null) { Bus.log("✗ Port " + p + " indisponible (pris par une autre appli ?) : " + name); continue; }
+                synchronized (inputPorts) { inputPorts.add(in); }
+                Bus.log("✚ USB « " + name + " » port (" + p + ") connecté [TX]");
+                Bus.addUsbSink((msg, off, cnt, ts) -> {
+                    try { in.send(msg, off, cnt, ts); }
+                    catch (IOException e) { Bus.log("⚠ écriture USB (" + p + ") : " + e); }
+                });
             }
-            if (rx) {
-                for (int portNum : portNumbers(info, MidiDeviceInfo.PortInfo.TYPE_OUTPUT)) {
-                    MidiOutputPort out = device.openOutputPort(portNum);
-                    if (out == null) continue;
-                    out.connect(new MidiReceiver() {
-                        @Override public void onSend(byte[] msg, int off, int cnt, long ts) {
-                            Bus.fromUsb(name, msg, off, cnt, ts);
-                        }
-                    });
-                }
+            for (int p : outPorts) {
+                if (!Bus.portEnabled(ctx, name, p, false)) continue;
+                MidiOutputPort out = device.openOutputPort(p);
+                if (out == null) { Bus.log("✗ Port " + p + " indisponible : " + name); continue; }
+                out.connect(new MidiReceiver() {
+                    @Override public void onSend(byte[] msg, int off, int cnt, long ts) {
+                        Bus.fromUsb(name + " (" + p + ")", msg, off, cnt, ts);
+                    }
+                });
+                Bus.log("✚ USB « " + name + " » port (" + p + ") connecté [RX]");
             }
         }, handler);
     }

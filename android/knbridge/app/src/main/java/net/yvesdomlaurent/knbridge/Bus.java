@@ -78,6 +78,7 @@ public final class Bus {
     }
 
     // ---- Préférences ----
+    // v1.2 : par appareil (conservé pour reprendre l'ancienne config par défaut)
     public static boolean deviceEnabled(Context ctx, String name, boolean tx) {
         return ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getBoolean(name + (tx ? "|tx" : "|rx"), false);
@@ -86,6 +87,19 @@ public final class Bus {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putBoolean(name + (tx ? "|tx" : "|rx"), on).apply();
     }
+
+    // v1.3 : par PORT. Si la clé port n'existe pas, reprend la valeur v1.2 de l'appareil.
+    public static boolean portEnabled(Context ctx, String name, int port, boolean tx) {
+        SharedPreferences sp = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        String k = name + "|" + port + "|" + (tx ? "tx" : "rx");
+        if (sp.contains(k)) return sp.getBoolean(k, false);
+        return deviceEnabled(ctx, name, tx);
+    }
+    public static void setPortEnabled(Context ctx, String name, int port, boolean tx, boolean on) {
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(name + "|" + port + "|" + (tx ? "tx" : "rx"), on).apply();
+    }
+
     public static boolean bleEnabled(Context ctx) {
         return ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("ble", false);
     }

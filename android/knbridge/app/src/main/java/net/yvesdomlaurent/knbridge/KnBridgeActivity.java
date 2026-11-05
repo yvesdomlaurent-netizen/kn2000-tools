@@ -21,7 +21,7 @@ import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Panneau de contrôle : routage par appareil, Bluetooth, moniteur MIDI. */
+/** Panneau de contrôle : routage PAR PORT, Bluetooth, moniteur MIDI. */
 public class KnBridgeActivity extends Activity {
     private LinearLayout deviceList;
     private TextView monitor;
@@ -86,12 +86,12 @@ public class KnBridgeActivity extends Activity {
         root.addView(bleBox);
 
         Button refresh = new Button(this);
-        refresh.setText("🔄 Actualiser la liste des appareils USB");
+        refresh.setText("🔄 Actualiser la liste des ports USB");
         refresh.setOnClickListener(v -> buildDeviceList());
         root.addView(refresh);
 
         TextView devTitle = new TextView(this);
-        devTitle.setText("Appareils USB — routage :");
+        devTitle.setText("Appareils USB — routage par port :");
         devTitle.setTextSize(16);
         root.addView(devTitle);
 
@@ -160,9 +160,23 @@ public class KnBridgeActivity extends Activity {
             String name = info.getProperties() != null
                 ? info.getProperties().getString(MidiDeviceInfo.PROPERTY_NAME, "USB " + info.getId())
                 : "USB " + info.getId();
+            List<Integer> inPorts = UsbMidiRouter.portNumbers(info, MidiDeviceInfo.PortInfo.TYPE_INPUT);
+            List<Integer> outPorts = UsbMidiRouter.portNumbers(info, MidiDeviceInfo.PortInfo.TYPE_OUTPUT);
             deviceList.addView(mutLabel(name));
-            deviceList.addView(checkBox(name, true,  " TX →  écrire vers cet appareil (page → clavier)"));
-            deviceList.addView(checkBox(name, false, " RX ←  lire depuis cet appareil (clavier → page)"));
+            int max = Math.max(inPorts.size(), outPorts.size());
+            for (int p = 0; p < max; p++) {
+                final String nm = name;
+                final int port = p;
+                boolean hasIn = inPorts.contains(p);
+                boolean hasOut = outPorts.contains(p);
+                TextView pt = mutLabel("    Port (" + p + ")");
+                pt.setTextColor(Color.WHITE);
+                deviceList.addView(pt);
+                if (hasIn) deviceList.addView(checkBox(nm, port, true,
+                    "       TX →  écrire vers ce port (page → matériel)"));
+                if (hasOut) deviceList.addView(checkBox(nm, port, false,
+                    "       RX ←  lire ce port (matériel → page)"));
+            }
         }
         if (!any) deviceList.addView(mutLabel("(aucun appareil USB détecté)"));
     }
@@ -174,15 +188,15 @@ public class KnBridgeActivity extends Activity {
         return t;
     }
 
-    private CheckBox checkBox(final String name, final boolean tx, String label) {
+    private CheckBox checkBox(final String name, final int port, final boolean tx, String label) {
         CheckBox cb = new CheckBox(this);
         cb.setText(label);
         cb.setTextSize(13);
-        cb.setChecked(Bus.deviceEnabled(this, name, tx));
+        cb.setChecked(Bus.portEnabled(this, name, port, tx));
         cb.setOnCheckedChangeListener((btn, on) -> {
-            Bus.setDeviceEnabled(KnBridgeActivity.this, name, tx, on);
-            Bus.log((tx ? "TX" : "RX") + " " + (on ? "activé" : "désactivé") + " : " + name
-                + " — relance le service pour appliquer");
+            Bus.setPortEnabled(KnBridgeActivity.this, name, port, tx, on);
+            Bus.log((tx ? "TX" : "RX") + " (" + port + ") " + (on ? "activé" : "désactivé")
+                + " : " + name + " — relance le service pour appliquer");
         });
         return cb;
     }
