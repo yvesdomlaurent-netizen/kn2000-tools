@@ -60,6 +60,15 @@ public class UsbMidiRouter {
         for (MidiDeviceInfo info : mm.getDevices()) connect(info);
     }
 
+    /** Liste les numéros de ports du type demandé (TYPE_INPUT ou TYPE_OUTPUT). */
+    private static List<Integer> portNumbers(MidiDeviceInfo info, int type) {
+        List<Integer> out = new ArrayList<>();
+        for (MidiDeviceInfo.PortInfo p : info.getPorts()) {
+            if (p.getType() == type) out.add(p.getPortNumber());
+        }
+        return out;
+    }
+
     private void connect(MidiDeviceInfo info) {
         if (!running || info.getType() != MidiDeviceInfo.TYPE_USB) return;
         synchronized (connected) { if (!connected.add(info.getId())) return; }
@@ -74,9 +83,8 @@ public class UsbMidiRouter {
             synchronized (openDevices) { openDevices.add(device); }
             Bus.log("✚ USB « " + name + " » connecté" + (tx ? " [TX]" : "") + (rx ? " [RX]" : ""));
             if (tx) {
-                int n = info.getPortCount(MidiDeviceInfo.PortInfo.TYPE_INPUT);
-                for (int i = 0; i < n; i++) {
-                    final MidiInputPort in = device.openInputPort(i);
+                for (int portNum : portNumbers(info, MidiDeviceInfo.PortInfo.TYPE_INPUT)) {
+                    final MidiInputPort in = device.openInputPort(portNum);
                     if (in == null) continue;
                     synchronized (inputPorts) { inputPorts.add(in); }
                     Bus.addUsbSink((msg, off, cnt, ts) -> {
@@ -86,9 +94,8 @@ public class UsbMidiRouter {
                 }
             }
             if (rx) {
-                int n = info.getPortCount(MidiDeviceInfo.PortInfo.TYPE_OUTPUT);
-                for (int i = 0; i < n; i++) {
-                    MidiOutputPort out = device.openOutputPort(i);
+                for (int portNum : portNumbers(info, MidiDeviceInfo.PortInfo.TYPE_OUTPUT)) {
+                    MidiOutputPort out = device.openOutputPort(portNum);
                     if (out == null) continue;
                     out.connect(new MidiReceiver() {
                         @Override public void onSend(byte[] msg, int off, int cnt, long ts) {
