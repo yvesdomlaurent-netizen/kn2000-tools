@@ -10,6 +10,8 @@ import android.media.midi.MidiDeviceInfo;
 import android.media.midi.MidiManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.Gravity;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -21,12 +23,14 @@ import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Panneau de contrôle : routage PAR PORT, Bluetooth, moniteur MIDI. */
+/** Panneau de contrôle : statut du service, routage PAR PORT, Bluetooth, moniteur MIDI. */
 public class KnBridgeActivity extends Activity {
     private LinearLayout deviceList;
     private TextView monitor;
+    private TextView svcStatus;
     private ScrollView monitorScroll;
     private final List<String> lines = new ArrayList<>();
+    private final Handler ui = new Handler(Looper.getMainLooper());
 
     private final Bus.LogSink logSink = line -> runOnUiThread(() -> {
         lines.add(line);
@@ -64,8 +68,30 @@ public class KnBridgeActivity extends Activity {
             Intent i = new Intent(this, KnRouteService.class);
             if (Build.VERSION.SDK_INT >= 26) startForegroundService(i); else startService(i);
             Toast.makeText(this, "Service démarré", Toast.LENGTH_SHORT).show();
+            ui.postDelayed(this::refreshSvcStatus, 400);
         });
         root.addView(svc);
+
+        svcStatus = new TextView(this); // v1.5 — statut visible du service
+        svcStatus.setTextSize(15);
+        svcStatus.setGravity(Gravity.CENTER);
+        root.addView(svcStatus);
+
+        Button stop = new Button(this); // v1.5 — arrêt du service
+        stop.setText("⏹ Arrêter le service");
+        stop.setOnClickListener(v -> {
+            stopService(new Intent(this, KnRouteService.class));
+            Toast.makeText(this, "Service arrêté", Toast.LENGTH_SHORT).show();
+            ui.postDelayed(this::refreshSvcStatus, 400);
+        });
+        root.addView(stop);
+
+        CheckBox feBox = new CheckBox(this); // v1.4 — FE masqués par défaut (spam Active Sensing du KN2000)
+        feBox.setText("Afficher les FE (Active Sensing) dans le moniteur");
+        feBox.setChecked(Bus.showFePref(this));
+        Bus.setShowFe(feBox.isChecked());
+        feBox.setOnCheckedChangeListener((btn, on) -> Bus.setShowFePref(KnBridgeActivity.this, on));
+        root.addView(feBox);
 
         CheckBox bleBox = new CheckBox(this);
         bleBox.setText("Se faire voir en Bluetooth MIDI (pour MobileSheets)");
@@ -84,13 +110,6 @@ public class KnBridgeActivity extends Activity {
             }
         });
         root.addView(bleBox);
-
-        CheckBox feBox = new CheckBox(this); // v1.4 — FE masqués par défaut (spam Active Sensing du KN2000)
-        feBox.setText("Afficher les FE (Active Sensing) dans le moniteur");
-        feBox.setChecked(Bus.showFePref(this));
-        Bus.setShowFe(feBox.isChecked());
-        feBox.setOnCheckedChangeListener((btn, on) -> Bus.setShowFePref(KnBridgeActivity.this, on));
-        root.addView(feBox);
 
         Button refresh = new Button(this);
         refresh.setText("🔄 Actualiser la liste des ports USB");
@@ -127,8 +146,19 @@ public class KnBridgeActivity extends Activity {
 
         setContentView(root);
         buildDeviceList();
+        refreshSvcStatus();
         Bus.addLogSink(logSink);
         Bus.log("Panneau ouvert");
+    }
+
+    @Override
+    protected void onResume() { super.onResume(); refreshSvcStatus(); buildDeviceList(); }
+
+    /** v1.5 — affiche l'état réel du service de routage. */
+    private void refreshSvcStatus() {
+        boolean on = KnRouteService.isRunning();
+        svcStatus.setText(on ? "● Service ACTIF (routage en cours)" : "○ Service arrêté — appuie sur ▶ pour router");
+        svcStatus.setTextColor(on ? Color.rgb(13, 148, 60) : Color.rgb(180, 60, 60));
     }
 
     private void toggleBle() {

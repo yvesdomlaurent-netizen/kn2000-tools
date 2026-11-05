@@ -15,11 +15,16 @@ public class KnRouteService extends Service {
     private UsbMidiRouter router;
     private BleMidiPeripheral ble;
 
+    /** v1.5 — statut visible depuis le panneau. */
+    private static volatile boolean running = false;
+    public static boolean isRunning() { return running; }
+
     public static final String ACTION_TOGGLE_BLE = "net.yvesdomlaurent.knbridge.TOGGLE_BLE";
 
     @Override
     public void onCreate() {
         super.onCreate();
+        running = true;
         startForegroundWithNotif();
         Bus.setShowFe(Bus.showFePref(this));
         router = new UsbMidiRouter(this);
@@ -48,6 +53,7 @@ public class KnRouteService extends Service {
 
     @Override
     public void onDestroy() {
+        running = false;
         if (router != null) router.stop();
         if (ble != null) ble.stop();
         Bus.log("Service KN Bridge arrêté");
