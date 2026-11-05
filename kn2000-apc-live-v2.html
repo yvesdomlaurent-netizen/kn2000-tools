@@ -1232,9 +1232,12 @@ function msSendCommand(s) { // v2.6.27 — commande « notre page » : F0 7D <ba
   if (isNaN(n) || n < 0 || n > 255) { log("📱 MS : « " + s.title + " » n'a pas de msid exploitable (" + s.msid + ") — commande non envoyée.", "ko"); return; }
   msLastSent = { b: 0, n: n, at: performance.now() };
   const frame = [0xF0, 0x7D, 0x00, n & 0xFF, 0xF7];
-  let k = 0; const names = []; // v2.6.28 — n'émet que sur les ports CONNECTÉS (les ports déconnectés de Web MIDI avalent send() sans erreur) et nomme les ports utilisés dans le journal
-  if (midiAccess2) { for (const o of midiAccess2.outputs.values()) { if (o.state && o.state !== "connected") continue; try { o.send(frame); k++; names.push(o.name || o.id); } catch (e) {} } }
-  if (!k && midiOut && (!midiOut.state || midiOut.state === "connected")) { try { midiOut.send(frame); k = 1; names.push(midiOut.name || "midiOut"); } catch (e) {} }
+  let k = 0; const names = []; const sent = new Set(); // v2.6.29 — envoi UNIQUE sur la sortie clavier (Commande MS) : les ports USB du boîtier sont réservés à KN Bridge (0) et MobileSheets (1), l'écho matériel fait circuler le message ; repli : toutes les sorties connectées si aucune sortie clavier
+  const outs = [];
+  if (midiOut && (!midiOut.state || midiOut.state === "connected")) outs.push(midiOut);
+  if (apcOut && (!apcOut.state || apcOut.state === "connected") && !outs.some(o => o.id === apcOut.id)) outs.push(apcOut);
+  if (!outs.length && midiAccess2) { for (const o of midiAccess2.outputs.values()) { if (o.state && o.state !== "connected") continue; outs.push(o); } }
+  for (const o of outs) { if (sent.has(o.id)) continue; try { o.send(frame); sent.add(o.id); k++; names.push(o.name || o.id); } catch (e) {} }
   log("📱 MS — commande du morceau « " + s.title + " » : F0 7D 00 " + hex([n & 0xFF]) + " F7 (banque 0, n° " + n + ") émise sur " + k + " port(s)" + (k ? " : " + names.join(" · ") : " — AUCUN port connecté : relance 🔌 Connecter dans ⚙️ Réglages") + " — à capturer dans MobileSheets en mode écoute.", "info");
 }
 document.getElementById("msSend").onclick = () => { // v2.6.27 — bouton dédié : envoi ISOLÉ de la commande MS (pas de rechargement du morceau, rien d'autre au clavier)
