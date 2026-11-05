@@ -6,36 +6,33 @@ import android.util.Log;
 import java.io.IOException;
 
 /**
- * KN Bridge - pont MIDI virtuel pour MobileSheets -> page KN2000.
- *
- * Expose un port d'entree "Commande MS" (ou MobileSheets envoie ses commandes)
- * et un port de sortie "Vers Page" (que Chrome / la page kn2000-apc-live-v2 ecoute).
- * Tout message recu sur l'entree est transmis tel quel sur la sortie,
- * octets bruts 0-255 inclus (sysex F0 7D 00 <msid> F7).
+ * KN Bridge — périphérique MIDI virtuel.
+ * Port d'entrée « Commande MS » (la page y écrit) / port de sortie « Vers Page » (la page y lit).
+ * Tout ce qui entre est routé par la classe Bus (USB, Bluetooth).
  */
 public class KnBridgeService extends MidiDeviceService {
     private static final String TAG = "KNBridge";
 
     private final MidiReceiver mInputPort = new MidiReceiver() {
         @Override
-        public void onSend(byte[] msg, int offset, int count, long timestamp)
-                throws IOException {
-            MidiReceiver[] outs = getOutputPortReceivers();
-            if (outs == null) {
-                Log.w(TAG, "output port receiver indisponible");
-                return;
-            }
-            for (MidiReceiver out : outs) {
-                if (out != null) {
-                    try {
-                        out.send(msg, offset, count, timestamp);
-                    } catch (IOException e) {
-                        Log.e(TAG, "erreur transfert vers port sortie", e);
-                    }
-                }
-            }
+        public void onSend(byte[] msg, int offset, int count, long timestamp) throws IOException {
+            Bus.fromVirtual(msg, offset, count, timestamp);
         }
     };
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        Bus.setVirtualSink((msg, off, cnt, ts) -> {
+            try {
+                MidiReceiver[] outs = getOutputPortReceivers();
+                if (outs != null && outs.length > 0) outs[0].send(msg, off, cnt, ts);
+            } catch (IOException e) {
+                Log.e(TAG, "envoi vers port virtuel", e);
+            }
+        });
+        Bus.log("Service virtuel KN Bridge prêt (Commande MS → Vers Page)");
+    }
 
     @Override
     public MidiReceiver[] onGetInputPortReceivers() {
