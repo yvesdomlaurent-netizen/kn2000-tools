@@ -81,7 +81,7 @@
   <span class="badge" id="kbdBadge" title="Liaison KN2000 (badge charte)">🎹 <b id="kbdDot">○</b> KN2000</span>
   <span class="badge" id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   <span style="flex:1"></span>
-  <span><b>🎼 APC Live KN2000</b> <span class="hint">v2.6.29 — M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
+  <span><b>🎼 APC Live KN2000</b> <span class="hint">v2.6.30 — M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
   <span style="flex:1"></span>
   <nav class="hubLinks" title="Navigation entre les outils du projet (charte 7i)">
     <a href="index.html">🏠 Hub</a>
@@ -2784,12 +2784,12 @@ function apcStateTxt(t, ok) { const el = document.getElementById("apcState"); if
 function apcFill() { // v2.6.22 — sélecteurs surface : (1) port nommé « APC », sinon (2) dernier choix mémorisé, sinon (3) le port NON utilisé par le KN2000 (H2MIDI Pro : port 2 dédié à l'APC)
   if (!midiAccess2) return;
   let saved = null; try { saved = JSON.parse(localStorage.getItem(APC_PORTS_KEY) || "null"); } catch (e) {}
-  const f = (sel, list, knSel) => {
+  const f = (sel, list, knSel, pref) => { // v2.6.30 — architecture KN Bridge : la surface APC passe par les ports virtuels (RX « Vers Page », TX « Commande MS ») ; replis anciens : port nommé APC, sinon mémorisé, sinon port ≠ KN2000
     if (!sel) return;
     sel.innerHTML = "";
     list.forEach(p => { const o = document.createElement("option"); o.value = p.id; o.textContent = p.name || p.id; sel.appendChild(o); });
     const has = v => v && [...sel.options].some(o => o.value === v);
-    const hit = list.find(p => /APC/i.test(p.name || ""));
+    const hit = (pref && list.find(p => pref.test(p.name || ""))) || list.find(p => /APC/i.test(p.name || ""));
     if (hit) { sel.value = hit.id; return; }
     if (saved && has(saved[sel.id])) { sel.value = saved[sel.id]; return; }
     if (knSel && knSel.value) {
@@ -2797,8 +2797,8 @@ function apcFill() { // v2.6.22 — sélecteurs surface : (1) port nommé « APC
       if (alt) { sel.value = alt.value; log("🎛 Surface APC : ports au même nom (« H2MIDI Pro ») — le port DIFFÉRENT de celui du KN2000 est pré-sélectionné ; corrige si besoin puis 🔌 Connecter l'APC (le choix est mémorisé).", "info"); }
     }
   };
-  f(document.getElementById("apcRx"), [...midiAccess2.inputs.values()], document.getElementById("rx"));
-  f(document.getElementById("apcTx"), [...midiAccess2.outputs.values()], document.getElementById("tx"));
+  f(document.getElementById("apcRx"), [...midiAccess2.inputs.values()], document.getElementById("rx"), /Vers Page/i);
+  f(document.getElementById("apcTx"), [...midiAccess2.outputs.values()], document.getElementById("tx"), /Commande MS/i);
 }
 function apcSurfaceCap(e) { // interception des messages de l'APC — true = consommé (non transmis au lecteur KN2000)
   if (!apcReady || !e || !e.data) return false;
