@@ -28,7 +28,18 @@ jobs:
 
       - name: Build debug APK
         working-directory: android/knbridge
-        run: gradle assembleDebug --no-daemon
+        run: |
+          set -o pipefail
+          gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee ../../gradle.log
+
+      - name: Pousser le log de build en cas d'échec
+        if: failure()
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add -f gradle.log
+          git commit -m "ci: log de build knbridge (échec)"
+          git push
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
