@@ -14,7 +14,21 @@ android {
         versionName "1.2"
     }
 
+    // Signature debug STABLE (keystore commite dans le repo, genere par la CI)
+    // -> les mises a jour futures s'installent PAR-DESSUS l'appli existante.
+    signingConfigs {
+        stableDebug {
+            storeFile rootProject.file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig signingConfigs.stableDebug
+        }
         release {
             minifyEnabled false
         }

@@ -26,6 +26,20 @@ jobs:
         with:
           gradle-version: '8.7'
 
+      - name: Keystore debug stable
+        working-directory: android/knbridge
+        run: |
+          if [ ! -f debug.keystore ]; then
+            keytool -genkeypair -keystore debug.keystore -storepass android \
+              -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 \
+              -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+            git config user.name "github-actions"
+            git config user.email "actions@github.com"
+            git add debug.keystore
+            git commit -m "[skip ci] keystore debug stable (signature permanente KN Bridge)"
+            git push
+          fi
+
       - name: Build debug APK
         working-directory: android/knbridge
         run: |
@@ -55,7 +69,8 @@ jobs:
           body: |
             KN Bridge v1.2 : ports virtuels + routage USB parametrable + Bluetooth MIDI (MobileSheets) + panneau de controle avec moniteur MIDI.
             Port d'entrée "Commande MS", port de sortie "Vers Page".
-            APK debug auto-signé : installer via "sources inconnues".
+            APK debug signe avec cle stable : les mises a jour s'installent par-dessus.
+            POUR LA PREMIERE FOIS : desinstaller l'ancienne version avant d'installer.
           files: android/knbridge/app/build/outputs/apk/debug/app-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
