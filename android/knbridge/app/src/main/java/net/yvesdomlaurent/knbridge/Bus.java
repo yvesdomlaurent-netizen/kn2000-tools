@@ -27,6 +27,9 @@ public final class Bus {
     private static final List<LogSink> logSinks = new ArrayList<>();
     private static final SimpleDateFormat hhmmss = new SimpleDateFormat("HH:mm:ss", Locale.US);
 
+    /** v1.4 — filtre du moniteur : les FE (Active Sensing) sont ROUTÉS mais pas AFFICHÉS si false. */
+    private static volatile boolean showFe = false;
+
     private Bus() {}
 
     public static synchronized void setVirtualSink(Sink s) { virtualSink = s; }
@@ -36,22 +39,31 @@ public final class Bus {
     public static synchronized void addBleSink(Sink s) { if (!bleSinks.contains(s)) bleSinks.add(s); }
     public static synchronized void removeBleSink(Sink s) { bleSinks.remove(s); }
 
+    public static void setShowFe(boolean v) { showFe = v; }
+
+    /** Vrai si le message ne contient QUE des FE (Active Sensing). */
+    private static boolean isFe(byte[] msg, int off, int cnt) {
+        if (cnt <= 0) return false;
+        for (int i = 0; i < cnt; i++) if ((msg[off + i] & 0xFF) != 0xFE) return false;
+        return true;
+    }
+
     /** Message venant de la page (port virtuel « Commande MS ») -> USB + Bluetooth. */
     public static synchronized void fromVirtual(byte[] msg, int off, int cnt, long ts) {
-        log("➡ PAGE : " + hex(msg, off, cnt));
+        if (showFe || !isFe(msg, off, cnt)) log("➡ PAGE : " + hex(msg, off, cnt));
         for (Sink s : new ArrayList<>(usbSinks)) { try { s.send(msg, off, cnt, ts); } catch (Exception e) { log("⚠ USB : " + e); } }
         for (Sink s : new ArrayList<>(bleSinks)) { try { s.send(msg, off, cnt, ts); } catch (Exception e) { log("⚠ BLE : " + e); } }
     }
 
     /** Message venant d'un périphérique USB (KN2000, APC via boîtier) -> page. */
     public static synchronized void fromUsb(String devName, byte[] msg, int off, int cnt, long ts) {
-        log("⬅ USB " + devName + " : " + hex(msg, off, cnt));
+        if (showFe || !isFe(msg, off, cnt)) log("⬅ USB " + devName + " : " + hex(msg, off, cnt));
         toVirtual(msg, off, cnt, ts);
     }
 
     /** Message venant de MobileSheets (Bluetooth) -> page. */
     public static synchronized void fromBle(byte[] msg, int off, int cnt, long ts) {
-        log("⬅ BLE (MS) : " + hex(msg, off, cnt));
+        if (showFe || !isFe(msg, off, cnt)) log("⬅ BLE (MS) : " + hex(msg, off, cnt));
         toVirtual(msg, off, cnt, ts);
     }
 
@@ -78,7 +90,6 @@ public final class Bus {
     }
 
     // ---- Préférences ----
-    // v1.2 : par appareil (conservé pour reprendre l'ancienne config par défaut)
     public static boolean deviceEnabled(Context ctx, String name, boolean tx) {
         return ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getBoolean(name + (tx ? "|tx" : "|rx"), false);
@@ -88,7 +99,6 @@ public final class Bus {
             .putBoolean(name + (tx ? "|tx" : "|rx"), on).apply();
     }
 
-    // v1.3 : par PORT. Si la clé port n'existe pas, reprend la valeur v1.2 de l'appareil.
     public static boolean portEnabled(Context ctx, String name, int port, boolean tx) {
         SharedPreferences sp = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         String k = name + "|" + port + "|" + (tx ? "tx" : "rx");
@@ -105,5 +115,14 @@ public final class Bus {
     }
     public static void setBleEnabled(Context ctx, boolean on) {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("ble", on).apply();
+    }
+
+    // v1.4 — affichage des FE dans le moniteur (défaut : masqués)
+    public static boolean showFePref(Context ctx) {
+        return ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("showFe", false);
+    }
+    public static void setShowFePref(Context ctx, boolean on) {
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("showFe", on).apply();
+        setShowFe(on);
     }
 }

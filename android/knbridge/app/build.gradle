@@ -10,8 +10,8 @@ android {
         applicationId "net.yvesdomlaurent.knbridge"
         minSdk 23
         targetSdk 34
-        versionCode 3
-        versionName "1.3"
+        versionCode 4
+        versionName "1.4"
     }
 
     // Signature debug STABLE (keystore commite dans le repo, genere par la CI)

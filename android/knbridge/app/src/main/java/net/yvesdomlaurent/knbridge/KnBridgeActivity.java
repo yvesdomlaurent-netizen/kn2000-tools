@@ -85,6 +85,13 @@ public class KnBridgeActivity extends Activity {
         });
         root.addView(bleBox);
 
+        CheckBox feBox = new CheckBox(this); // v1.4 — FE masqués par défaut (spam Active Sensing du KN2000)
+        feBox.setText("Afficher les FE (Active Sensing) dans le moniteur");
+        feBox.setChecked(Bus.showFePref(this));
+        Bus.setShowFe(feBox.isChecked());
+        feBox.setOnCheckedChangeListener((btn, on) -> Bus.setShowFePref(KnBridgeActivity.this, on));
+        root.addView(feBox);
+
         Button refresh = new Button(this);
         refresh.setText("🔄 Actualiser la liste des ports USB");
         refresh.setOnClickListener(v -> buildDeviceList());

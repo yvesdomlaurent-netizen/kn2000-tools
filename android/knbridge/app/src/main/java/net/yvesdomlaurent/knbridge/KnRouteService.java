@@ -21,6 +21,7 @@ public class KnRouteService extends Service {
     public void onCreate() {
         super.onCreate();
         startForegroundWithNotif();
+        Bus.setShowFe(Bus.showFePref(this));
         router = new UsbMidiRouter(this);
         router.start();
         if (Bus.bleEnabled(this)) startBle();
