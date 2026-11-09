@@ -81,7 +81,7 @@
   <span class="badge" id="kbdBadge" title="Liaison KN2000 (badge charte)">🎹 <b id="kbdDot">○</b> KN2000</span>
   <span class="badge" id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   <span style="flex:1"></span>
-  <span><b>🎼 APC Live KN2000</b> <span class="hint">v2.6.31 — M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
+  <span><b>🎼 APC Live KN2000</b> <span class="hint">v2.6.32 — M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
   <span style="flex:1"></span>
   <nav class="hubLinks" title="Navigation entre les outils du projet (charte 7i)">
     <a href="index.html">🏠 Hub</a>
@@ -131,6 +131,13 @@
       <label>Zone de saisie accords — hauteur <select id="gridH" title="HAUTEUR de la zone de saisie de la grille. Android/Chrome n'offre AUCUNE poignée de redimensionnement sur cette zone : ce réglage la remplace. « ½ largeur d'écran » = hauteur au moins égale à la moitié de la largeur de l'écran (demande terrain v2.6.18). Le choix est mémorisé d'une session à l'autre."><option value="s">Compacte (≈ 10 lignes)</option><option value="m" selected>Moyenne (½ largeur d'écran)</option><option value="l">Grande (¾ largeur d'écran)</option><option value="x">Maxi (presque tout l'écran)</option></select></label>
       <label>— largeur <select id="gridW" title="LARGEUR de la zone de saisie de la grille (v2.6.20 — correctif terrain : « 100 % » donnait la largeur la plus PETITE parce que le style était vidé et la zone retombait en rétrécissement automatique ; désormais 100 % est appliqué EXPLICITEMENT et la zone occupe toute la place). Les pourcentages sont ceux de la largeur disponible ; le choix est mémorisé d'une session à l'autre."><option value="w100" selected>100 % (pleine largeur)</option><option value="w90">90 %</option><option value="w75">75 %</option><option value="w50">50 %</option></select></label>
       <span class="hint">v2.6.18 — choisis ici la taille de la zone de saisie (mémorisée) : sur mobile elle n'a pas de poignée, c'est ici qu'on l'agrandit.</span>
+    </div>
+    <div class="row">
+      <b style="font-size:12px">📁 Répertoire commun</b>
+      <span class="hint" id="repDirInfo">dossier non lié — 🎹 Charger depuis répertoire (M2) demandera le fichier</span>
+      <button id="repDirBtn" title="Lie le dossier commun de l'afficheur de chansons (contenant repertoire-commun.json) : le lien est mémorisé par ce navigateur et le fichier est RE-LU à chaque chargement (le Drive bureau synchronise, la liste est toujours fraîche). Navigateur sans File System Access : le clic proposera le fichier à la place">🔗 Lier le dossier…</button>
+      <button id="repDirForget" title="Oublie le dossier lié (le chargement repassera par le choix du fichier)">✖ Oublier</button>
+      <span class="hint">v2.6.32 — source des grilles ponctuées jouées en DIRECT (M2 · 🎹 Charger depuis répertoire)</span>
     </div>
   </div>
 </div>
@@ -188,7 +195,7 @@ Intro
 
 Thème
 | F . . . | G7 . . . | C . . . | C . . . |</textarea><div id="mirror" aria-hidden="true"></div></div></div>
-    <div class="row"><input type="file" id="apcDraftFile" accept=".json,application/json" hidden><button id="apcDraftBtn" title="Importer un fichier d'ébauche du décodeur de chansons (format apc-direct-draft-v1) : la grille est générée dans la zone de saisie — sections dans l'ordre, 1 accord = 1 temps (durées à affiner à l'oreille) ; basses seules /X = accord précédent à basse X ; les avertissements de l'atelier sont listés au journal">📥 Importer ébauche (décodeur)</button><span class="hint" id="apcDraftInfo">Fichier <code>*-apc.json</code> produit par l'atelier décodeur</span></div>
+    <div class="row"><input type="file" id="repFile" accept=".json,application/json" hidden><button id="repBtn" title="Charge le répertoire commun de l'afficheur de chansons (repertoire-commun.json — dossier lié dans ⚙️ Réglages, sinon choix du fichier) : liste TOUS les morceaux, les non ponctués en grisé. Le choix d'un morceau ponctué génère la séquence DIRECT fidèle à la ponctuation : durées réelles (tenues conservées, chaque accord à sa place exacte), intro + sections dans l'ordre, tonalité de jeu de la fiche appliquée, tempo de la fiche si le BPM manuel n'a pas été changé">🎹 Charger depuis répertoire</button><input type="search" id="repSearch" placeholder="filtrer (n°, titre, artiste)…" style="max-width:220px;padding:5px 8px" title="Filtre la liste des morceaux du répertoire (les non ponctués restent visibles en grisé)"><select id="repSongSel" style="max-width:380px" title="Choisir un morceau PONCTUÉ : sa grille ponctuée part dans la zone de saisie (durées réelles) — puis ▶ Démarrer"><option value="">— répertoire non chargé —</option></select><span class="hint" id="repInfo">repertoire-commun.json de l'afficheur de chansons (Ponctuateur v0.11+)</span></div>
     <div class="row">
       <button id="play">▶ Démarrer</button>
       <button id="stopPlay">■ Stop</button>
@@ -311,7 +318,8 @@ Thème
       <b>Fondamentales</b> : <code>C D E F G A B</code> avec <code>#</code>/<code>b</code> (ex. <code>Bb</code>, <code>F#</code>).<br>
       <b>Types d'accords reconnus</b> (sur C) : <code>C</code>, <code>CM</code> (majeur) · <code>Cm</code> · <code>C7</code> · <code>CM7</code> (7M) · <code>Cm7</code> · <code>Cm7b5</code> · <code>Cdim</code> · <code>Caug</code> · <code>Caug7</code> · <code>C7#5</code> · <code>C6</code> · <code>Cm6</code> · <code>Csus4</code> (ou <code>Csus</code>) · <code>C7sus4</code> (ou <code>C7sus</code>) · <code>CmM7</code> · <code>CmM7b5</code> · <code>CM7b5</code> · <code>Cb5</code> · <code>Cmb5</code>.<br>
       <b>Alias acceptés</b> : <code>min</code>→m · <code>maj</code>→rien · <code>7M</code>→M7 · <code>ø</code>→m7b5 · <code>°</code>→dim (ex. <code>Am6</code>, <code>D7#5</code>, <code>BbM7</code>).<br>
-      <b>v2.6.31 — enrichissements</b> : qualités parenthésées <code>E(sus4)</code>→Esus4 · altérations Unicode <code>♭</code>/<code>♯</code> · <b>basses explicites</b> <code>C/B</code>, <code>Am/G</code> (la basse est envoyée une octave sous la fondamentale — le KN2000 fait sa part) · <b>basses seules</b> <code>/B</code> = accord précédent rejoué avec la basse B · <b>tolérance</b> : une qualité inconnue n'invalide plus la ligne — l'accord part en triade majeure de sa fondamentale (notes seules), signalé au journal · bouton <b>📥 Importer ébauche</b> : fichier <code>*-apc.json</code> de l'atelier décodeur (format apc-direct-draft-v1) → grille générée automatiquement.<br>
+      <b>v2.6.31 — enrichissements</b> : qualités parenthésées <code>E(sus4)</code>→Esus4 · altérations Unicode <code>♭</code>/<code>♯</code> · <b>basses explicites</b> <code>C/B</code>, <code>Am/G</code> (la basse est envoyée une octave sous la fondamentale — le KN2000 fait sa part) · <b>basses seules</b> <code>/B</code> = accord précédent rejoué avec la basse B · <b>tolérance</b> : une qualité inconnue n'invalide plus la ligne — l'accord part en triade majeure de sa fondamentale (notes seules), signalé au journal.<br>
+      <b>v2.6.32 — répertoire de l'afficheur</b> : bouton <b>🎹 Charger depuis répertoire</b> (M2) — charge <code>repertoire-commun.json</code> (export de l'afficheur de chansons), liste tous les morceaux (non ponctués en grisé) et génère la grille DIRECT <b>fidèle à la ponctuation</b> : durées réelles (les <code>.</code> = tenue), intro + sections dans l'ordre, tonalité de jeu de la fiche, tempo de la fiche si le BPM manuel n'a pas été changé. Dossier lié dans ⚙️ Réglages (relu à chaque chargement), sinon choix du fichier. Les ébauches du décodeur (apc-direct-draft-v1) sont retirées — le répertoire les remplace.<br>
       <b>Exemple complet</b> :<br>
       <code>Intro</code><br>
       <code>||</code><br>
@@ -1153,62 +1161,241 @@ document.getElementById("stopPlay").onclick = () => {
 // La séquence est chargée dès la saisie (sans attendre ▶ Démarrer) : le transport FA/FB/FC du
 // clavier peut alors la lancer directement. ▶ Démarrer reste le mode complet (tempo TMP + Synchro&Break).
 document.getElementById("progInput").addEventListener("change", () => { loadSeq(); });
-// ---------- v2.6.31 — Import d'ébauche du décodeur (format apc-direct-draft-v1) ----------
-function apcDraftGrid(d) { // ébauche → texte de grille M2 : 1 accord = 1 temps (durées à affiner à l'oreille), sections dans l'ordre
-  const out = [], warns = [];
-  if (d.song && d.song.title) out.push((d.song.title + (d.song.artist ? " — " + d.song.artist : "")).replace(/\n/g, " "));
-  let lastReal = null; // v2.6.31 — dernier accord réel émis (toutes sections) : une basse seule sans précédent DANS SA LIGNE devient un accord slash synthétisé (Am + /C → Am/C)
-  const emit = (arr, where) => {
-    const syms = [];
-    for (const c of (arr || [])) {
-      if (c.bassOnly) { // basse seule /X : accord précédent à basse X
-        const b = (c.sym || "").replace(/^\//, "");
-        const prev = [...syms].reverse().find(s => !/^\//.test(s));
-        if (prev) syms.push("/" + b);                                        // référence dans la ligne → /X natif
-        else if (lastReal) { syms.push(lastReal + "/" + b); warns.push("basse seule «" + c.sym + "» en début de ligne (" + where + ") → accord slash synthétisé " + lastReal + "/" + b); }
-        else warns.push("basse seule «" + c.sym + "» sans accord précédent (" + where + ") — ignorée");
+// ---------- v2.6.32 — Répertoire de l'afficheur : charger un morceau ponctué en DIRECT (durées réelles) ----------
+// repertoire-commun.json (export de l'afficheur de chansons) contient les fiches COMPLÈTES : texte §-sérialisé
+// avec les rangées de grille ponctuées « ! C . Am . ! » intégrées (Ponctuateur v0.11.x de l'afficheur).
+// On liste TOUS les morceaux (non ponctués en grisé) ; le choix d'un morceau ponctué génère la séquence
+// DIRECT fidèle : chaque mesure devient « | C . Am . | » — les « . » = tenue, donc les DURÉES RÉELLES
+// tombent gratuitement dans parseSeq (fini le « 1 accord = 1 temps, durées à affiner à l'oreille » du v1).
+const CHORD_RE = /^[A-G][♭♯b#]?(?:(?:maj|min|dim|aug|sus|M|m|add|°|ø)\d*|\d+)*(?:\([^)]*\))?(?:\/(?:[A-G][♭♯b#]?|\d))?$/;
+const BASSONLY_RE = /^\/[A-G][♭♯b#]?$/;
+function isChordToken(t) { if (/^\(.+\)$/.test(t)) t = t.slice(1, -1); return CHORD_RE.test(t) || BASSONLY_RE.test(t); } // tokens afficheur : (X) optionnels, /X basse seule
+function repIsChordLine(line) { const toks = String(line).trim().split(/\s+/).filter(Boolean); return toks.length > 0 && toks.every(isChordToken); }
+function normOpt(line) { return line.replace(/\(\s+/g, "(").replace(/\s+\)/g, ")"); } // « ( F7 ) » → « (F7) » — port afficheur
+const SArep = (() => { // mini-moteur de ponctuation — port fidèle de l'afficheur (moteur SA ; rangées réelles : accords, NC, tenues, attaches C..)
+  const isChord = t => isChordToken(t);
+  const isNC = t => /^nc$/i.test(t);
+  const isHold = t => /^[-—.·]+$/.test(t);
+  function beatsOf(sig) {
+    const s = String(sig || "").trim();
+    if (/^\d+$/.test(s)) return Math.max(1, Math.min(12, parseInt(s, 10)));
+    const m = /^(\d+)\s*\/\s*(\d)$/.exec(s);
+    if (!m) return 4;
+    let n = parseInt(m[1], 10);
+    if (parseInt(m[2], 10) === 8 && n % 3 === 0) n = n / 3; // 6/8→2, 12/8→4
+    return Math.max(1, Math.min(12, n));
+  }
+  function parsePunctLine(raw, beats) { // port de SA.parsePunctLine (sans motif P — jamais dans les rangées réelles)
+    const src = String(raw == null ? "" : raw);
+    let parts = src.split(/[!|]/);
+    if (parts.length > 1) {
+      if (parts[0].trim() === "") parts.shift();
+      if (parts.length && parts[parts.length - 1].trim() === "" && /[!|]\s*$/.test(src)) parts.pop();
+    }
+    const measures = [];
+    for (const cell of parts.map(p => p.trim())) {
+      const toks = cell ? cell.replace(/\./g, " . ").split(/\s+/).filter(Boolean) : [];
+      if (!toks.length) { measures.push({ ev: [] }); continue; } // mesure vide (entre ! !) = tenue d'une mesure entière
+      const hasSlots = toks.some(t => isHold(t));
+      const ev = []; let t = 1;
+      if (hasSlots) {
+        for (const tk of toks) {
+          if (isHold(tk)) { t += tk.length; continue; }
+          const att = /^([A-G](?:[^.]*?))(\.+)$/.exec(tk);
+          if (att && isChord(att[1])) { if (t > beats) return { err: "mesure trop pleine (temps " + t + ")" }; ev.push({ t, ch: att[1].replace(/^\(|\)$/g, "") }); t += 1 + att[2].length; continue; }
+          if (isNC(tk)) { if (t > beats) return { err: "mesure trop pleine (temps " + t + ")" }; ev.push({ t, ch: "NC" }); t++; continue; }
+          if (isChord(tk)) { if (t > beats) return { err: "mesure trop pleine (temps " + t + ")" }; ev.push({ t, ch: tk.replace(/^\(|\)$/g, "") }); t++; continue; }
+          return { err: "token inconnu : « " + tk + " »" };
+        }
+        measures.push({ ev }); // mesure pleine par convention afficheur (fmtMeasure pad à `beats`) : les cellules remplissent le début, la suite = tenues
       } else {
-        const s = (c.sym || "").replace(/\s+/g, "");
-        syms.push(s); lastReal = s;
-        if (c.warn) warns.push(c.sym + " : " + c.warn);
+        const seq = toks.filter(tk => isChord(tk) || isNC(tk));
+        const junk = toks.filter(tk => !isChord(tk) && !isNC(tk));
+        if (junk.length) return { err: "token inconnu : « " + junk[0] + " »" };
+        if (!seq.length) { measures.push({ ev: [] }); continue; }
+        if (seq.length > beats) return { err: seq.length + " accords pour " + beats + " temps — ajoute des !" };
+        const K = seq.length;
+        seq.forEach((c, i) => { const t = K === 1 ? 1 : 1 + Math.round(i * beats / K); ev.push({ t, ch: isNC(c) ? "NC" : c.replace(/^\(|\)$/g, "") }); });
+        measures.push({ ev }); // compact (pas de tenues) = les K accords répartis sur la mesure PLEINE (même lecture que l'afficheur)
       }
     }
-    const lines = []; // v2.6.31 — remballage 4 temps max, mais une ligne ne démarre JAMAIS par une basse seule (le parser est isolé par ligne)
-    for (const s of syms) {
-      let cur = lines[lines.length - 1];
-      if (!cur || cur.length >= 4) lines.push(cur = []);
-      if (/^\//.test(s) && cur.length === 0) { // la ligne démarrerait par /X → descendre le dernier accord RÉEL de la ligne précédente (c'est lui que la basse référence), sinon synthétiser un accord slash autonome (C + /C → C/C)
-        const prevLine = lines[lines.length - 2];
-        let ri = prevLine ? prevLine.length - 1 : -1;
-        while (ri >= 0 && /^\//.test(prevLine[ri])) ri--; // chercher vers l'arrière un accord réel
-        if (ri > 0 || (ri === 0 && prevLine && prevLine.length === 1)) { if (ri >= 0 && prevLine.length > 1) cur.push(prevLine.splice(ri, 1)[0]); }
-        else if (lastReal) { cur.push(lastReal + s); warns.push("basse seule «" + s + "» impossible à placer (ligne trop courte) → accord slash synthétisé " + lastReal + s); }
-      }
-      cur.push(s);
-    }
-    for (const ln of lines) out.push("! " + ln.join(" ! ") + " !");
+    return { measures };
+  }
+  function isGridLn(line) { // port de GR.isGridLn — grammaire ✏️ de l'afficheur
+    if (!/[!|]/.test(line)) return false;
+    const toks = String(line).trim().split(/\s+/).filter(Boolean);
+    const inner = toks.filter(t => t !== "!" && t !== "|");
+    return inner.length > 0 && inner.every(t => isChord(t) || isNC(t) || isHold(t));
+  }
+  function slotsMeasure(m, beats) { // mesure → cellules DIRECT, PAD de tenues à `beats` (identique à fmtMeasure de l'afficheur : une mesure du prow est TOUJOURS une mesure pleine)
+    if (!m || !m.ev || !m.ev.length) return Array(beats).fill(".").join(" ");
+    const s = Array(beats).fill(".");
+    for (const e of m.ev) s[Math.min(e.t, beats) - 1] = e.ch;
+    return s.join(" ");
+  }
+  return { isChord, isNC, isHold, beatsOf, parsePunctLine, isGridLn, slotsMeasure };
+})();
+function repTrChord(name, semis) { // port de AFF.transposeChord — tonalité de jeu de la fiche (s.transpose)
+  if (!semis) return name;
+  const sh = (tok) => {
+    const m = tok.match(/^([A-G])([b#♭♯]?)(.*)$/); if (!m) return tok;
+    const base = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[m[1]];
+    const acc = (m[2] === "#" || m[2] === "♯") ? 1 : (m[2] ? -1 : 0);
+    return ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"][((base + acc + semis) % 12 + 12) % 12] + m[3];
   };
-  if (d.intro && d.intro.length) { out.push("Intro"); emit(d.intro, "intro"); out.push(""); }
-  (d.grid || []).forEach(sec => { if (sec.label) out.push(sec.label); emit(sec.chords, sec.label || "section"); out.push(""); });
-  if (d.chordsUnknown) for (const u of d.chordsUnknown) warns.push("accord non convertible côté atelier : " + u.sym + " ×" + u.occurrences);
-  if (d.warnings) for (const w of d.warnings) warns.push(w);
-  return { text: out.join("\n"), warns };
+  return String(name).split("/").map(sh).join("/");
 }
-function importApcDraft(d) {
-  if (!d || d.format !== "apc-direct-draft-v1") { log("📥 Ébauche : format inconnu — attendu apc-direct-draft-v1.", "ko"); return false; }
-  const g = apcDraftGrid(d);
+function repParseSong(s) { // fiche afficheur → { introProw, sections:[{label, prows:[rangées ponctuées dans l'ordre]}] }
+  // Deux formats de fiche : le répertoire commun stocke l'OBJET parsé (d.introProw, d.sections[].prow, d.sections[].lines[].prow
+  // — c'est là que vit la ponctuation) ; la page test saisie-grille travaille en TEXTE §-sérialisé. Les deux sont acceptés.
+  // Les rangées NON ponctuées (accords ordinaires au-dessus des paroles) ne produisent RIEN : morceau grisé.
+  const p = { introProw: null, sections: [] };
+  const d = s && s.data;
+  if (!d) return p;
+  if (typeof d !== "string") { // format OBJET (repertoire-commun.json de l'afficheur)
+    if (d.introProw) p.introProw = String(d.introProw);
+    (d.sections || []).forEach(sec => {
+      const prows = [];
+      if (sec.prow) prows.push(String(sec.prow)); // instrumental de section
+      (sec.lines || []).forEach(l => { if (l.prow) prows.push(String(l.prow)); }); // rangées au-dessus des paroles
+      if (prows.length) p.sections.push({ label: sec.label || null, prows });
+    });
+    return p;
+  }
+  // format TEXTE §-sérialisé — port allégé de AFF.parseEdited : mêmes règles § / Intro: / marqueurs (…) / étiquette nue (v0.11.1)
+  const arr = String(d).replace(/\r\n?/g, "\n").split("\n").map(normOpt);
+  let cur = null, pendingGrid = null;
+  const close = () => {
+    if (cur) { if (pendingGrid) cur.prows.push(pendingGrid); if (cur.prows.length) p.sections.push(cur); cur = null; }
+    else if (pendingGrid) p.sections.push({ label: null, prows: [pendingGrid] }); // rangée seule sans section = instrumental implicite (v0.11.1)
+    pendingGrid = null;
+  };
+  for (let i = 0; i < arr.length; i++) {
+    const line = arr[i];
+    if (/^@/.test(line)) continue; // métadonnées afficheur
+    if (/^Intro\s*:\s/.test(line)) { const rest = line.replace(/^Intro\s*:\s/, ""); if (SArep.isGridLn(rest)) p.introProw = rest.trim(); continue; }
+    if (/^§/.test(line)) { close(); cur = { label: line.replace(/^§\s*/, "").trim() || null, prows: [] }; continue; }
+    if (!line.trim()) { close(); continue; }
+    if (/^\((.+)\)$/.test(line.trim()) && !SArep.isGridLn(line) && !repIsChordLine(line)) continue; // marqueur (…) — affiché, pas joué
+    if (SArep.isGridLn(line)) { pendingGrid = line.trim(); continue; } // rangée de grille — au-dessus de paroles = rangée de cette ligne ; seule = instrumental de section
+    {
+      const bare = line.trim();
+      const nxt = arr[i + 1] || "", nx2 = arr[i + 2] || "";
+      const nx2Lyric = nx2.trim() && !/^§/.test(nx2.trim()) && !SArep.isGridLn(nx2) && !repIsChordLine(nx2) && !/^\((.+)\)$/.test(nx2.trim());
+      if (bare.split(/\s+/).length === 1 && bare.length <= 24 && SArep.isGridLn(nxt) && !nx2Lyric) { close(); cur = { label: bare, prows: [] }; continue; } // étiquette nue + rangée = instrumental étiqueté
+    }
+    if (pendingGrid) { if (!cur) cur = { label: null, prows: [] }; cur.prows.push(pendingGrid); pendingGrid = null; } // paroles : consomment la rangée au-dessus
+  }
+  close();
+  return p;
+}
+function repDirectText(s, p) { // texte DIRECT : titre + intro + sections, une ligne « | … | » par rangée ponctuée
+  const beats = SArep.beatsOf(s.sig || "4/4");
+  const semis = s.transpose ? Math.round(+s.transpose) : 0;
+  const out = [], warns = [];
+  let lastReal = null; // dernier accord réel émis (toutes sections) — pour les basses seules /X (le parser DIRECT est isolé par ligne)
+  const safeTxt = (x) => String(x || "").replace(/[|!]/g, " ").trim(); // un titre/label ne doit JAMAIS ressembler à une ligne de grille
+  const emit = (raw, where) => {
+    const pv = SArep.parsePunctLine(raw, beats);
+    if (pv.err) { warns.push(where + " : rangée ignorée — " + pv.err); return; }
+    if (!pv.measures.length) return;
+    const prefix = beats !== 4 ? beats + "/4 " : ""; // signature ≠ 4/4 → chaque mesure l'annonce (le DIRECT compléterait à 4 sinon)
+    const lines = [];
+    for (const m of pv.measures) {
+      const cells = SArep.slotsMeasure(m, beats).split(" "); // cellule = temps ; mesure incomplète = complétée de tenues (même lecture que l'afficheur)
+      for (let k = 0; k < cells.length; k++) {
+        const c = cells[k];
+        if (c === "." || c === "NC") continue;
+        if (BASSONLY_RE.test(c)) { // basse seule /X : accord réel précédent à basse X (synthèse, comme l'ancien import v1)
+          if (!lastReal) { warns.push(where + " : basse seule « " + c + " » sans accord précédent — rangée ignorée"); return; }
+          cells[k] = lastReal + (semis ? repTrChord(c, semis) : c);
+        } else {
+          cells[k] = semis ? repTrChord(c, semis) : c;
+          if (!parseChord(normChord(cells[k]))) { warns.push(where + " : accord « " + c + " » non reconnu par le DIRECT — rangée ignorée"); return; }
+          lastReal = cells[k];
+        }
+      }
+      lines.push(prefix + cells.join(" "));
+    }
+    if (lines.length) out.push("| " + lines.join(" | ") + " |");
+  };
+  out.push(safeTxt((s.title || "?") + (s.artist ? " — " + s.artist : "")));
+  if (semis) warns.push("tonalité de jeu : " + (semis > 0 ? "+" : "") + semis + " 1/2 ton (fiche) appliquée aux accords");
+  if (p.introProw) { out.push("Intro"); emit(p.introProw, "intro"); out.push(""); }
+  p.sections.forEach((sec, ix) => {
+    if (sec.label) out.push(safeTxt(sec.label));
+    sec.prows.forEach((r, ri) => emit(r, (sec.label || "section " + (ix + 1)) + ", rangée " + (ri + 1)));
+    out.push("");
+  });
+  return { text: out.join("\n").replace(/\n+$/, "\n"), warns };
+}
+// ── UI : dossier lié (⚙️ Réglages) · chargement + sélecteur (M2) ──
+let repSongs = null, repHandle = null;
+function repIdbOpen() { return new Promise((res, rej) => { const rq = indexedDB.open("apc-live-rep", 1); rq.onupgradeneeded = () => rq.result.createObjectStore("h"); rq.onsuccess = () => res(rq.result); rq.onerror = () => rej(rq.error); }); }
+async function repDirSave(h) { const db = await repIdbOpen(); return new Promise((res, rej) => { const tx = db.transaction("h", "readwrite"); tx.objectStore("h").put(h, "dir"); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); }
+async function repDirLoad() { try { const db = await repIdbOpen(); return await new Promise((res, rej) => { const rq = db.transaction("h").objectStore("h").get("dir"); rq.onsuccess = () => res(rq.result || null); rq.onerror = () => rej(rq.error); }); } catch (e) { return null; } }
+async function repDirForgetDb() { try { const db = await repIdbOpen(); const tx = db.transaction("h", "readwrite"); tx.objectStore("h").delete("dir"); } catch (e) {} }
+function repDirInfoUpdate() { const el = document.getElementById("repDirInfo"); if (el) el.textContent = repHandle ? ("dossier lié : « " + repHandle.name + " » — relu à chaque chargement") : "dossier non lié — 🎹 Charger depuis répertoire (M2) demandera le fichier"; }
+async function repLinkDir() { // ⚙️ Réglages — lie le dossier commun (handle mémorisé, comme l'afficheur)
+  if (!window.showDirectoryPicker) { log("📁 Répertoire : ce navigateur ne mémorise pas les dossiers (pas de File System Access) — choisis plutôt le FICHIER repertoire-commun.json par 🎹 Charger depuis répertoire (M2).", "info"); document.getElementById("repFile").click(); return; }
+  try {
+    const h = await window.showDirectoryPicker({ mode: "read" });
+    await repDirSave(h); repHandle = h; repDirInfoUpdate();
+    log("📁 Répertoire commun lié : « " + h.name + " » — mémorisé par ce navigateur (relie-le ici si le dossier change).", "ok");
+    await repFillFromDir();
+  } catch (e) { if (e && e.name === "AbortError") return; log("📁 Répertoire : lien impossible — " + (e && e.message || e), "ko"); }
+}
+async function repFillFromDir() {
+  if (!repHandle) { document.getElementById("repFile").click(); return; }
+  let rep = null;
+  try { const fh = await repHandle.getFileHandle("repertoire-commun.json"); const f = await fh.getFile(); rep = JSON.parse(await f.text()); } catch (e) {}
+  if (!rep || !rep.songs) { log("📁 Pas de repertoire-commun.json lisible dans « " + repHandle.name + " » — exporte-le depuis l'afficheur (⬇️ Export répertoire) ou relie le dossier dans ⚙️ Réglages.", "ko"); return; }
+  repFillFromJson(rep, "dossier « " + repHandle.name + " »");
+}
+function repFillFromJson(rep, src) {
+  repSongs = rep.songs.map(s => { const p = repParseSong(s); return { s, p, punct: !!(p.introProw || p.sections.some(x => x.prows.length)) }; });
+  repFill();
+  log("📁 Répertoire chargé (" + src + ") : " + repSongs.length + " morceau(x) — " + repSongs.filter(x => x.punct).length + " ponctué(s) ✓, les autres en grisé.", "ok");
+}
+function repFill() { // peuple le select : TOUTES les chansons, non ponctuées en grisé (disabled)
+  const sel = document.getElementById("repSongSel");
+  const q = (document.getElementById("repSearch").value || "").trim().toLowerCase();
+  sel.innerHTML = "";
+  const o0 = document.createElement("option"); o0.value = ""; o0.textContent = "— choisir un morceau —"; sel.appendChild(o0);
+  repSongs.forEach((it, i) => {
+    const hay = [it.s.numero, it.s.title, it.s.artist].join(" ").toLowerCase();
+    if (q && !hay.includes(q)) return;
+    const o = document.createElement("option"); o.value = String(i);
+    o.textContent = (it.punct ? "♪ " : "✗ ") + [it.s.numero, it.s.title].filter(Boolean).join(" — ") + (it.s.artist ? " (" + it.s.artist + ")" : "");
+    if (!it.punct) { o.disabled = true; o.textContent += " · non ponctué"; }
+    sel.appendChild(o);
+  });
+}
+function repLoadSong(i) {
+  const it = repSongs[i]; if (!it || !it.punct) return;
+  const g = repDirectText(it.s, it.p);
+  const nRows = g.text.split("\n").filter(l => /^\|/.test(l.trim())).length;
   document.getElementById("progInput").value = g.text;
-  log("📥 Ébauche importée : " + (d.song ? d.song.title : "?") + " — grille générée dans la zone de saisie (1 accord = 1 temps, durées à affiner à l'oreille). Vérifie puis ▶ Démarrer.", "ok");
+  log("🎹 Répertoire → « " + (it.s.title || "?") + " » : " + nRows + " rangée(s) ponctuée(s) en DIRECT (intro + sections, durées réelles de la ponctuation) — vérifie puis ▶ Démarrer.", "ok");
+  const t = parseFloat(it.s.tempo), bm = document.getElementById("bpmMan"), cur = parseFloat(bm.value) || 120;
+  if (isFinite(t) && t >= 40 && t <= 300) {
+    if (Math.round(cur) === 120) { bm.value = String(Math.round(t)); sendTmpN(Math.round(t)); log("Tempo réglé sur ♩" + Math.round(t) + " (tempo de la fiche) — les boutons ± restent à toi.", "info"); }
+    else log("Tempo conservé : ♩" + Math.round(cur) + " (BPM manuel déjà réglé) — la fiche indique ♩" + Math.round(t) + ".", "info");
+  }
   if (g.warns.length) log("⚠ Grain à moudre (" + g.warns.length + ") : " + g.warns.slice(0, 12).join(" · ") + (g.warns.length > 12 ? " …" : ""), "info");
   loadSeq();
-  return true;
 }
-document.getElementById("apcDraftBtn").onclick = () => document.getElementById("apcDraftFile").click();
-document.getElementById("apcDraftFile").addEventListener("change", (e) => {
+document.getElementById("repBtn").onclick = () => repFillFromDir();
+document.getElementById("repSearch").addEventListener("input", () => { if (repSongs) repFill(); });
+document.getElementById("repSongSel").addEventListener("change", (e) => { const v = e.target.value; e.target.value = ""; if (v !== "") repLoadSong(parseInt(v, 10)); });
+document.getElementById("repFile").addEventListener("change", (e) => { // fallback (pas de dossier lié / API absente)
   const f = e.target.files && e.target.files[0]; if (!f) return;
-  f.text().then(t => { try { importApcDraft(JSON.parse(t)); } catch (err) { log("📥 Ébauche : JSON illisible — " + err.message, "ko"); } });
+  f.text().then(t => { try { const rep = JSON.parse(t); if (!rep || !rep.songs) throw new Error("pas de songs[] — fichier de répertoire afficheur attendu"); repFillFromJson(rep, "fichier « " + f.name + " »"); } catch (err) { log("📁 Répertoire : JSON illisible — " + err.message, "ko"); } });
   e.target.value = "";
 });
+document.getElementById("repDirBtn").onclick = repLinkDir;
+document.getElementById("repDirForget").onclick = async () => { await repDirForgetDb(); repHandle = null; repDirInfoUpdate(); log("📁 Dossier répertoire oublié — 🎹 Charger demandera à nouveau le fichier.", "info"); };
+(async () => { repHandle = await repDirLoad(); repDirInfoUpdate(); })(); // handle mémorisé au chargement de la page
 document.getElementById("progInput").addEventListener("input", () => { mirrorRender(); }); // v0.33 : le miroir épouse le texte en cours d'édition
 document.getElementById("progInput").addEventListener("scroll", () => { document.getElementById("mirror").scrollTop = document.getElementById("progInput").scrollTop; });
 
