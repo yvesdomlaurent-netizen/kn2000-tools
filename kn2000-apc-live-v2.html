@@ -81,7 +81,7 @@
   <span class="badge" id="kbdBadge" title="Liaison KN2000 (badge charte)">🎹 <b id="kbdDot">○</b> KN2000</span>
   <span class="badge" id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   <span style="flex:1"></span>
-  <span><b>🎼 APC Live KN2000</b> <span class="hint">v2.6.32 — M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
+  <span><b>🎼 APC Live KN2000</b> <span class="hint">v2.6.33 — M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
   <span style="flex:1"></span>
   <nav class="hubLinks" title="Navigation entre les outils du projet (charte 7i)">
     <a href="index.html">🏠 Hub</a>
@@ -137,7 +137,7 @@
       <span class="hint" id="repDirInfo">dossier non lié — 🎹 Charger depuis répertoire (M2) demandera le fichier</span>
       <button id="repDirBtn" title="Lie le dossier commun de l'afficheur de chansons (contenant repertoire-commun.json) : le lien est mémorisé par ce navigateur et le fichier est RE-LU à chaque chargement (le Drive bureau synchronise, la liste est toujours fraîche). Navigateur sans File System Access : le clic proposera le fichier à la place">🔗 Lier le dossier…</button>
       <button id="repDirForget" title="Oublie le dossier lié (le chargement repassera par le choix du fichier)">✖ Oublier</button>
-      <span class="hint">v2.6.32 — source des grilles ponctuées jouées en DIRECT (M2 · 🎹 Charger depuis répertoire)</span>
+      <span class="hint">v2.6.33 — source des grilles ponctuées jouées en DIRECT (M2 · 🎹 Charger depuis répertoire)</span>
     </div>
   </div>
 </div>
@@ -319,7 +319,7 @@ Thème
       <b>Types d'accords reconnus</b> (sur C) : <code>C</code>, <code>CM</code> (majeur) · <code>Cm</code> · <code>C7</code> · <code>CM7</code> (7M) · <code>Cm7</code> · <code>Cm7b5</code> · <code>Cdim</code> · <code>Caug</code> · <code>Caug7</code> · <code>C7#5</code> · <code>C6</code> · <code>Cm6</code> · <code>Csus4</code> (ou <code>Csus</code>) · <code>C7sus4</code> (ou <code>C7sus</code>) · <code>CmM7</code> · <code>CmM7b5</code> · <code>CM7b5</code> · <code>Cb5</code> · <code>Cmb5</code>.<br>
       <b>Alias acceptés</b> : <code>min</code>→m · <code>maj</code>→rien · <code>7M</code>→M7 · <code>ø</code>→m7b5 · <code>°</code>→dim (ex. <code>Am6</code>, <code>D7#5</code>, <code>BbM7</code>).<br>
       <b>v2.6.31 — enrichissements</b> : qualités parenthésées <code>E(sus4)</code>→Esus4 · altérations Unicode <code>♭</code>/<code>♯</code> · <b>basses explicites</b> <code>C/B</code>, <code>Am/G</code> (la basse est envoyée une octave sous la fondamentale — le KN2000 fait sa part) · <b>basses seules</b> <code>/B</code> = accord précédent rejoué avec la basse B · <b>tolérance</b> : une qualité inconnue n'invalide plus la ligne — l'accord part en triade majeure de sa fondamentale (notes seules), signalé au journal.<br>
-      <b>v2.6.32 — répertoire de l'afficheur</b> : bouton <b>🎹 Charger depuis répertoire</b> (M2) — charge <code>repertoire-commun.json</code> (export de l'afficheur de chansons), liste tous les morceaux (non ponctués en grisé) et génère la grille DIRECT <b>fidèle à la ponctuation</b> : durées réelles (les <code>.</code> = tenue), intro + sections dans l'ordre, tonalité de jeu de la fiche, tempo de la fiche si le BPM manuel n'a pas été changé. Dossier lié dans ⚙️ Réglages (relu à chaque chargement), sinon choix du fichier. Les ébauches du décodeur (apc-direct-draft-v1) sont retirées — le répertoire les remplace.<br>
+      <b>v2.6.32 — répertoire de l'afficheur</b> : bouton <b>🎹 Charger depuis répertoire</b> (M2) — charge <code>repertoire-commun.json</code> (export de l'afficheur de chansons), liste tous les morceaux (non ponctués en grisé) et génère la grille DIRECT <b>fidèle à la ponctuation</b> : durées réelles (les <code>.</code> = tenue), intro + sections dans l'ordre, tonalité de jeu de la fiche, tempo de la fiche si le BPM manuel n'a pas été changé. Dossier lié dans ⚙️ Réglages (relu à chaque chargement), sinon choix du fichier. Les ébauches du décodeur (apc-direct-draft-v1) sont retirées — le répertoire les remplace. <b>v2.6.33 — signature adaptative</b> : si la fiche est déverrouillée « ⏱ adaptative » (⚙️ de l'afficheur), chaque mesure À POINTS dure son nombre réel de temps (« ! G . ! » = 2 temps, « ! F . . . ! » = 4) et chaque mesure du DIRECT annonce sa longueur (<code>| 2/4 G . |</code>) — un morceau peut mélanger les mesures 2 et 4 temps (Wind of Change) ; les mesures SANS points restent au chiffrage.<br>
       <b>Exemple complet</b> :<br>
       <code>Intro</code><br>
       <code>||</code><br>
@@ -1185,7 +1185,7 @@ const SArep = (() => { // mini-moteur de ponctuation — port fidèle de l'affic
     if (parseInt(m[2], 10) === 8 && n % 3 === 0) n = n / 3; // 6/8→2, 12/8→4
     return Math.max(1, Math.min(12, n));
   }
-  function parsePunctLine(raw, beats) { // port de SA.parsePunctLine (sans motif P — jamais dans les rangées réelles)
+  function parsePunctLine(raw, beats, adapt) { // port de SA.parsePunctLine (sans motif P — jamais dans les rangées réelles) ; v2.6.33 : adapt = verrou « signature adaptative » de la fiche — une mesure À POINTS dure son nombre de slots (mb), une mesure SANS points reste au chiffrage
     const src = String(raw == null ? "" : raw);
     let parts = src.split(/[!|]/);
     if (parts.length > 1) {
@@ -1195,28 +1195,30 @@ const SArep = (() => { // mini-moteur de ponctuation — port fidèle de l'affic
     const measures = [];
     for (const cell of parts.map(p => p.trim())) {
       const toks = cell ? cell.replace(/\./g, " . ").split(/\s+/).filter(Boolean) : [];
-      if (!toks.length) { measures.push({ ev: [] }); continue; } // mesure vide (entre ! !) = tenue d'une mesure entière
+      if (!toks.length) { measures.push({ ev: [], mb: beats }); continue; } // mesure vide (entre ! !) = tenue d'une mesure entière au chiffrage (même en adaptative)
       const hasSlots = toks.some(t => isHold(t));
       const ev = []; let t = 1;
       if (hasSlots) {
+        const cap = adapt ? 16 : beats; // v2.6.33 : en adaptative une mesure peut DÉPASSER le chiffrage (Money 7/4) ; en constante le chiffrage borne toujours (verrou)
         for (const tk of toks) {
           if (isHold(tk)) { t += tk.length; continue; }
           const att = /^([A-G](?:[^.]*?))(\.+)$/.exec(tk);
-          if (att && isChord(att[1])) { if (t > beats) return { err: "mesure trop pleine (temps " + t + ")" }; ev.push({ t, ch: att[1].replace(/^\(|\)$/g, "") }); t += 1 + att[2].length; continue; }
-          if (isNC(tk)) { if (t > beats) return { err: "mesure trop pleine (temps " + t + ")" }; ev.push({ t, ch: "NC" }); t++; continue; }
-          if (isChord(tk)) { if (t > beats) return { err: "mesure trop pleine (temps " + t + ")" }; ev.push({ t, ch: tk.replace(/^\(|\)$/g, "") }); t++; continue; }
+          if (att && isChord(att[1])) { if (t > cap) return { err: "mesure trop " + (adapt ? "longue (temps " + t + " — 16 max)" : "pleine (temps " + t + ")") }; ev.push({ t, ch: att[1].replace(/^\(|\)$/g, "") }); t += 1 + att[2].length; continue; }
+          if (isNC(tk)) { if (t > cap) return { err: "mesure trop " + (adapt ? "longue (temps " + t + " — 16 max)" : "pleine (temps " + t + ")") }; ev.push({ t, ch: "NC" }); t++; continue; }
+          if (isChord(tk)) { if (t > cap) return { err: "mesure trop " + (adapt ? "longue (temps " + t + " — 16 max)" : "pleine (temps " + t + ")") }; ev.push({ t, ch: tk.replace(/^\(|\)$/g, "") }); t++; continue; }
           return { err: "token inconnu : « " + tk + " »" };
         }
-        measures.push({ ev }); // mesure pleine par convention afficheur (fmtMeasure pad à `beats`) : les cellules remplissent le début, la suite = tenues
+        if (adapt && t - 1 > 16) return { err: "mesure trop longue (" + (t - 1) + " temps — 16 max)" }; // garde-fou en adaptative seulement
+        measures.push({ ev, mb: adapt ? Math.max(1, t - 1) : beats }); // v2.6.33 : le nombre de slots = la longueur réelle en adaptative
       } else {
         const seq = toks.filter(tk => isChord(tk) || isNC(tk));
         const junk = toks.filter(tk => !isChord(tk) && !isNC(tk));
         if (junk.length) return { err: "token inconnu : « " + junk[0] + " »" };
-        if (!seq.length) { measures.push({ ev: [] }); continue; }
+        if (!seq.length) { measures.push({ ev: [], mb: beats }); continue; }
         if (seq.length > beats) return { err: seq.length + " accords pour " + beats + " temps — ajoute des !" };
         const K = seq.length;
         seq.forEach((c, i) => { const t = K === 1 ? 1 : 1 + Math.round(i * beats / K); ev.push({ t, ch: isNC(c) ? "NC" : c.replace(/^\(|\)$/g, "") }); });
-        measures.push({ ev }); // compact (pas de tenues) = les K accords répartis sur la mesure PLEINE (même lecture que l'afficheur)
+        measures.push({ ev, mb: beats }); // v2.6.33 : compact SANS points = mesure PLEINE au chiffrage, même en adaptative — les instrumentaux « ! C ! G ! » restent intacts
       }
     }
     return { measures };
@@ -1227,10 +1229,11 @@ const SArep = (() => { // mini-moteur de ponctuation — port fidèle de l'affic
     const inner = toks.filter(t => t !== "!" && t !== "|");
     return inner.length > 0 && inner.every(t => isChord(t) || isNC(t) || isHold(t));
   }
-  function slotsMeasure(m, beats) { // mesure → cellules DIRECT, PAD de tenues à `beats` (identique à fmtMeasure de l'afficheur : une mesure du prow est TOUJOURS une mesure pleine)
-    if (!m || !m.ev || !m.ev.length) return Array(beats).fill(".").join(" ");
-    const s = Array(beats).fill(".");
-    for (const e of m.ev) s[Math.min(e.t, beats) - 1] = e.ch;
+  function slotsMeasure(m, beats) { // mesure → cellules DIRECT, PAD de tenues à la longueur RÉELLE de la mesure — v2.6.33 : m.mb (adaptative : 2, 3, 5, 7 temps…) sinon chiffrage (une mesure sans points est TOUJOURS pleine)
+    const B = (m && m.mb) || beats;
+    if (!m || !m.ev || !m.ev.length) return Array(B).fill(".").join(" ");
+    const s = Array(B).fill(".");
+    for (const e of m.ev) s[Math.min(e.t, B) - 1] = e.ch;
     return s.join(" ");
   }
   return { isChord, isNC, isHold, beatsOf, parsePunctLine, isGridLn, slotsMeasure };
@@ -1291,18 +1294,19 @@ function repParseSong(s) { // fiche afficheur → { introProw, sections:[{label,
 }
 function repDirectText(s, p) { // texte DIRECT : titre + intro + sections, une ligne « | … | » par rangée ponctuée
   const beats = SArep.beatsOf(s.sig || "4/4");
+  const adapt = s.sigMode === "adapt"; // v2.6.33 : verrou « signature adaptative » de la fiche — les mesures à points durent leur nombre de slots (2 et 4 temps mélangés, Money 7/4…)
   const semis = s.transpose ? Math.round(+s.transpose) : 0;
   const out = [], warns = [];
   let lastReal = null; // dernier accord réel émis (toutes sections) — pour les basses seules /X (le parser DIRECT est isolé par ligne)
   const safeTxt = (x) => String(x || "").replace(/[|!]/g, " ").trim(); // un titre/label ne doit JAMAIS ressembler à une ligne de grille
   const emit = (raw, where) => {
-    const pv = SArep.parsePunctLine(raw, beats);
+    const pv = SArep.parsePunctLine(raw, beats, adapt);
     if (pv.err) { warns.push(where + " : rangée ignorée — " + pv.err); return; }
     if (!pv.measures.length) return;
-    const prefix = beats !== 4 ? beats + "/4 " : ""; // signature ≠ 4/4 → chaque mesure l'annonce (le DIRECT compléterait à 4 sinon)
     const lines = [];
     for (const m of pv.measures) {
       const cells = SArep.slotsMeasure(m, beats).split(" "); // cellule = temps ; mesure incomplète = complétée de tenues (même lecture que l'afficheur)
+      const prefix = cells.length !== 4 ? cells.length + "/4 " : ""; // v2.6.33 : la mesure annonce SA longueur propre (une fiche adaptative mélange 2 et 4 temps ; le DIRECT compléterait à 4 sinon)
       for (let k = 0; k < cells.length; k++) {
         const c = cells[k];
         if (c === "." || c === "NC") continue;
