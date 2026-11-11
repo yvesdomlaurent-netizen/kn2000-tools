@@ -107,7 +107,7 @@
   <span class="badge" id="kbdBadge" title="Liaison KN2000 (badge charte)">🎹 <b id="kbdDot">○</b> KN2000</span>
   <span class="badge" id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   <span style="flex:1"></span>
-  <span><b>🎼 APC Live KN2000 — Scene</b> <span class="hint">v2.7.2 — onglets Chanson ✏️ / Direct · Vue Chanson · Mode Scène · M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
+  <span><b>🎼 APC Live KN2000 — Scene</b> <span class="hint">v2.7.3 — onglets Chanson ✏️ / Direct · Vue Chanson · Mode Scène · M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
   <span style="flex:1"></span>
   <nav class="hubLinks" title="Navigation entre les outils du projet (charte 7i)">
     <a href="index.html">🏠 Hub</a>
@@ -163,7 +163,7 @@
       <span class="hint" id="repDirInfo">dossier non lié — 🎹 Charger depuis répertoire (M2) demandera le fichier</span>
       <button id="repDirBtn" title="Lie le dossier commun de l'afficheur de chansons (contenant repertoire-commun.json) : le lien est mémorisé par ce navigateur et le fichier est RE-LU à chaque chargement (le Drive bureau synchronise, la liste est toujours fraîche). Navigateur sans File System Access : le clic proposera le fichier à la place">🔗 Lier le dossier…</button>
       <button id="repDirForget" title="Oublie le dossier lié (le chargement repassera par le choix du fichier)">✖ Oublier</button>
-      <span class="hint">v2.7.2 — onglets Chanson ✏️ (fiche de l'afficheur, paroles affichées) / Direct (grille | … |) — la zone active est jouée ; Vue Chanson + Mode Scène synchronisés à la lecture</span>
+      <span class="hint">v2.7.3 — onglets Chanson ✏️ (fiche de l'afficheur, paroles affichées) / Direct (grille | … |) — la zone active est jouée ; Vue Chanson + Mode Scène synchronisés à la lecture</span>
     </div>
   </div>
 </div>
@@ -356,7 +356,7 @@ Thème
       <b>Alias acceptés</b> : <code>min</code>→m · <code>maj</code>→rien · <code>7M</code>→M7 · <code>ø</code>→m7b5 · <code>°</code>→dim (ex. <code>Am6</code>, <code>D7#5</code>, <code>BbM7</code>).<br>
       <b>v2.6.31 — enrichissements</b> : qualités parenthésées <code>E(sus4)</code>→Esus4 · altérations Unicode <code>♭</code>/<code>♯</code> · <b>basses explicites</b> <code>C/B</code>, <code>Am/G</code> (la basse est envoyée une octave sous la fondamentale — le KN2000 fait sa part) · <b>basses seules</b> <code>/B</code> = accord précédent rejoué avec la basse B · <b>tolérance</b> : une qualité inconnue n'invalide plus la ligne — l'accord part en triade majeure de sa fondamentale (notes seules), signalé au journal.<br>
       <b>v2.6.32 — répertoire de l'afficheur</b> : bouton <b>🎹 Charger depuis répertoire</b> (M2) — charge <code>repertoire-commun.json</code> (export de l'afficheur de chansons), liste tous les morceaux (non ponctués en grisé) et génère la grille DIRECT <b>fidèle à la ponctuation</b> : durées réelles (les <code>.</code> = tenue), intro + sections dans l'ordre, tonalité de jeu de la fiche, tempo de la fiche si le BPM manuel n'a pas été changé. Dossier lié dans ⚙️ Réglages (relu à chaque chargement), sinon choix du fichier. Les ébauches du décodeur (apc-direct-draft-v1) sont retirées — le répertoire les remplace. <b>v2.6.33 — signature adaptative</b> : si la fiche est déverrouillée « ⏱ adaptative » (⚙️ de l'afficheur), chaque mesure À POINTS dure son nombre réel de temps (« ! G . ! » = 2 temps, « ! F . . . ! » = 4) et chaque mesure du DIRECT annonce sa longueur (<code>| 2/4 G . |</code>) — un morceau peut mélanger les mesures 2 et 4 temps (Wind of Change) ; les mesures SANS points restent au chiffrage.<br>
-      <b>v2.7.2 — onglets Chanson ✏️ / Direct + Mode Scène</b> : la zone de saisie a DEUX onglets. <b>✏️ Chanson</b> accepte la fiche de l'afficheur telle quelle (<code>§ sections</code>, accords au-dessus des paroles, <code>Intro :</code>, <code>@titre:</code>, marqueurs <code>(…)</code>, <code>xN</code> en fin de rangée ou d'étiquette) et la JOUE en direct — les paroles sont affichées (📄 Vue chanson, 🎬 Scène) sans jamais être envoyées ; la grammaire est le canon commun (<code>§</code> étude cœur commun). <b>| Direct</b> reste la grille historique. Le pont <b>🎹 répertoire</b> est NON destructif : la fiche arrive en onglet Chanson, le Direct en est dérivé ; un morceau qui a déjà sa fiche est conservé (<b>↻</b> force). <b>💾 Sauver morceau</b> mémorise la fiche ET le Direct (<code>● modifié / ✓ à jour</code> ; modifier la fiche re-dérive le Direct, sauf Direct personnalisé — ↻ le re-force). <b>⚙️ Fiche</b> : signature, verrou ⏱ adaptatif, tonalité de jeu. <b>🎬 Scène</b> : plein écran synchronisé (titre, section, accords, paroles, feux de temps) — ‹§ §› figent l'affichage, ✔ suivi, Échap quitte. <b>📄 Vue chanson</b> : la fiche mise en forme, rangée en cours surlignée.<br>
+      <b>v2.7.3 — onglets Chanson ✏️ / Direct + Mode Scène</b> : la zone de saisie a DEUX onglets. <b>✏️ Chanson</b> accepte la fiche de l'afficheur telle quelle (<code>§ sections</code>, accords au-dessus des paroles, <code>Intro :</code>, <code>@titre:</code>, marqueurs <code>(…)</code>, <code>xN</code> en fin de rangée ou d'étiquette) et la JOUE en direct — les paroles sont affichées (📄 Vue chanson, 🎬 Scène) sans jamais être envoyées ; la grammaire est le canon commun (<code>§</code> étude cœur commun). <b>| Direct</b> reste la grille historique. Le pont <b>🎹 répertoire</b> est NON destructif : la fiche arrive en onglet Chanson, le Direct en est dérivé ; un morceau qui a déjà sa fiche est conservé (<b>↻</b> force). <b>💾 Sauver morceau</b> mémorise la fiche ET le Direct (<code>● modifié / ✓ à jour</code> ; modifier la fiche re-dérive le Direct, sauf Direct personnalisé — ↻ le re-force). <b>⚙️ Fiche</b> : signature, verrou ⏱ adaptatif, tonalité de jeu. <b>🎬 Scène</b> : plein écran synchronisé (titre, section, accords, paroles, feux de temps) — ‹§ §› figent l'affichage, ✔ suivi, Échap quitte. <b>📄 Vue chanson</b> : la fiche mise en forme, rangée en cours surlignée.<br>
       <b>Exemple complet</b> :<br>
       <code>Intro</code><br>
       <code>||</code><br>
@@ -371,6 +371,20 @@ Thème
       <br><b>🎵 Morceaux</b> : sélectionner un morceau charge sa séquence et <b>envoie sa config au KN2000</b> (tempo, rythme, APC, sons, volumes — aucun rappel Panel Memory : la config vit dans la page, morceau par morceau) ; <b>💾 Sauver morceau</b> capture la séquence affichée + les réglages COURANTS du clavier (lecture panel façon Panel Console) ; ⬇️ Export / ⬆️ Import pour tout emporter en JSON ; un morceau sans séquence sauvegardée VIDE l'écran (seul le titre reste affiché, jamais sauvegardé) ; <b>🔄 Renvoyer au clavier</b> renvoie les réglages panel du morceau courant (vérif clavier).
     </div>
   </div>
+</div>
+<div id="sceneFs" aria-hidden="true">
+  <div class="scBtns">
+    <button id="scPrev" title="Section précédente (affichage figé — la lecture continue)">‹§</button>
+    <button id="scNext" title="Section suivante (affichage figé — la lecture continue)">§›</button>
+    <button id="scFollow" title="Reprendre le suivi automatique de la lecture">✔ suivi</button>
+    <button id="scPlay" title="▶ Démarrer / ■ Stop (les mêmes boutons que la page)">▶</button>
+    <button id="scClose" title="Quitter le Mode Scène (Échap)">✕</button>
+  </div>
+  <div class="scTitle" id="scTitle"></div>
+  <div class="scSec" id="scSec"></div>
+  <div class="scChords" id="scChords"></div>
+  <div class="scLyric" id="scLyric"></div>
+  <div class="scFoot"><span id="scBeats"></span><span id="scCount"></span><span id="scTempo"></span><span style="color:#777">‹§ §› sections · ✔ suivi · Échap quitter</span></div>
 </div>
 <script>
 "use strict";
@@ -3634,20 +3648,6 @@ renderM5(); // v2.6 — idem M5 : boutons rapides, sélecteurs timelapses et pad
 log("🎼 APC Live v2 — modes M1 (préparation) · M2 (direct) · M3 (réglages & tests) · M4 (parties). Liste V1 intacte : les deux pages cohabitent (stockage distinct).", "info");
 window.__b2end = true; // v2.7.2 — balise de diagnostic de boot : bloc 2 exécuté jusqu'au bout
 </script>
-<div id="sceneFs" aria-hidden="true">
-  <div class="scBtns">
-    <button id="scPrev" title="Section précédente (affichage figé — la lecture continue)">‹§</button>
-    <button id="scNext" title="Section suivante (affichage figé — la lecture continue)">§›</button>
-    <button id="scFollow" title="Reprendre le suivi automatique de la lecture">✔ suivi</button>
-    <button id="scPlay" title="▶ Démarrer / ■ Stop (les mêmes boutons que la page)">▶</button>
-    <button id="scClose" title="Quitter le Mode Scène (Échap)">✕</button>
-  </div>
-  <div class="scTitle" id="scTitle"></div>
-  <div class="scSec" id="scSec"></div>
-  <div class="scChords" id="scChords"></div>
-  <div class="scLyric" id="scLyric"></div>
-  <div class="scFoot"><span id="scBeats"></span><span id="scCount"></span><span id="scTempo"></span><span style="color:#777">‹§ §› sections · ✔ suivi · Échap quitter</span></div>
-</div>
 </body>
 </html>
 
