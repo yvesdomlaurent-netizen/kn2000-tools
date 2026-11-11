@@ -107,7 +107,7 @@
   <span class="badge" id="kbdBadge" title="Liaison KN2000 (badge charte)">🎹 <b id="kbdDot">○</b> KN2000</span>
   <span class="badge" id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   <span style="flex:1"></span>
-  <span><b>🎼 APC Live KN2000 — Scene</b> <span class="hint">v2.7.1 — onglets Chanson ✏️ / Direct · Vue Chanson · Mode Scène · M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
+  <span><b>🎼 APC Live KN2000 — Scene</b> <span class="hint">v2.7.2 — onglets Chanson ✏️ / Direct · Vue Chanson · Mode Scène · M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
   <span style="flex:1"></span>
   <nav class="hubLinks" title="Navigation entre les outils du projet (charte 7i)">
     <a href="index.html">🏠 Hub</a>
@@ -163,7 +163,7 @@
       <span class="hint" id="repDirInfo">dossier non lié — 🎹 Charger depuis répertoire (M2) demandera le fichier</span>
       <button id="repDirBtn" title="Lie le dossier commun de l'afficheur de chansons (contenant repertoire-commun.json) : le lien est mémorisé par ce navigateur et le fichier est RE-LU à chaque chargement (le Drive bureau synchronise, la liste est toujours fraîche). Navigateur sans File System Access : le clic proposera le fichier à la place">🔗 Lier le dossier…</button>
       <button id="repDirForget" title="Oublie le dossier lié (le chargement repassera par le choix du fichier)">✖ Oublier</button>
-      <span class="hint">v2.7.1 — onglets Chanson ✏️ (fiche de l'afficheur, paroles affichées) / Direct (grille | … |) — la zone active est jouée ; Vue Chanson + Mode Scène synchronisés à la lecture</span>
+      <span class="hint">v2.7.2 — onglets Chanson ✏️ (fiche de l'afficheur, paroles affichées) / Direct (grille | … |) — la zone active est jouée ; Vue Chanson + Mode Scène synchronisés à la lecture</span>
     </div>
   </div>
 </div>
@@ -356,7 +356,7 @@ Thème
       <b>Alias acceptés</b> : <code>min</code>→m · <code>maj</code>→rien · <code>7M</code>→M7 · <code>ø</code>→m7b5 · <code>°</code>→dim (ex. <code>Am6</code>, <code>D7#5</code>, <code>BbM7</code>).<br>
       <b>v2.6.31 — enrichissements</b> : qualités parenthésées <code>E(sus4)</code>→Esus4 · altérations Unicode <code>♭</code>/<code>♯</code> · <b>basses explicites</b> <code>C/B</code>, <code>Am/G</code> (la basse est envoyée une octave sous la fondamentale — le KN2000 fait sa part) · <b>basses seules</b> <code>/B</code> = accord précédent rejoué avec la basse B · <b>tolérance</b> : une qualité inconnue n'invalide plus la ligne — l'accord part en triade majeure de sa fondamentale (notes seules), signalé au journal.<br>
       <b>v2.6.32 — répertoire de l'afficheur</b> : bouton <b>🎹 Charger depuis répertoire</b> (M2) — charge <code>repertoire-commun.json</code> (export de l'afficheur de chansons), liste tous les morceaux (non ponctués en grisé) et génère la grille DIRECT <b>fidèle à la ponctuation</b> : durées réelles (les <code>.</code> = tenue), intro + sections dans l'ordre, tonalité de jeu de la fiche, tempo de la fiche si le BPM manuel n'a pas été changé. Dossier lié dans ⚙️ Réglages (relu à chaque chargement), sinon choix du fichier. Les ébauches du décodeur (apc-direct-draft-v1) sont retirées — le répertoire les remplace. <b>v2.6.33 — signature adaptative</b> : si la fiche est déverrouillée « ⏱ adaptative » (⚙️ de l'afficheur), chaque mesure À POINTS dure son nombre réel de temps (« ! G . ! » = 2 temps, « ! F . . . ! » = 4) et chaque mesure du DIRECT annonce sa longueur (<code>| 2/4 G . |</code>) — un morceau peut mélanger les mesures 2 et 4 temps (Wind of Change) ; les mesures SANS points restent au chiffrage.<br>
-      <b>v2.7.1 — onglets Chanson ✏️ / Direct + Mode Scène</b> : la zone de saisie a DEUX onglets. <b>✏️ Chanson</b> accepte la fiche de l'afficheur telle quelle (<code>§ sections</code>, accords au-dessus des paroles, <code>Intro :</code>, <code>@titre:</code>, marqueurs <code>(…)</code>, <code>xN</code> en fin de rangée ou d'étiquette) et la JOUE en direct — les paroles sont affichées (📄 Vue chanson, 🎬 Scène) sans jamais être envoyées ; la grammaire est le canon commun (<code>§</code> étude cœur commun). <b>| Direct</b> reste la grille historique. Le pont <b>🎹 répertoire</b> est NON destructif : la fiche arrive en onglet Chanson, le Direct en est dérivé ; un morceau qui a déjà sa fiche est conservé (<b>↻</b> force). <b>💾 Sauver morceau</b> mémorise la fiche ET le Direct (<code>● modifié / ✓ à jour</code> ; modifier la fiche re-dérive le Direct, sauf Direct personnalisé — ↻ le re-force). <b>⚙️ Fiche</b> : signature, verrou ⏱ adaptatif, tonalité de jeu. <b>🎬 Scène</b> : plein écran synchronisé (titre, section, accords, paroles, feux de temps) — ‹§ §› figent l'affichage, ✔ suivi, Échap quitte. <b>📄 Vue chanson</b> : la fiche mise en forme, rangée en cours surlignée.<br>
+      <b>v2.7.2 — onglets Chanson ✏️ / Direct + Mode Scène</b> : la zone de saisie a DEUX onglets. <b>✏️ Chanson</b> accepte la fiche de l'afficheur telle quelle (<code>§ sections</code>, accords au-dessus des paroles, <code>Intro :</code>, <code>@titre:</code>, marqueurs <code>(…)</code>, <code>xN</code> en fin de rangée ou d'étiquette) et la JOUE en direct — les paroles sont affichées (📄 Vue chanson, 🎬 Scène) sans jamais être envoyées ; la grammaire est le canon commun (<code>§</code> étude cœur commun). <b>| Direct</b> reste la grille historique. Le pont <b>🎹 répertoire</b> est NON destructif : la fiche arrive en onglet Chanson, le Direct en est dérivé ; un morceau qui a déjà sa fiche est conservé (<b>↻</b> force). <b>💾 Sauver morceau</b> mémorise la fiche ET le Direct (<code>● modifié / ✓ à jour</code> ; modifier la fiche re-dérive le Direct, sauf Direct personnalisé — ↻ le re-force). <b>⚙️ Fiche</b> : signature, verrou ⏱ adaptatif, tonalité de jeu. <b>🎬 Scène</b> : plein écran synchronisé (titre, section, accords, paroles, feux de temps) — ‹§ §› figent l'affichage, ✔ suivi, Échap quitte. <b>📄 Vue chanson</b> : la fiche mise en forme, rangée en cours surlignée.<br>
       <b>Exemple complet</b> :<br>
       <code>Intro</code><br>
       <code>||</code><br>
@@ -404,7 +404,13 @@ const rx = document.getElementById("rx"), tx = document.getElementById("tx");
 async function initMidi() {
   try {
     const access = await navigator.requestMIDIAccess({ sysex: true });
-    setTimeout(() => { // v2.7.1 — la promesse MIDI peut se résoudre ENTRE les 2 blocs de script (course au démarrage, vue sur Edge : « Cannot access 'midiAccess2' before initialization »). midiAccess2, apcFill, m5MidiIn vivent dans le bloc 2, pas encore exécuté à ce moment → on repousse la suite à la tâche SUIVANTE : les 2 blocs sont alors passés, tous les symboles existent.
+    let b2Tries = 0;
+    const b2Wait = () => { // v2.7.2 — blindage timing-aveugle : la promesse MIDI peut se résoudre ENTRE les 2 blocs de script (course au démarrage vue sur Edge) et même un timer 0 ms peut DEVANCER le bloc 2 (le parseur rend la main entre les blocs). On n'attend plus un délai mais la BALISE window.__b2midi, posée par le bloc 2 juste après let midiAccess2 : retry 50 ms, cap 10 s, diagnostic si le bloc 2 ne tourne pas.
+      if (!window.__b2midi) {
+        if (++b2Tries < 200) return setTimeout(b2Wait, 50);
+        log("⚠️ MIDI accessible mais bloc 2 du script non initialisé — bloc 1 : " + (window.__b1end ? "exécuté" : "INTERROMPU") + " · bloc 2 : " + (window.__b2end ? "exécuté (mais balise midi manquante ?)" : (window.__b2midi ? "initialisé, fin interrompue" : "PAS INITIALISÉ")) + ". F12 → Console : copier l'erreur rouge.", "ko");
+        return;
+      }
       try {
       midiAccess2 = access; // v2.6.21 — l'APC partage le même accès Web MIDI (sélecteurs propres dans ⚙️ Réglages)
       function fill(sel, list, def) {
@@ -449,7 +455,8 @@ async function initMidi() {
         else log("⏱ Démarrage : aucun tempo imposé — lecture du tempo courant du KN2000 (DRQ) ; il servira de référence au compteur et au détecteur de pulses.", "info");
       }
       } catch (e) { log("Erreur accès MIDI : " + e.message, "ko"); }
-    }, 0);
+    };
+    setTimeout(b2Wait, 0);
   } catch (e) { log("Erreur accès MIDI : " + e.message, "ko"); }
 }
 document.getElementById("resetMidi").onclick = () => initMidi();
@@ -2183,6 +2190,7 @@ if (curSongId && songById(curSongId).seq) selectSong(curSongId, false); // affic
 
 initMidi();
 mirrorRender(); // v0.33 : le calque miroir démarre synchronisé avec la séquence démo
+window.__b1end = true; // v2.7.2 — balise de diagnostic de boot : bloc 1 exécuté jusqu'au bout
 </script>
 <script>
 "use strict";
@@ -3502,6 +3510,7 @@ const APC_SURF = [
 const APC_PAD_MODE = 39; // pad 40 (rangée haute) — réservé à la future bascule de mode
 const APC_LED = { red: 0x05, green: 0x21, off: 0x00, white: 0x03, gray: 0x02, blue: 0x45, orange: 0x0D }; // v2.6.25 — orange = RV/DSP ON (retour terrain : le VERT reste réservé aux parts qui jouent) // v2.6.24 — gray = état inconnu (RV/DSP), blue = rythme actuel // v2.6.22 — palette du Sound Editor (vert 0x21 vif) — retour terrain : pads trop faiblement éclairés
 let apcIn = null, apcOut = null, apcReady = false, midiAccess2 = null, apcVol = {};
+window.__b2midi = true; // v2.7.2 — balise pour initMidi : midiAccess2 et compagnie sont initialisés
 const APC_PORTS_KEY = "kn2000-apc-ports-v2"; // v2.6.22 — choix des ports surface mémorisé (les ports H2MIDI Pro portent le même nom)
 function apcLed(note, color) { if (apcOut) { try { apcOut.send([0x96, note & 0x7F, color]); } catch (e) {} } } // v2.6.22 — canal 0x96 = pads RGB solid 100 % (Sound Editor v0.9.2 : 0x90 = 10 % de luminosité, invisible en plein jour)
 function apcPart(i) { return APC_SURF[i] ? M4_DRUMS.find(d => d.lbl === APC_SURF[i].lbl) : null; }
@@ -3623,6 +3632,7 @@ renderM4(); // premier rendu M4 dès le chargement — sinon les boutons dynamiq
 renderM5(); // v2.6 — idem M5 : boutons rapides, sélecteurs timelapses et pads câblés dès le chargement
 
 log("🎼 APC Live v2 — modes M1 (préparation) · M2 (direct) · M3 (réglages & tests) · M4 (parties). Liste V1 intacte : les deux pages cohabitent (stockage distinct).", "info");
+window.__b2end = true; // v2.7.2 — balise de diagnostic de boot : bloc 2 exécuté jusqu'au bout
 </script>
 <div id="sceneFs" aria-hidden="true">
   <div class="scBtns">
