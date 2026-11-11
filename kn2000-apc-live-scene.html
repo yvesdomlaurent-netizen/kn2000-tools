@@ -107,7 +107,7 @@
   <span class="badge" id="kbdBadge" title="Liaison KN2000 (badge charte)">🎹 <b id="kbdDot">○</b> KN2000</span>
   <span class="badge" id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   <span style="flex:1"></span>
-  <span><b>🎼 APC Live KN2000 — Scene</b> <span class="hint">v2.7.0 — onglets Chanson ✏️ / Direct · Vue Chanson · Mode Scène · M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
+  <span><b>🎼 APC Live KN2000 — Scene</b> <span class="hint">v2.7.1 — onglets Chanson ✏️ / Direct · Vue Chanson · Mode Scène · M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
   <span style="flex:1"></span>
   <nav class="hubLinks" title="Navigation entre les outils du projet (charte 7i)">
     <a href="index.html">🏠 Hub</a>
@@ -163,7 +163,7 @@
       <span class="hint" id="repDirInfo">dossier non lié — 🎹 Charger depuis répertoire (M2) demandera le fichier</span>
       <button id="repDirBtn" title="Lie le dossier commun de l'afficheur de chansons (contenant repertoire-commun.json) : le lien est mémorisé par ce navigateur et le fichier est RE-LU à chaque chargement (le Drive bureau synchronise, la liste est toujours fraîche). Navigateur sans File System Access : le clic proposera le fichier à la place">🔗 Lier le dossier…</button>
       <button id="repDirForget" title="Oublie le dossier lié (le chargement repassera par le choix du fichier)">✖ Oublier</button>
-      <span class="hint">v2.7.0 — onglets Chanson ✏️ (fiche de l'afficheur, paroles affichées) / Direct (grille | … |) — la zone active est jouée ; Vue Chanson + Mode Scène synchronisés à la lecture</span>
+      <span class="hint">v2.7.1 — onglets Chanson ✏️ (fiche de l'afficheur, paroles affichées) / Direct (grille | … |) — la zone active est jouée ; Vue Chanson + Mode Scène synchronisés à la lecture</span>
     </div>
   </div>
 </div>
@@ -356,7 +356,7 @@ Thème
       <b>Alias acceptés</b> : <code>min</code>→m · <code>maj</code>→rien · <code>7M</code>→M7 · <code>ø</code>→m7b5 · <code>°</code>→dim (ex. <code>Am6</code>, <code>D7#5</code>, <code>BbM7</code>).<br>
       <b>v2.6.31 — enrichissements</b> : qualités parenthésées <code>E(sus4)</code>→Esus4 · altérations Unicode <code>♭</code>/<code>♯</code> · <b>basses explicites</b> <code>C/B</code>, <code>Am/G</code> (la basse est envoyée une octave sous la fondamentale — le KN2000 fait sa part) · <b>basses seules</b> <code>/B</code> = accord précédent rejoué avec la basse B · <b>tolérance</b> : une qualité inconnue n'invalide plus la ligne — l'accord part en triade majeure de sa fondamentale (notes seules), signalé au journal.<br>
       <b>v2.6.32 — répertoire de l'afficheur</b> : bouton <b>🎹 Charger depuis répertoire</b> (M2) — charge <code>repertoire-commun.json</code> (export de l'afficheur de chansons), liste tous les morceaux (non ponctués en grisé) et génère la grille DIRECT <b>fidèle à la ponctuation</b> : durées réelles (les <code>.</code> = tenue), intro + sections dans l'ordre, tonalité de jeu de la fiche, tempo de la fiche si le BPM manuel n'a pas été changé. Dossier lié dans ⚙️ Réglages (relu à chaque chargement), sinon choix du fichier. Les ébauches du décodeur (apc-direct-draft-v1) sont retirées — le répertoire les remplace. <b>v2.6.33 — signature adaptative</b> : si la fiche est déverrouillée « ⏱ adaptative » (⚙️ de l'afficheur), chaque mesure À POINTS dure son nombre réel de temps (« ! G . ! » = 2 temps, « ! F . . . ! » = 4) et chaque mesure du DIRECT annonce sa longueur (<code>| 2/4 G . |</code>) — un morceau peut mélanger les mesures 2 et 4 temps (Wind of Change) ; les mesures SANS points restent au chiffrage.<br>
-      <b>v2.7.0 — onglets Chanson ✏️ / Direct + Mode Scène</b> : la zone de saisie a DEUX onglets. <b>✏️ Chanson</b> accepte la fiche de l'afficheur telle quelle (<code>§ sections</code>, accords au-dessus des paroles, <code>Intro :</code>, <code>@titre:</code>, marqueurs <code>(…)</code>, <code>xN</code> en fin de rangée ou d'étiquette) et la JOUE en direct — les paroles sont affichées (📄 Vue chanson, 🎬 Scène) sans jamais être envoyées ; la grammaire est le canon commun (<code>§</code> étude cœur commun). <b>| Direct</b> reste la grille historique. Le pont <b>🎹 répertoire</b> est NON destructif : la fiche arrive en onglet Chanson, le Direct en est dérivé ; un morceau qui a déjà sa fiche est conservé (<b>↻</b> force). <b>💾 Sauver morceau</b> mémorise la fiche ET le Direct (<code>● modifié / ✓ à jour</code> ; modifier la fiche re-dérive le Direct, sauf Direct personnalisé — ↻ le re-force). <b>⚙️ Fiche</b> : signature, verrou ⏱ adaptatif, tonalité de jeu. <b>🎬 Scène</b> : plein écran synchronisé (titre, section, accords, paroles, feux de temps) — ‹§ §› figent l'affichage, ✔ suivi, Échap quitte. <b>📄 Vue chanson</b> : la fiche mise en forme, rangée en cours surlignée.<br>
+      <b>v2.7.1 — onglets Chanson ✏️ / Direct + Mode Scène</b> : la zone de saisie a DEUX onglets. <b>✏️ Chanson</b> accepte la fiche de l'afficheur telle quelle (<code>§ sections</code>, accords au-dessus des paroles, <code>Intro :</code>, <code>@titre:</code>, marqueurs <code>(…)</code>, <code>xN</code> en fin de rangée ou d'étiquette) et la JOUE en direct — les paroles sont affichées (📄 Vue chanson, 🎬 Scène) sans jamais être envoyées ; la grammaire est le canon commun (<code>§</code> étude cœur commun). <b>| Direct</b> reste la grille historique. Le pont <b>🎹 répertoire</b> est NON destructif : la fiche arrive en onglet Chanson, le Direct en est dérivé ; un morceau qui a déjà sa fiche est conservé (<b>↻</b> force). <b>💾 Sauver morceau</b> mémorise la fiche ET le Direct (<code>● modifié / ✓ à jour</code> ; modifier la fiche re-dérive le Direct, sauf Direct personnalisé — ↻ le re-force). <b>⚙️ Fiche</b> : signature, verrou ⏱ adaptatif, tonalité de jeu. <b>🎬 Scène</b> : plein écran synchronisé (titre, section, accords, paroles, feux de temps) — ‹§ §› figent l'affichage, ✔ suivi, Échap quitte. <b>📄 Vue chanson</b> : la fiche mise en forme, rangée en cours surlignée.<br>
       <b>Exemple complet</b> :<br>
       <code>Intro</code><br>
       <code>||</code><br>
@@ -404,48 +404,52 @@ const rx = document.getElementById("rx"), tx = document.getElementById("tx");
 async function initMidi() {
   try {
     const access = await navigator.requestMIDIAccess({ sysex: true });
-    midiAccess2 = access; // v2.6.21 — l'APC partage le même accès Web MIDI (sélecteurs propres dans ⚙️ Réglages)
-    function fill(sel, list, def) {
-      const prev = sel.value;
-      sel.innerHTML = "";
-      list.forEach(p => {
-        const o = document.createElement("option");
-        o.value = p.id; o.textContent = p.name || p.id;
-        sel.appendChild(o);
-      });
-      if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
-      else if (def) sel.value = def;
-    }
-    const ins = [...access.inputs.values()], outs = [...access.outputs.values()];
-    fill(rx, ins, ins[0] && ins[0].id);
-    fill(tx, outs, outs[0] && outs[0].id);
-    apcFill(); // v2.6.21 — sélecteurs de la surface APC (pré-sélection du port dont le nom contient « APC »)
-    const bind = () => {
-      midiIn = access.inputs.get(rx.value) || null;
-      midiOut = access.outputs.get(tx.value) || null;
-      if (midiIn) midiIn.onmidimessage = m5MidiIn;
-      for (const p of access.inputs.values()) { // v2.6.27 — écoute TOUS les ports d'entrée (le boîtier expose 2 ports USB : la commande MS peut arriver sur l'autre que celui du KN2000) ; l'entrée APC dédiée garde son interception ; la garde anti-écho filtre notre propre commande
-        if (apcIn && p.id === apcIn.id) continue;
-        try { p.onmidimessage = m5MidiIn; } catch (e) {}
+    setTimeout(() => { // v2.7.1 — la promesse MIDI peut se résoudre ENTRE les 2 blocs de script (course au démarrage, vue sur Edge : « Cannot access 'midiAccess2' before initialization »). midiAccess2, apcFill, m5MidiIn vivent dans le bloc 2, pas encore exécuté à ce moment → on repousse la suite à la tâche SUIVANTE : les 2 blocs sont alors passés, tous les symboles existent.
+      try {
+      midiAccess2 = access; // v2.6.21 — l'APC partage le même accès Web MIDI (sélecteurs propres dans ⚙️ Réglages)
+      function fill(sel, list, def) {
+        const prev = sel.value;
+        sel.innerHTML = "";
+        list.forEach(p => {
+          const o = document.createElement("option");
+          o.value = p.id; o.textContent = p.name || p.id;
+          sel.appendChild(o);
+        });
+        if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+        else if (def) sel.value = def;
       }
-    };
-    rx.onchange = bind; tx.onchange = bind; bind();
-    access.onstatechange = () => { fill(rx, [...access.inputs.values()], rx.value); fill(tx, [...access.outputs.values()], tx.value); apcFill(); bind(); };
-    log("MIDI prêt — " + ins.length + " entrée(s), " + outs.length + " sortie(s).", "ok");
-    // v2.6.4 — démarrage de session : lecture des réglages enable (p.28) puis Auto Enable sur les réponses
-    enSt = {}; enFixed = {}; enRender();
-    log("⚙️ Session : lecture des " + KN_ENABLES.length + " réglages MIDI du KN2000 (p.28)" + (enAutoOn() ? " — Auto Enable ACTIF : les enables requis OFF seront basculés à 01 automatiquement, une seule fois." : " — Auto Enable désactivé : avertissements dans le journal seulement.") + "", "info");
-    enReadAll();
-    // v2.6.5 — défauts de session demandés par Yves : PM Expand = Normal (les PM ne changent que les sonorités Left+Right1+2) ; MSA mode = Rhythm (l'MSA orchestre sans toucher aux sonorités)
-    sendItw([0x20, 0x00, 0x11], [0x00]);
-    sendItw([0x20, 0x00, 0x13], [0x01]);
-    log("⚙️ Défauts de session : Panel Memory Expand Mode = Normal (20 00 11 = 00) · Music Style Arranger mode = Rhythm (20 00 13 = 01).", "info");
-    if (midiOut) {
-      sendDrq(0x20, 0x00, 0x25, "TEMPO (TMP) — tempo réel du clavier", 2); // v2.6.16 — LIRE le tempo du KN2000 à la connexion (la réponse ITR met measuredBpm à jour) au lieu de partir du champ manuel
-      const s0 = songById(curSongId); // v2.6.16 — au démarrage, SEUL le tempo du morceau chargé est imposé (demande Yves) ; pas de tempo imposé si le morceau n'en a pas — le clavier garde le sien
-      if (s0 && s0.panel && s0.panel.tempo) { sendTmpN(s0.panel.tempo); log("📤 Tempo du morceau « " + s0.title + " » imposé au KN2000 au chargement (trame TMP, ♩" + s0.panel.tempo + ") — en parallèle, tempo réel du clavier lu par DRQ.", "ok"); }
-      else log("⏱ Démarrage : aucun tempo imposé — lecture du tempo courant du KN2000 (DRQ) ; il servira de référence au compteur et au détecteur de pulses.", "info");
-    }
+      const ins = [...access.inputs.values()], outs = [...access.outputs.values()];
+      fill(rx, ins, ins[0] && ins[0].id);
+      fill(tx, outs, outs[0] && outs[0].id);
+      apcFill(); // v2.6.21 — sélecteurs de la surface APC (pré-sélection du port dont le nom contient « APC »)
+      const bind = () => {
+        midiIn = access.inputs.get(rx.value) || null;
+        midiOut = access.outputs.get(tx.value) || null;
+        if (midiIn) midiIn.onmidimessage = m5MidiIn;
+        for (const p of access.inputs.values()) { // v2.6.27 — écoute TOUS les ports d'entrée (le boîtier expose 2 ports USB : la commande MS peut arriver sur l'autre que celui du KN2000) ; l'entrée APC dédiée garde son interception ; la garde anti-écho filtre notre propre commande
+          if (apcIn && p.id === apcIn.id) continue;
+          try { p.onmidimessage = m5MidiIn; } catch (e) {}
+        }
+      };
+      rx.onchange = bind; tx.onchange = bind; bind();
+      access.onstatechange = () => { fill(rx, [...access.inputs.values()], rx.value); fill(tx, [...access.outputs.values()], tx.value); apcFill(); bind(); };
+      log("MIDI prêt — " + ins.length + " entrée(s), " + outs.length + " sortie(s).", "ok");
+      // v2.6.4 — démarrage de session : lecture des réglages enable (p.28) puis Auto Enable sur les réponses
+      enSt = {}; enFixed = {}; enRender();
+      log("⚙️ Session : lecture des " + KN_ENABLES.length + " réglages MIDI du KN2000 (p.28)" + (enAutoOn() ? " — Auto Enable ACTIF : les enables requis OFF seront basculés à 01 automatiquement, une seule fois." : " — Auto Enable désactivé : avertissements dans le journal seulement.") + "", "info");
+      enReadAll();
+      // v2.6.5 — défauts de session demandés par Yves : PM Expand = Normal (les PM ne changent que les sonorités Left+Right1+2) ; MSA mode = Rhythm (l'MSA orchestre sans toucher aux sonorités)
+      sendItw([0x20, 0x00, 0x11], [0x00]);
+      sendItw([0x20, 0x00, 0x13], [0x01]);
+      log("⚙️ Défauts de session : Panel Memory Expand Mode = Normal (20 00 11 = 00) · Music Style Arranger mode = Rhythm (20 00 13 = 01).", "info");
+      if (midiOut) {
+        sendDrq(0x20, 0x00, 0x25, "TEMPO (TMP) — tempo réel du clavier", 2); // v2.6.16 — LIRE le tempo du KN2000 à la connexion (la réponse ITR met measuredBpm à jour) au lieu de partir du champ manuel
+        const s0 = songById(curSongId); // v2.6.16 — au démarrage, SEUL le tempo du morceau chargé est imposé (demande Yves) ; pas de tempo imposé si le morceau n'en a pas — le clavier garde le sien
+        if (s0 && s0.panel && s0.panel.tempo) { sendTmpN(s0.panel.tempo); log("📤 Tempo du morceau « " + s0.title + " » imposé au KN2000 au chargement (trame TMP, ♩" + s0.panel.tempo + ") — en parallèle, tempo réel du clavier lu par DRQ.", "ok"); }
+        else log("⏱ Démarrage : aucun tempo imposé — lecture du tempo courant du KN2000 (DRQ) ; il servira de référence au compteur et au détecteur de pulses.", "info");
+      }
+      } catch (e) { log("Erreur accès MIDI : " + e.message, "ko"); }
+    }, 0);
   } catch (e) { log("Erreur accès MIDI : " + e.message, "ko"); }
 }
 document.getElementById("resetMidi").onclick = () => initMidi();
@@ -2347,6 +2351,7 @@ function importSongsFileV2(f) {
     let imp = null; try { imp = JSON.parse(t); } catch (e) { log("⬆️ Import : JSON invalide (" + e.message + ").", "ko"); return; }
     const list = Array.isArray(imp) ? imp : (imp && Array.isArray(imp.songs) ? imp.songs : null);
     if (!list) { log("⬆️ Import : format non reconnu (attendu : { songs: [...] } ou tableau).", "ko"); return; }
+    if (typeof editLeaving === "function" && !editLeaving("save")) return; // v2.7.1 — garde A2 : le bloc 1 branche aussi songImport.onchange mais le bloc 2 l'écrase — le garde vivait sur le handler mort. Ici, chemin réel : l'import peut remplacer le morceau courant — brouillon non sauvé ? 💾 d'abord
     let add = 0, repl = 0, skip = 0, dups = 0;
     const seen = new Set();
     for (const s of list) {
