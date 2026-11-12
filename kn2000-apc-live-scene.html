@@ -93,8 +93,20 @@
   #sceneFs.on { display: flex; }
   #sceneFs .scTitle { font-size: 4vmin; font-weight: 700; }
   #sceneFs .scSec { font-size: 3vmin; color: #c9a4ff; margin-top: 1vh; }
-  #sceneFs .scChords { font-family: ui-monospace, Consolas, monospace; font-size: 7vmin; font-weight: 700; margin: auto 0; white-space: pre-wrap; }
-  #sceneFs .scLyric { font-size: 4.5vmin; font-style: italic; color: #ddd; margin: 1vh 0 3vh; min-height: 5vmin; white-space: pre-wrap; }
+  #sceneFs .scZone { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; margin-top: 1vh; }
+  #sceneFs .scSecLbl { color: #c9a4ff; font-weight: 700; font-size: 3.4vmin; margin: 2.2vh 0 0.6vh; }
+  #sceneFs .scMarker { color: #888; font-size: 2.4vmin; margin: 0 0 0.4vh; }
+  #sceneFs .scRow { font-family: ui-monospace, Consolas, monospace; font-size: 4.6vmin; font-weight: 700; line-height: 1.3; padding: 0.9vh 1.2vw; border-radius: 10px; white-space: pre-wrap; }
+  #sceneFs .scRow.cur { background: rgba(126, 242, 157, .14); color: #7ef29d; box-shadow: inset 0 0 0 2px rgba(126, 242, 157, .5); }
+  #sceneFs .scRowLy { font-size: 3vmin; font-style: italic; color: #ccc; padding: 0 1.2vw 0.6vh; white-space: pre-wrap; }
+  #sceneFs .scEmpty { color: #777; font-size: 3vmin; padding: 3vh 0; }
+  #sceneFs.scFrozen .scSecLbl, #sceneFs.scFrozen .scRow, #sceneFs.scFrozen .scRowLy { opacity: .3; }
+  #sceneFs.scFrozen .fz { opacity: 1; }
+  #sceneFs .scSync { position: absolute; left: 50%; top: 9vh; transform: translateX(-50%); background: #1c1c26; border: 1px solid #555; border-radius: 10px; padding: 1.4vh 2vw; font-size: 2.6vmin; display: none; max-width: 80vw; }
+  #sceneFs .scSync.on { display: block; }
+  #sceneFs .scSync .btn { margin: 0.6vh 0.4vh 0 0; }
+  #sceneFs .scSync input { font-size: 2.6vmin; padding: .4vmin 1vmin; border-radius: 6px; border: 1px solid #666; background: #101014; color: #fff; width: 9ch; text-transform: uppercase; }
+  body.sceneOnly > :not(#sceneFs) { display: none !important; }
   #sceneFs .scFoot { display: flex; align-items: center; gap: 2.5vmin; font-size: 2.4vmin; color: #aaa; flex-wrap: wrap; }
   #sceneFs .scBeat { width: 3.2vmin; height: 3.2vmin; border-radius: 50%; background: #333; display: inline-block; }
   #sceneFs .scBeat.on { background: #7ef29d; box-shadow: 0 0 1.8vmin #7ef29d; }
@@ -107,7 +119,7 @@
   <span class="badge" id="kbdBadge" title="Liaison KN2000 (badge charte)">🎹 <b id="kbdDot">○</b> KN2000</span>
   <span class="badge" id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   <span style="flex:1"></span>
-  <span><b>🎼 APC Live KN2000 — Scene</b> <span class="hint">v2.7.3 — onglets Chanson ✏️ / Direct · Vue Chanson · Mode Scène · M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
+  <span><b>🎼 APC Live KN2000 — Scene</b> <span class="hint">v2.7.4 — scène déroulé Chanson ✏️ / Direct · Vue Chanson · Mode Scène · M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
   <span style="flex:1"></span>
   <nav class="hubLinks" title="Navigation entre les outils du projet (charte 7i)">
     <a href="index.html">🏠 Hub</a>
@@ -163,7 +175,7 @@
       <span class="hint" id="repDirInfo">dossier non lié — 🎹 Charger depuis répertoire (M2) demandera le fichier</span>
       <button id="repDirBtn" title="Lie le dossier commun de l'afficheur de chansons (contenant repertoire-commun.json) : le lien est mémorisé par ce navigateur et le fichier est RE-LU à chaque chargement (le Drive bureau synchronise, la liste est toujours fraîche). Navigateur sans File System Access : le clic proposera le fichier à la place">🔗 Lier le dossier…</button>
       <button id="repDirForget" title="Oublie le dossier lié (le chargement repassera par le choix du fichier)">✖ Oublier</button>
-      <span class="hint">v2.7.3 — onglets Chanson ✏️ (fiche de l'afficheur, paroles affichées) / Direct (grille | … |) — la zone active est jouée ; Vue Chanson + Mode Scène synchronisés à la lecture</span>
+      <span class="hint">v2.7.4 — scène déroulé Chanson ✏️ (fiche de l'afficheur, paroles affichées) / Direct (grille | … |) — la zone active est jouée ; Vue Chanson + Mode Scène synchronisés à la lecture</span>
     </div>
   </div>
 </div>
@@ -220,7 +232,8 @@
       <button id="tabRederive" title="Re-dériver l'onglet Direct depuis la fiche Chanson (⚠ écrase un Direct personnalisé) — ou re-forcer le chargement répertoire après un pont 🎹">↻ Re-dériver</button>
       <button id="ficheGear" title="Métadonnées de la fiche : signature, verrou ⏱ adaptatif, tonalité de jeu — capturées au pont 🎹, modifiables ici">⚙️ Fiche</button>
       <button id="songViewBtn" title="Vue Chanson : la fiche mise en forme (sections, accords, paroles) — la rangée en cours est surlignée pendant la lecture">📄 Vue chanson</button>
-      <button id="sceneBtn" title="Mode Scène : affichage plein écran synchronisé avec la lecture (titre, section, accords, paroles, feux de temps) — Échap ou ✕ pour quitter">🎬 Scène</button>
+      <button id="sceneBtn" title="Mode Scène : affichage plein écran synchronisé avec la lecture (titre, section, déroulé complet avec rangée en cours surlignée, paroles, feux de temps) — ‹§ §› figent sur une section (la lecture continue), ✔ reprend le suivi, ▶/■ pilote la lecture, Échap ou ✕ pour quitter">🎬 Scène</button>
+      <button id="sceneWinBtn" title="Scène suiveuse : ouvrir l'affichage Scène dans une FENÊTRE SÉPARÉE (la page reste master). Même navigateur : suivi automatique. Autre appareil/navigateur : bouton 📡 du Mode Scène pour un code session.">🪟 Fenêtre</button>
     </div>
     <div class="row"><div class="editWrap"><textarea class="grid-input" id="progInput" rows="10" spellcheck="false">// Ligne de texte = titre de section (non jouée) · // = commentaire · || ouvre un bloc, || xN le referme et le répète N fois
 Intro
@@ -356,7 +369,7 @@ Thème
       <b>Alias acceptés</b> : <code>min</code>→m · <code>maj</code>→rien · <code>7M</code>→M7 · <code>ø</code>→m7b5 · <code>°</code>→dim (ex. <code>Am6</code>, <code>D7#5</code>, <code>BbM7</code>).<br>
       <b>v2.6.31 — enrichissements</b> : qualités parenthésées <code>E(sus4)</code>→Esus4 · altérations Unicode <code>♭</code>/<code>♯</code> · <b>basses explicites</b> <code>C/B</code>, <code>Am/G</code> (la basse est envoyée une octave sous la fondamentale — le KN2000 fait sa part) · <b>basses seules</b> <code>/B</code> = accord précédent rejoué avec la basse B · <b>tolérance</b> : une qualité inconnue n'invalide plus la ligne — l'accord part en triade majeure de sa fondamentale (notes seules), signalé au journal.<br>
       <b>v2.6.32 — répertoire de l'afficheur</b> : bouton <b>🎹 Charger depuis répertoire</b> (M2) — charge <code>repertoire-commun.json</code> (export de l'afficheur de chansons), liste tous les morceaux (non ponctués en grisé) et génère la grille DIRECT <b>fidèle à la ponctuation</b> : durées réelles (les <code>.</code> = tenue), intro + sections dans l'ordre, tonalité de jeu de la fiche, tempo de la fiche si le BPM manuel n'a pas été changé. Dossier lié dans ⚙️ Réglages (relu à chaque chargement), sinon choix du fichier. Les ébauches du décodeur (apc-direct-draft-v1) sont retirées — le répertoire les remplace. <b>v2.6.33 — signature adaptative</b> : si la fiche est déverrouillée « ⏱ adaptative » (⚙️ de l'afficheur), chaque mesure À POINTS dure son nombre réel de temps (« ! G . ! » = 2 temps, « ! F . . . ! » = 4) et chaque mesure du DIRECT annonce sa longueur (<code>| 2/4 G . |</code>) — un morceau peut mélanger les mesures 2 et 4 temps (Wind of Change) ; les mesures SANS points restent au chiffrage.<br>
-      <b>v2.7.3 — onglets Chanson ✏️ / Direct + Mode Scène</b> : la zone de saisie a DEUX onglets. <b>✏️ Chanson</b> accepte la fiche de l'afficheur telle quelle (<code>§ sections</code>, accords au-dessus des paroles, <code>Intro :</code>, <code>@titre:</code>, marqueurs <code>(…)</code>, <code>xN</code> en fin de rangée ou d'étiquette) et la JOUE en direct — les paroles sont affichées (📄 Vue chanson, 🎬 Scène) sans jamais être envoyées ; la grammaire est le canon commun (<code>§</code> étude cœur commun). <b>| Direct</b> reste la grille historique. Le pont <b>🎹 répertoire</b> est NON destructif : la fiche arrive en onglet Chanson, le Direct en est dérivé ; un morceau qui a déjà sa fiche est conservé (<b>↻</b> force). <b>💾 Sauver morceau</b> mémorise la fiche ET le Direct (<code>● modifié / ✓ à jour</code> ; modifier la fiche re-dérive le Direct, sauf Direct personnalisé — ↻ le re-force). <b>⚙️ Fiche</b> : signature, verrou ⏱ adaptatif, tonalité de jeu. <b>🎬 Scène</b> : plein écran synchronisé (titre, section, accords, paroles, feux de temps) — ‹§ §› figent l'affichage, ✔ suivi, Échap quitte. <b>📄 Vue chanson</b> : la fiche mise en forme, rangée en cours surlignée.<br>
+      <b>v2.7.4 — scène déroulé Chanson ✏️ / Direct + Mode Scène</b> : la zone de saisie a DEUX onglets. <b>✏️ Chanson</b> accepte la fiche de l'afficheur telle quelle (<code>§ sections</code>, accords au-dessus des paroles, <code>Intro :</code>, <code>@titre:</code>, marqueurs <code>(…)</code>, <code>xN</code> en fin de rangée ou d'étiquette) et la JOUE en direct — les paroles sont affichées (📄 Vue chanson, 🎬 Scène) sans jamais être envoyées ; la grammaire est le canon commun (<code>§</code> étude cœur commun). <b>| Direct</b> reste la grille historique. Le pont <b>🎹 répertoire</b> est NON destructif : la fiche arrive en onglet Chanson, le Direct en est dérivé ; un morceau qui a déjà sa fiche est conservé (<b>↻</b> force). <b>💾 Sauver morceau</b> mémorise la fiche ET le Direct (<code>● modifié / ✓ à jour</code> ; modifier la fiche re-dérive le Direct, sauf Direct personnalisé — ↻ le re-force). <b>⚙️ Fiche</b> : signature, verrou ⏱ adaptatif, tonalité de jeu. <b>🎬 Scène</b> : plein écran synchronisé (titre, section, accords, paroles, feux de temps) — ‹§ §› figent l'affichage, ✔ suivi, Échap quitte. <b>📄 Vue chanson</b> : la fiche mise en forme, rangée en cours surlignée.<br>
       <b>Exemple complet</b> :<br>
       <code>Intro</code><br>
       <code>||</code><br>
@@ -378,16 +391,23 @@ Thème
     <button id="scNext" title="Section suivante (affichage figé — la lecture continue)">§›</button>
     <button id="scFollow" title="Reprendre le suivi automatique de la lecture">✔ suivi</button>
     <button id="scPlay" title="▶ Démarrer / ■ Stop (les mêmes boutons que la page)">▶</button>
+    <button id="scSyncBtn" title="Synchro multi-appareils : master (cette page pilote des affichages suiveurs — fenêtre APC ou afficheur de chansons, même code session) ou suiveur (cette fenêtre rejoint un master par code)">📡</button>
     <button id="scClose" title="Quitter le Mode Scène (Échap)">✕</button>
   </div>
+  <div class="scSync" id="scSync"><div id="scSyncBody"></div></div>
   <div class="scTitle" id="scTitle"></div>
   <div class="scSec" id="scSec"></div>
-  <div class="scChords" id="scChords"></div>
-  <div class="scLyric" id="scLyric"></div>
+  <div class="scZone" id="scZone"></div>
   <div class="scFoot"><span id="scBeats"></span><span id="scCount"></span><span id="scTempo"></span><span style="color:#777">‹§ §› sections · ✔ suivi · Échap quitter</span></div>
 </div>
 <script>
 "use strict";
+
+// ---------- v2.7.4 — Scène suiveuse : cette fenêtre n'est qu'un AFFICHAGE piloté par un master ----------
+// ?scene=1 (ou #scene) : la page masque tout sauf le Mode Scène, ne touche PAS au MIDI (pas de permission),
+// et suit un master (page APC Live normale) via BroadcastChannel (même navigateur) ou PeerJS (code session).
+const SCENE_ONLY = (/[?&]scene=1\b/.test(location.search)) || (/^#scene\b/.test(location.hash));
+window.__SCENE_ONLY = SCENE_ONLY; // visible du bloc 2 (introspection)
 
 // ---------- Journal (protocole console : replié en bas de page, bouton avec pastille rouge si erreur) ----------
 const logEl = document.getElementById("log");
@@ -1468,6 +1488,7 @@ function parseFicheZone() { // v2.7.0 (A1) — l'onglet Chanson : § sections, r
   const warns = [];
   let dispTitle = ""; // @titre: (affichage Scène/Vue)
   let curSec = null, curSecRep = 1, secRows = [];
+  let hlIntro = false, hlBase = 0; // v2.7.4 — index de ligne du DÉROULÉ AFFICHEUR (protocole synchro master) : intro = 1 ligne, puis par section rep_s passes de ses lignes
   let pendingRow = null; // rangée en attente de ses paroles
   let pendingMarker = null;
   let mesNo = 0, lastReal = null; // dernier accord réel JOUÉ (basses seules /X)
@@ -1476,18 +1497,21 @@ function parseFicheZone() { // v2.7.0 (A1) — l'onglet Chanson : § sections, r
     if (curSec && secRows.length) disp.push({ t: "title", text: curSec.label || "" });
     const span = secRows.reduce((a, r) => a + r.count, 0); // v2.7.0 : mesures JOUÉES d'UNE passe complète de la section (§ xN)
     for (let pass = 0; pass < curSecRep; pass++)
-      for (const r of secRows)
+      for (let si2 = 0; si2 < secRows.length; si2++) { const r = secRows[si2]; // v2.7.4 — index (et non for…of) : position de la ligne dans la section
+        const evHl = hlIntro ? 0 : (hlBase + pass * secRows.length + si2); // v2.7.4 — index de ligne déroulé AFFICHEUR (les xN de RANGÉE ne créent pas de lignes, ceux de SECTION traversent le groupe)
         for (let p = 0; p < r.rep; p++) {
           if (pass === 0 && p === 0) { r.evFirst = seq.length; }
           for (const e of r.emit) {
             const dur = Math.max(0.5, (e.nextT || r.mb + 1) - e.t);
             const label = e.ch; // accord JOUÉ (transposé si tonalité de jeu, « D/A » pour une basse seule) — le texte ÉCRIT reste dans la fiche
             const mNo = r.mNo + (e.mIdx || 0) + p * r.mp + pass * span; // v2.7.0 : p avance de mesures/PASSE (mp) ; une reprise de section (§ xN) avance du SPAN complet
-            const ev = { t: "ev", chord: e.c, beats: dur, label, mNo, pNo: mNo, mRange: r.range, rowIdx: r.rowIdx, secIdx: r.secIdx, mb: (e.mb || r.mb) };
+            const ev = { t: "ev", chord: e.c, beats: dur, label, mNo, pNo: mNo, mRange: r.range, rowIdx: r.rowIdx, secIdx: r.secIdx, mb: (e.mb || r.mb), hl: evHl };
             seq.push(ev); disp.push(ev);
           }
           if (pass === 0 && p === 0) r.evLast = seq.length - 1;
         }
+      }
+    hlBase += hlIntro ? 1 : (curSecRep * secRows.length); hlIntro = false; // v2.7.4 — base hl de la section suivante (espace déroulé de l'afficheur)
     secRows = [];
   };
   const emitRow = (raw, off, rep, where) => { // rangée de grille → mesures (SArep) + événements différés à la fermeture de section
@@ -1543,6 +1567,7 @@ function parseFicheZone() { // v2.7.0 (A1) — l'onglet Chanson : § sections, r
       flushSec();
       curSec = { label: "Intro", idx: secs.length }; secs.push({ label: "Intro", marker: pendingMarker }); pendingMarker = null;
       curSecRep = 1;
+      hlIntro = true; // v2.7.4 — l'intro de l'afficheur = UNE ligne (introLn) : tous ses événements pointent hl 0
       if (SArep.isGridLn(intro[1].trim()) || repIsChordLine(intro[1].trim())) emitRow(intro[1], off, null, "intro");
       continue;
     }
@@ -1666,6 +1691,7 @@ function repLoadSong(i, force) { // v2.7.0 (A4) — pont NON destructif : la fic
     s.fsigMode = (it.s.sigMode === "adapt") ? "adapt" : "const";
     s.ftr = it.s.transpose ? Math.round(+it.s.transpose) : 0;
     s.directAuto = true;
+    s.repId = it.s.id; // v2.7.4 — lien au répertoire : le master pousse la fiche (objet) aux afficheurs suiveurs qui suivent la vraie lecture
   }
   tabDraft = {};
   curTab = "chanson"; tabsRender();
@@ -1823,71 +1849,256 @@ document.getElementById("songViewBtn").onclick = () => {
   tabsRender();
   if (vueOn) songViewRender();
 };
+function sceneView() { // v2.7.4 — la source d'affichage Scène : morceau local (master) ou flux suiveur (?scene=1)
+  return (SCENE_ONLY && window.__scFollowSong) ? window.__scFollowSong : (songRows || { title: "", secs: [], rows: [] });
+}
+function sceneRowsBuild() { // v2.7.4 — déroulé COMPLET (comme l'afficheur) : sections + marqueurs + rangées + paroles
+  const R = sceneView();
+  const fz = (sceneStick != null);
+  const h = [];
+  let lastSec = -2;
+  for (const r of (R.rows || [])) {
+    if (r.secIdx !== lastSec) {
+      lastSec = r.secIdx;
+      const sec = R.secs[r.secIdx];
+      if (sec) {
+        const cls = (fz && r.secIdx === sceneStick) ? " fz" : "";
+        h.push('<div class="scSecLbl' + cls + '">' + escF(sec.label || "·") + "</div>");
+        if (sec.marker) h.push('<div class="scMarker">' + escF(sec.marker) + "</div>");
+      }
+    }
+    h.push('<div class="scRow' + (fz && r.secIdx === sceneStick ? " fz" : "") + '" data-r="' + r.rowIdx + '">' + escF(r.textJoue || r.text || "") + "</div>");
+    if (r.lyric) h.push('<div class="scRowLy' + (fz && r.secIdx === sceneStick ? " fz" : "") + '">' + escF(r.lyric) + "</div>");
+  }
+  return h.join("") || '<div class="scEmpty">' + (SCENE_ONLY
+    ? "En attente du master — ouvre la page APC Live dans ce navigateur (suivi automatique), ou 📡 saisis un code session."
+    : "Rien à afficher — charge un morceau (ou une fiche 🎹) puis ▶.") + "</div>";
+}
+function sceneHlRow(rIdx, scroll) { // v2.7.4 — surligne la rangée en cours + section courante (sans reconstruire le déroulé)
+  const z = document.getElementById("scZone");
+  if (!z) return;
+  const R = sceneView();
+  z.querySelectorAll(".scRow.cur").forEach(el => el.classList.remove("cur"));
+  const r = (rIdx != null && R.rows) ? R.rows[rIdx] : null;
+  if (!r) return;
+  const el = z.querySelector('.scRow[data-r="' + rIdx + '"]');
+  if (el) { el.classList.add("cur"); if (scroll) { try { el.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) {} } }
+  const sec = (R.secs || [])[r.secIdx];
+  document.getElementById("scSec").textContent = (sec && sec.label) || "";
+}
 function sceneOpen() {
   sceneOn = true; sceneStick = null;
   document.getElementById("sceneFs").classList.add("on");
   try { if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {}); } catch (e) {}
+  sceneLastR = null;
   sceneRender();
-  log("🎬 Mode Scène : plein écran synchronisé à la lecture — ‹§ §› figent l'affichage sur une section, ✔ suivi reprend, ▶/■ pilote la lecture, Échap quitte.", "info");
+  log("🎬 Mode Scène : déroulé complet synchronisé à la lecture (rangée en cours surlignée) — ‹§ §› figent l'affichage sur une section (la lecture continue), ✔ suivi reprend, ▶/■ pilote la lecture, Échap quitte.", "info");
 }
 function sceneClose() {
+  if (SCENE_ONLY) { try { window.close(); } catch (e) {} return; } // une fenêtre suiveuse se ferme, pas de retour « normal »
   sceneOn = false; sceneStick = null;
   document.getElementById("sceneFs").classList.remove("on");
+  document.getElementById("sceneFs").classList.remove("scFrozen");
   try { if (document.exitFullscreen && document.fullscreenElement) document.exitFullscreen().catch(() => {}); } catch (e) {}
 }
+document.addEventListener("fullscreenchange", () => { // v2.7.4 — retour au mode normal TOUJOURS propre :
+  if (sceneOn && !SCENE_ONLY && !document.fullscreenElement) sceneClose(); // Échap consommé par le navigateur, ✕ du navigateur, F11… tout chemin ferme le calque
+});
 function sceneStickyIdx() { return (sceneStick != null) ? sceneStick : ((curEv && curEv.secIdx != null) ? curEv.secIdx : 0); }
-function sceneRender() { // affichage Scène : rangée en cours (ou section figée) — les feux/compteurs vivent dans sceneTick
+let sceneLastR = null; // v2.7.4 — la source affichée (reconstruite seulement quand elle change)
+function sceneRender() { // v2.7.4 — déroulé complet : la rangée en cours est SURLIGNÉE (affichage à l'afficheur), plus une seule rangée isolée
   if (!sceneOn) return;
-  const R = songRows || { title: "", secs: [], rows: [] };
-  let row = null, sec = null;
-  if (sceneStick != null) {
-    sec = R.secs[sceneStick] || null;
-    row = (R.rows || []).find(r => r.secIdx === sceneStick) || null;
-  } else if (curEv && curEv.rowIdx != null) {
-    row = (R.rows || [])[curEv.rowIdx] || null;
-    sec = R.secs[row && row.secIdx] || null;
-  } else if (curEv) {
-    sec = R.secs[curEv.secIdx] || null;
-    row = { textJoue: curEv.label || "", lyric: "" };
-  }
+  const R = sceneView();
+  sceneLastR = R;
   document.getElementById("scTitle").textContent = R.title || "";
-  document.getElementById("scSec").textContent = (sec && sec.label) || "";
-  document.getElementById("scChords").textContent = row ? (row.textJoue || row.text || "") : "";
-  document.getElementById("scLyric").textContent = (row && row.lyric) || "";
+  document.getElementById("scZone").innerHTML = sceneRowsBuild();
+  const fsEl = document.getElementById("sceneFs");
+  fsEl.classList.toggle("scFrozen", sceneStick != null);
+  if (sceneStick != null) {
+    const sec = (R.secs || [])[sceneStick];
+    document.getElementById("scSec").textContent = (sec && sec.label) || "";
+    const first = (R.rows || []).find(r => r.secIdx === sceneStick);
+    if (first) sceneHlRow(first.rowIdx, true);
+  } else if (curEv && curEv.rowIdx != null) {
+    sceneHlRow(curEv.rowIdx, true);
+  } else {
+    document.getElementById("scSec").textContent = "";
+  }
 }
 function sceneSync(ev) { // appelé par markChord : la Scène suit la lecture (sauf section figée)
   curEv = ev || null;
   curEvAt = performance.now();
-  if (sceneOn && sceneStick == null) sceneRender();
+  if (sceneOn && sceneStick == null && curEv && curEv.rowIdx != null) sceneHlRow(curEv.rowIdx, true);
 }
 document.getElementById("sceneBtn").onclick = () => sceneOn ? sceneClose() : sceneOpen();
 document.getElementById("scClose").onclick = sceneClose;
 document.getElementById("scFollow").onclick = () => { sceneStick = null; sceneRender(); };
 document.getElementById("scPrev").onclick = () => { sceneStick = Math.max(0, sceneStickyIdx() - 1); sceneRender(); };
-document.getElementById("scNext").onclick = () => { sceneStick = Math.min(((songRows && songRows.secs) || []).length - 1, sceneStickyIdx() + 1); sceneRender(); };
-document.getElementById("scPlay").onclick = () => { document.getElementById(seqQueue === null ? "play" : "stopPlay").click(); };
+document.getElementById("scNext").onclick = () => { sceneStick = Math.min(((sceneView().secs) || []).length - 1, sceneStickyIdx() + 1); sceneRender(); };
+document.getElementById("scPlay").onclick = () => { if (SCENE_ONLY) return; document.getElementById(seqQueue === null ? "play" : "stopPlay").click(); };
 window.addEventListener("keydown", (e) => { if (e.key === "Escape" && sceneOn) sceneClose(); });
 setInterval(() => { // feux de temps + compteurs du Mode Scène (léger : ne tourne que si la Scène est ouverte)
   if (!sceneOn) return;
-  const pl = document.getElementById("scPlay"); if (pl) pl.textContent = (seqQueue === null) ? "▶" : "■";
+  const curR = sceneView();
+  if (curR !== sceneLastR) sceneRender(); // la source a changé (chargement/parse master ou flux suiveur) → déroulé reconstruit
+  const pl = document.getElementById("scPlay"); if (pl) pl.textContent = (SCENE_ONLY ? !window.__scFollowPlaying : (seqQueue === null)) ? "▶" : "■";
   const ev = curEv;
   const n = Math.max(1, Math.min(12, (ev && ev.mb) || 4));
   let beat = null;
   if (ev) {
-    if (typeof seqOriginPulse === "number" && seqOriginPulse !== null) { // lecture calée sur l'horloge F8 du KN2000
+    if (!SCENE_ONLY && typeof seqOriginPulse === "number" && seqOriginPulse !== null) { // lecture calée sur l'horloge F8 du KN2000
       const b = Math.floor((pulse - seqOriginPulse) / ppq() - ev.cum) + 1;
       if (b >= 1 && b <= 32) beat = b;
-    } else if (curEvAt) { // minuteur local : temps déduit du tempo
-      const b = Math.floor((performance.now() - curEvAt) * curBpm() / 60000) + 1;
+    } else if (curEvAt) { // minuteur local : temps déduit du tempo (suiveur aussi — calé sur l'arrivée de la rangée)
+      const bpm = (SCENE_ONLY && window.__scFollowBpm) ? window.__scFollowBpm : curBpm();
+      const b = Math.floor((performance.now() - curEvAt) * bpm / 60000) + 1;
       if (b >= 1 && b <= 32) beat = b;
     }
   }
   const dots = [];
   for (let i = 1; i <= n; i++) dots.push('<span class="scBeat' + (beat === i ? " on" : "") + '"></span>');
   document.getElementById("scBeats").innerHTML = dots.join("");
-  document.getElementById("scCount").textContent = (ev && ev.pNo) ? ("mesure " + ev.pNo + "/" + (seqPlayedMeasures || seqMeasures || 0)) : "";
-  document.getElementById("scTempo").textContent = "♩" + curBpm();
+  document.getElementById("scCount").textContent = (ev && ev.pNo) ? ("mesure " + ev.pNo + "/" + (SCENE_ONLY ? (window.__scFollowPTot || 0) : (seqPlayedMeasures || seqMeasures || 0))) : "";
+  document.getElementById("scTempo").textContent = "♩" + ((SCENE_ONLY && window.__scFollowBpm) ? window.__scFollowBpm : curBpm());
 }, 150);
+
+// ═══ v2.7.4 — Scène DISTANTE : master (cette page) ↔ affichages suiveurs (fenêtre ?scene=1, autre appareil, afficheur de chansons) ═══
+// Deux transports, le même état : BroadcastChannel (même navigateur, zéro config) et PeerJS (multi-appareils, code session —
+// MÊME espace de noms « tdb »+code que l'afficheur de chansons : un afficheur qui rejoint la session suit la VRAIE lecture du KN2000).
+function sceneSongPayload() { // → message apcSong (fenêtre Scène APC suiveuse)
+  const R = songRows || { title: "", secs: [], rows: [] };
+  return { t: "apcSong", title: R.title || "", secs: R.secs || [],
+    rows: (R.rows || []).map(r => ({ rowIdx: r.rowIdx, secIdx: r.secIdx, text: r.text || "", textJoue: r.textJoue || "", lyric: r.lyric || "" })) };
+}
+function sceneFollowState() { // → message apcState (résumé de la lecture courante)
+  const R = songRows || {};
+  const ev = curEv;
+  return { t: "apcState", title: R.title || "", rowIdx: (ev && ev.rowIdx != null) ? ev.rowIdx : null,
+    secIdx: (ev && ev.secIdx != null) ? ev.secIdx : null, hl: (ev && ev.hl != null) ? ev.hl : null,
+    pNo: (ev && ev.pNo) || 0, pTot: (seqPlayedMeasures || seqMeasures || 0),
+    bpm: curBpm(), mb: (ev && ev.mb) || 4, playing: seqQueue !== null };
+}
+function affSongOf() { // → message « song » du protocole AFFICHEUR (data = objet répertoire si le morceau en vient, sinon texte fiche)
+  const s = songById(curSongId) || {};
+  if (s.repId && repSongs) { const it = repSongs.find(x => x.s && x.s.id === s.repId); if (it) {
+    return { t: "song", id: it.s.id, title: it.s.title || s.title || "", artist: it.s.artist || "", tempo: it.s.tempo || "", sig: (it.s.sig || s.fsig || "4/4"), data: it.s.data }; } }
+  if (s.fiche) return { t: "song", id: s.repId || ("apc-" + (curSongId || "")), title: s.title || "", artist: "", tempo: "", sig: (s.fsig || "4/4"), data: s.fiche };
+  return null;
+}
+function affStateOf(st) { // → message « state » du protocole AFFICHEUR (hl = index de ligne DÉROULÉ AFFICHEUR, porté par chaque événement)
+  const s = songById(curSongId) || {};
+  return { t: "state", id: s.repId || ("apc-" + (curSongId || "")), title: st.title || (s.title || ""),
+    hl: (st.hl != null && st.hl >= 0) ? st.hl : -1, mes: st.pNo || 0, play: !!st.playing,
+    tempo: (s.fsig ? "" : "") + (st.bpm || ""), sig: (s.fsig || "4/4"), tr: (s.ftr ? Math.round(+s.ftr) : 0), chords: true, beat: true };
+}
+// ── suiveur (?scene=1) : applique les messages du master ──
+function scFollowApplySong(m) { window.__scFollowSong = { title: m.title || "", secs: m.secs || [], rows: m.rows || [] }; }
+function scFollowApplyState(m) {
+  window.__scFollowPlaying = !!m.playing; window.__scFollowBpm = m.bpm || null; window.__scFollowPTot = m.pTot || 0;
+  curEv = { rowIdx: m.rowIdx, secIdx: m.secIdx, pNo: m.pNo, mb: m.mb || 4, cum: 0 };
+  curEvAt = performance.now();
+  if (sceneOn && sceneStick == null && m.rowIdx != null) sceneHlRow(m.rowIdx, true);
+}
+// ── BroadcastChannel : même navigateur, multi-fenêtres/écrans, zéro configuration ──
+const scBC = (typeof BroadcastChannel !== "undefined") ? new BroadcastChannel("kn2000-apc-scene") : null;
+if (scBC) scBC.onmessage = (e) => {
+  const m = e.data; if (!m || !m.t) return;
+  if (SCENE_ONLY) {
+    if (m.t === "apcSong") scFollowApplySong(m);
+    else if (m.t === "apcState") scFollowApplyState(m);
+  } else if (m.t === "hello") { sceneSendAll(true); } // une fenêtre suiveuse vient d'arriver : état courant complet
+};
+if (SCENE_ONLY && scBC) scBC.postMessage({ t: "hello" }); // présente-toi au master du navigateur
+// ── PeerJS : multi-appareils (tablette, autre navigateur) — même code session que l'afficheur (« tdb »+code) ──
+const SYNC = { peer: null, conns: new Set(), code: "" };
+function syncPeerLib(cb) { if (window.Peer) return cb(); const sc = document.createElement("script"); sc.src = "https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"; sc.onload = cb; sc.onerror = () => scSyncSay("⚠️ PeerJS inaccessible — connexion internet requise."); document.head.appendChild(sc); }
+function syncStop(silent) { if (SYNC.peer) { try { SYNC.peer.destroy(); } catch (e) {} } SYNC.peer = null; SYNC.conns = new Set(); SYNC.code = ""; if (!silent) syncUi(); }
+function syncSendTo(conn, msg) { try { conn.send(typeof msg === "string" ? msg : JSON.stringify(msg)); } catch (e) {} }
+function syncHandleData(conn, raw) {
+  let m = raw; if (typeof m === "string") { try { m = JSON.parse(m); } catch (e) { return; } }
+  if (!m || m.t !== "hi") return;
+  conn._kind = (m.kind === "apc") ? "apc" : "aff"; SYNC.conns.add(conn);
+  if (conn._kind === "apc") { syncSendTo(conn, sceneSongPayload()); syncSendTo(conn, sceneFollowState()); }
+  else { const sg = affSongOf(); if (sg) syncSendTo(conn, sg); syncSendTo(conn, affStateOf(sceneFollowState())); }
+  syncUi();
+}
+function syncStartMaster() { // master multi-appareils : code à saisir sur les suiveurs (afficheur, lecteur, fenêtre APC)
+  syncPeerLib(() => {
+    syncStop(true);
+    const code = Math.random().toString(36).slice(2, 6).toUpperCase();
+    try { SYNC.peer = new Peer("tdb" + code.toLowerCase()); } catch (e) { scSyncSay("⚠️ " + e); return; }
+    SYNC.code = code;
+    SYNC.peer.on("open", () => { scSyncSay("Master — code " + code + " · 0 connecté(s). Les suiveurs (afficheur 📡 ou fenêtre APC ?scene=1) saisissent ce code."); scSyncCode = code; scSongKey = ""; syncUi(); });
+    SYNC.peer.on("connection", (c) => {
+      c.on("data", (raw) => syncHandleData(c, raw));
+      c.on("close", () => { SYNC.conns.delete(c); syncUi(); });
+    });
+    SYNC.peer.on("error", (e) => scSyncSay("⚠️ " + (e.type || e)));
+  });
+}
+function syncJoinMaster(code) { // suiveur multi-appareils (fenêtre Scène APC sur tablette/autre navigateur)
+  syncPeerLib(() => {
+    syncStop(true);
+    code = String(code || "").trim().toLowerCase(); if (!code) return;
+    try { SYNC.peer = new Peer(); } catch (e) { return; }
+    SYNC.code = code.toUpperCase();
+    SYNC.peer.on("open", () => {
+      const c = SYNC.peer.connect("tdb" + code);
+      c.on("open", () => { syncSendTo(c, { t: "hi", kind: "apc" }); SYNC.conns.add(c); c._kind = "up"; scSyncSay("Connecté à la session " + code.toUpperCase() + "."); syncUi(); });
+      c.on("data", (raw) => { let m = raw; if (typeof m === "string") { try { m = JSON.parse(m); } catch (e) { return; } }
+        if (!m) return; if (m.t === "apcSong") scFollowApplySong(m); else if (m.t === "apcState") scFollowApplyState(m); });
+      c.on("close", () => { SYNC.conns.delete(c); scSyncSay("Session coupée — reconnexion…"); setTimeout(() => syncJoinMaster(code), 5000); });
+    });
+    SYNC.peer.on("error", (e) => scSyncSay("⚠️ " + (e.type || e)));
+  });
+}
+// ── panneau 📡 (dans le calque Scène) ──
+let scSyncCode = "", scSyncMsg = "";
+function scSyncSay(t) { scSyncMsg = t; syncUi(); }
+function syncUi() {
+  const panel = document.getElementById("scSync"); if (!panel) return;
+  panel.classList.add("on");
+  const b = document.getElementById("scSyncBody");
+  if (SCENE_ONLY) {
+    b.innerHTML = '<div>📡 <b>' + (SYNC.code ? ("Session " + SYNC.code) : "Scène suiveuse") + '</b></div>' +
+      '<div style="margin:.4vh 0">' + (scSyncMsg ? scSyncMsg : "Même navigateur : suivi automatique. Autre appareil : saisis le code du master.") + "</div>" +
+      (SYNC.peer && SYNC.conns.size ? "" : '<div style="margin-top:.6vh">Code master : <input id="scCodeIn" maxlength="6"> <button class="btn" id="scGoBtn">Rejoindre</button></div>');
+  } else {
+    b.innerHTML = '<div>📡 <b>Synchro multi-appareils</b></div>' +
+      (SYNC.peer ? ('<div style="margin:.4vh 0"><b style="color:#7ef29d">Master — code ' + SYNC.code + "</b> · " + SYNC.conns.size + " connecté(s)</div>" +
+        '<div style="margin-top:.6vh"><button class="btn" id="scStopBtn">Arrêter la session</button></div>' +
+        '<div style="color:#888;margin-top:.4vh">Les suiveurs rejoignent avec ce code : afficheur de chansons (📡), lecteur, ou fenêtre APC ?scene=1.</div>')
+        : ('<div style="margin:.4vh 0">Devenir master : les affichages suiveurs suivront la VRAIE lecture du KN2000 (rangée, mesure, tempo, ▶/■).</div>' +
+          '<div style="margin-top:.6vh"><button class="btn" id="scGoBtn">🎼 Devenir master — session multi-appareils</button></div>' +
+          '<div style="color:#888;margin-top:.4vh">Même navigateur : pas besoin de code — 🪟 Fenêtre suit automatiquement.</div>'));
+  }
+  const go = document.getElementById("scGoBtn"); if (go) go.onclick = () => { if (SCENE_ONLY) { const i = document.getElementById("scCodeIn"); if (i && i.value.trim()) syncJoinMaster(i.value); } else syncStartMaster(); };
+  const stp = document.getElementById("scStopBtn"); if (stp) stp.onclick = () => { syncStop(true); scSyncSay("Synchro arrêtée."); };
+}
+document.getElementById("scSyncBtn").onclick = () => { const p = document.getElementById("scSync"); p.classList.toggle("on"); if (p.classList.contains("on")) syncUi(); };
+document.getElementById("sceneWinBtn").onclick = () => { try { window.open(location.href.split(/[?#]/)[0] + "?scene=1", "_blank"); } catch (e) {} };
+// ── diffusion master : BroadcastChannel + connexions PeerJS (envoi seulement sur changement — léger) ──
+let scStateKey = "", scSongKey = "", scSongRef = null;
+function sceneSendAll(force) {
+  if (SCENE_ONLY) return;
+  const sg = (force || songRows !== scSongRef) ? sceneSongPayload() : null;
+  const st = sceneFollowState();
+  const key = [st.title, st.rowIdx, st.pNo, st.playing, st.bpm, st.hl].join("|");
+  const sendState = force || key !== scStateKey;
+  if (sg) { scSongRef = songRows; scSongKey = key; if (scBC) scBC.postMessage(sg);
+    for (const c of SYNC.conns) if (c._kind === "apc") syncSendTo(c, sg); }
+  if (sendState) { scStateKey = key; if (scBC) scBC.postMessage(st);
+    for (const c of SYNC.conns) if (c._kind === "apc") syncSendTo(c, st);
+    const as = affStateOf(st); for (const c of SYNC.conns) if (c._kind === "aff") syncSendTo(c, as); } // protocole afficheur
+}
+setInterval(() => { if (!SCENE_ONLY) sceneSendAll(false); }, 250);
+// ── boot suiveur : masque la page, ouvre le calque Scène (SANS plein écran — c'est l'utilisateur qui gère sa fenêtre) ──
+if (SCENE_ONLY) {
+  document.body.classList.add("sceneOnly");
+  sceneOn = true; sceneStick = null;
+  document.getElementById("sceneFs").classList.add("on");
+  sceneRender();
+}
 
 // ═══ v0.35 — Déroulé magnétophone : départ de la lecture à la mesure N ═══
 // ▶ Démarrer part de la mesure choisie (les mesures d'avant ne sont pas envoyées) ;
@@ -2202,7 +2413,7 @@ curSongId = songs.songs.length ? songs.songs[0].id : null;
 renderSongs();
 if (curSongId && songById(curSongId).seq) selectSong(curSongId, false); // affiche la séquence du 1er morceau, sans envoi au chargement
 
-initMidi();
+if (!SCENE_ONLY) initMidi(); // v2.7.4 : une Scène suiveuse ne demande jamais l'accès MIDI (pas de popup de permission)
 mirrorRender(); // v0.33 : le calque miroir démarre synchronisé avec la séquence démo
 window.__b1end = true; // v2.7.2 — balise de diagnostic de boot : bloc 1 exécuté jusqu'au bout
 </script>
