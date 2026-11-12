@@ -91,27 +91,37 @@
   .svMarker { color: #888; font-style: italic; padding: 0 6px; }
   #sceneFs { position: fixed; inset: 0; background: #101014; color: #fff; z-index: 9999; display: none; flex-direction: column; padding: 2vh 3vw; }
   #sceneFs.on { display: flex; }
-  #sceneFs .scTitle { font-size: 4vmin; font-weight: 700; }
-  #sceneFs .scSec { font-size: 3vmin; color: #c9a4ff; margin-top: 1vh; }
+  /* v2.7.5 — zoom Scène PROPRE : variable --scScale (boutons A−/A+ ou Ctrl+molette), le zoom du NAVIGATEUR ne suit plus à la sortie */
+  #sceneFs .scTitle { font-size: calc(4vmin * var(--scScale, 1)); font-weight: 700; }
+  #sceneFs .scSec { font-size: calc(3vmin * var(--scScale, 1)); color: #c9a4ff; margin-top: 1vh; }
   #sceneFs .scZone { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; margin-top: 1vh; }
-  #sceneFs .scSecLbl { color: #c9a4ff; font-weight: 700; font-size: 3.4vmin; margin: 2.2vh 0 0.6vh; }
-  #sceneFs .scMarker { color: #888; font-size: 2.4vmin; margin: 0 0 0.4vh; }
-  #sceneFs .scRow { font-family: ui-monospace, Consolas, monospace; font-size: 4.6vmin; font-weight: 700; line-height: 1.3; padding: 0.9vh 1.2vw; border-radius: 10px; white-space: pre-wrap; }
+  #sceneFs .scSecLbl { color: #c9a4ff; font-weight: 700; font-size: calc(3.4vmin * var(--scScale, 1)); margin: 2.2vh 0 0.6vh; }
+  #sceneFs .scMarker { color: #888; font-size: calc(2.4vmin * var(--scScale, 1)); margin: 0 0 0.4vh; }
+  #sceneFs .scRow { font-family: ui-monospace, Consolas, monospace; font-size: calc(4.6vmin * var(--scScale, 1)); font-weight: 700; line-height: 1.3; padding: 0.9vh 1.2vw; border-radius: 10px; white-space: pre-wrap; }
   #sceneFs .scRow.cur { background: rgba(126, 242, 157, .14); color: #7ef29d; box-shadow: inset 0 0 0 2px rgba(126, 242, 157, .5); }
-  #sceneFs .scRowLy { font-size: 3vmin; font-style: italic; color: #ccc; padding: 0 1.2vw 0.6vh; white-space: pre-wrap; }
-  #sceneFs .scEmpty { color: #777; font-size: 3vmin; padding: 3vh 0; }
+  #sceneFs .scRowLy { font-size: calc(3vmin * var(--scScale, 1)); font-style: italic; color: #ccc; padding: 0 1.2vw 0.6vh; white-space: pre-wrap; }
+  #sceneFs .scRowLy.cur { background: rgba(126, 242, 157, .14); color: #7ef29d; box-shadow: inset 0 0 0 2px rgba(126, 242, 157, .5); font-style: normal; } /* v2.7.5 — rangée paroles surlignée quand les accords sont masqués */
+  #sceneFs .scRowLy.solo { color: #fff; font-style: normal; font-weight: 600; font-size: calc(3.6vmin * var(--scScale, 1)); } /* v2.7.5 — paroles seules (♯ off) : plein poids */
+  #sceneFs .scEmpty { color: #777; font-size: calc(3vmin * var(--scScale, 1)); padding: 3vh 0; }
   #sceneFs.scFrozen .scSecLbl, #sceneFs.scFrozen .scRow, #sceneFs.scFrozen .scRowLy { opacity: .3; }
   #sceneFs.scFrozen .fz { opacity: 1; }
-  #sceneFs .scSync { position: absolute; left: 50%; top: 9vh; transform: translateX(-50%); background: #1c1c26; border: 1px solid #555; border-radius: 10px; padding: 1.4vh 2vw; font-size: 2.6vmin; display: none; max-width: 80vw; }
-  #sceneFs .scSync.on { display: block; }
-  #sceneFs .scSync .btn { margin: 0.6vh 0.4vh 0 0; }
-  #sceneFs .scSync input { font-size: 2.6vmin; padding: .4vmin 1vmin; border-radius: 6px; border: 1px solid #666; background: #101014; color: #fff; width: 9ch; text-transform: uppercase; }
-  body.sceneOnly > :not(#sceneFs) { display: none !important; }
-  #sceneFs .scFoot { display: flex; align-items: center; gap: 2.5vmin; font-size: 2.4vmin; color: #aaa; flex-wrap: wrap; }
+  #scSync { position: fixed; left: 50%; top: 9vh; transform: translateX(-50%); background: #1c1c26; border: 1px solid #555; border-radius: 10px; padding: 1.4vh 2vw; font-size: 2.6vmin; display: none; max-width: 80vw; z-index: 10001; color: #fff; } /* v2.7.5 — panneau 📡 SORTI du calque Scène : accessible depuis le bandeau sans ouvrir la Scène */
+  #scSync.on { display: block; }
+  #scSync .btn { margin: 0.6vh 0.4vh 0 0; }
+  #scSync input { font-size: 2.6vmin; padding: .4vmin 1vmin; border-radius: 6px; border: 1px solid #666; background: #101014; color: #fff; width: 9ch; text-transform: uppercase; }
+  body.sceneOnly > :not(#sceneFs):not(#scSync) { display: none !important; } /* v2.7.5 — le panneau 📡 (rejoindre un code) reste visible côté suiveur */
+  #sceneFs .scFoot { display: flex; align-items: center; gap: 2.5vmin; font-size: calc(2.4vmin * var(--scScale, 1)); color: #aaa; flex-wrap: wrap; }
   #sceneFs .scBeat { width: 3.2vmin; height: 3.2vmin; border-radius: 50%; background: #333; display: inline-block; }
   #sceneFs .scBeat.on { background: #7ef29d; box-shadow: 0 0 1.8vmin #7ef29d; }
   #sceneFs .scBtns { position: absolute; right: 2vw; top: 2vh; display: flex; gap: 8px; }
+  #sceneFs .scOpts { position: absolute; left: 2vw; top: 2vh; display: flex; flex-direction: column; gap: 6px; z-index: 2; } /* v2.7.5 — colonne d'options Scène standardisées (comme l'afficheur) */
+  #sceneFs .scList { position: absolute; left: 2vw; top: 16vh; bottom: 10vh; width: 46vmin; background: #1c1c26; border: 1px solid #555; border-radius: 10px; overflow-y: auto; display: none; font-size: 2.4vmin; padding: .6vh 0; z-index: 3; } /* v2.7.5 — ☰ liste des chansons */
+  #sceneFs .scList.on { display: block; }
+  #sceneFs .scList .item { padding: .6vh 1.2vw; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #sceneFs .scList .item:hover { background: #2a2a33; }
+  #sceneFs .scList .item.cur { background: #2f2440; color: #c9a4ff; }
   #sceneFs button { font-size: 2.8vmin; padding: 0.6vmin 2vmin; background: #2a2a33; color: #fff; border: 1px solid #555; border-radius: 8px; cursor: pointer; }
+  #sceneFs button.off { opacity: .45; } /* v2.7.5 — option désactivée (♯ ⇄ 💡 M) */
 </style>
 </head>
 <body data-view="m2">
@@ -119,7 +129,7 @@
   <span class="badge" id="kbdBadge" title="Liaison KN2000 (badge charte)">🎹 <b id="kbdDot">○</b> KN2000</span>
   <span class="badge" id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   <span style="flex:1"></span>
-  <span><b>🎼 APC Live KN2000 — Scene</b> <span class="hint">v2.7.4 — scène déroulé Chanson ✏️ / Direct · Vue Chanson · Mode Scène · M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
+  <span><b>🎼 APC Live KN2000 — Scene</b> <span class="hint">v2.7.5 — scène standardisée Chanson ✏️ / Direct · Vue Chanson · Mode Scène · M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
   <span style="flex:1"></span>
   <nav class="hubLinks" title="Navigation entre les outils du projet (charte 7i)">
     <a href="index.html">🏠 Hub</a>
@@ -175,7 +185,7 @@
       <span class="hint" id="repDirInfo">dossier non lié — 🎹 Charger depuis répertoire (M2) demandera le fichier</span>
       <button id="repDirBtn" title="Lie le dossier commun de l'afficheur de chansons (contenant repertoire-commun.json) : le lien est mémorisé par ce navigateur et le fichier est RE-LU à chaque chargement (le Drive bureau synchronise, la liste est toujours fraîche). Navigateur sans File System Access : le clic proposera le fichier à la place">🔗 Lier le dossier…</button>
       <button id="repDirForget" title="Oublie le dossier lié (le chargement repassera par le choix du fichier)">✖ Oublier</button>
-      <span class="hint">v2.7.4 — scène déroulé Chanson ✏️ (fiche de l'afficheur, paroles affichées) / Direct (grille | … |) — la zone active est jouée ; Vue Chanson + Mode Scène synchronisés à la lecture</span>
+      <span class="hint">v2.7.5 — scène standardisée Chanson ✏️ (fiche de l'afficheur, paroles affichées) / Direct (grille | … |) — la zone active est jouée ; Vue Chanson + Mode Scène synchronisés à la lecture</span>
     </div>
   </div>
 </div>
@@ -234,6 +244,7 @@
       <button id="songViewBtn" title="Vue Chanson : la fiche mise en forme (sections, accords, paroles) — la rangée en cours est surlignée pendant la lecture">📄 Vue chanson</button>
       <button id="sceneBtn" title="Mode Scène : affichage plein écran synchronisé avec la lecture (titre, section, déroulé complet avec rangée en cours surlignée, paroles, feux de temps) — ‹§ §› figent sur une section (la lecture continue), ✔ reprend le suivi, ▶/■ pilote la lecture, Échap ou ✕ pour quitter">🎬 Scène</button>
       <button id="sceneWinBtn" title="Scène suiveuse : ouvrir l'affichage Scène dans une FENÊTRE SÉPARÉE (la page reste master). Même navigateur : suivi automatique. Autre appareil/navigateur : bouton 📡 du Mode Scène pour un code session.">🪟 Fenêtre</button>
+      <button id="scSyncTopBtn" title="Synchro multi-appareils : devenir master 📡 SANS ouvrir le Mode Scène (les afficheurs suiveurs suivent la VRAIE lecture du KN2000) — ouvre/ferme le panneau de synchro.">📡</button>
     </div>
     <div class="row"><div class="editWrap"><textarea class="grid-input" id="progInput" rows="10" spellcheck="false">// Ligne de texte = titre de section (non jouée) · // = commentaire · || ouvre un bloc, || xN le referme et le répète N fois
 Intro
@@ -369,7 +380,8 @@ Thème
       <b>Alias acceptés</b> : <code>min</code>→m · <code>maj</code>→rien · <code>7M</code>→M7 · <code>ø</code>→m7b5 · <code>°</code>→dim (ex. <code>Am6</code>, <code>D7#5</code>, <code>BbM7</code>).<br>
       <b>v2.6.31 — enrichissements</b> : qualités parenthésées <code>E(sus4)</code>→Esus4 · altérations Unicode <code>♭</code>/<code>♯</code> · <b>basses explicites</b> <code>C/B</code>, <code>Am/G</code> (la basse est envoyée une octave sous la fondamentale — le KN2000 fait sa part) · <b>basses seules</b> <code>/B</code> = accord précédent rejoué avec la basse B · <b>tolérance</b> : une qualité inconnue n'invalide plus la ligne — l'accord part en triade majeure de sa fondamentale (notes seules), signalé au journal.<br>
       <b>v2.6.32 — répertoire de l'afficheur</b> : bouton <b>🎹 Charger depuis répertoire</b> (M2) — charge <code>repertoire-commun.json</code> (export de l'afficheur de chansons), liste tous les morceaux (non ponctués en grisé) et génère la grille DIRECT <b>fidèle à la ponctuation</b> : durées réelles (les <code>.</code> = tenue), intro + sections dans l'ordre, tonalité de jeu de la fiche, tempo de la fiche si le BPM manuel n'a pas été changé. Dossier lié dans ⚙️ Réglages (relu à chaque chargement), sinon choix du fichier. Les ébauches du décodeur (apc-direct-draft-v1) sont retirées — le répertoire les remplace. <b>v2.6.33 — signature adaptative</b> : si la fiche est déverrouillée « ⏱ adaptative » (⚙️ de l'afficheur), chaque mesure À POINTS dure son nombre réel de temps (« ! G . ! » = 2 temps, « ! F . . . ! » = 4) et chaque mesure du DIRECT annonce sa longueur (<code>| 2/4 G . |</code>) — un morceau peut mélanger les mesures 2 et 4 temps (Wind of Change) ; les mesures SANS points restent au chiffrage.<br>
-      <b>v2.7.4 — scène déroulé Chanson ✏️ / Direct + Mode Scène</b> : la zone de saisie a DEUX onglets. <b>✏️ Chanson</b> accepte la fiche de l'afficheur telle quelle (<code>§ sections</code>, accords au-dessus des paroles, <code>Intro :</code>, <code>@titre:</code>, marqueurs <code>(…)</code>, <code>xN</code> en fin de rangée ou d'étiquette) et la JOUE en direct — les paroles sont affichées (📄 Vue chanson, 🎬 Scène) sans jamais être envoyées ; la grammaire est le canon commun (<code>§</code> étude cœur commun). <b>| Direct</b> reste la grille historique. Le pont <b>🎹 répertoire</b> est NON destructif : la fiche arrive en onglet Chanson, le Direct en est dérivé ; un morceau qui a déjà sa fiche est conservé (<b>↻</b> force). <b>💾 Sauver morceau</b> mémorise la fiche ET le Direct (<code>● modifié / ✓ à jour</code> ; modifier la fiche re-dérive le Direct, sauf Direct personnalisé — ↻ le re-force). <b>⚙️ Fiche</b> : signature, verrou ⏱ adaptatif, tonalité de jeu. <b>🎬 Scène</b> : plein écran synchronisé (titre, section, accords, paroles, feux de temps) — ‹§ §› figent l'affichage, ✔ suivi, Échap quitte. <b>📄 Vue chanson</b> : la fiche mise en forme, rangée en cours surlignée.<br>
+      <b>v2.7.5 — scène standardisée Chanson ✏️ / Direct + Mode Scène</b> : la zone de saisie a DEUX onglets. <b>✏️ Chanson</b> accepte la fiche de l'afficheur telle quelle (<code>§ sections</code>, accords au-dessus des paroles, <code>Intro :</code>, <code>@titre:</code>, marqueurs <code>(…)</code>, <code>xN</code> en fin de rangée ou d'étiquette) et la JOUE en direct — les paroles sont affichées (📄 Vue chanson, 🎬 Scène) sans jamais être envoyées ; la grammaire est le canon commun (<code>§</code> étude cœur commun). <b>| Direct</b> reste la grille historique. Le pont <b>🎹 répertoire</b> est NON destructif : la fiche arrive en onglet Chanson, le Direct en est dérivé ; un morceau qui a déjà sa fiche est conservé (<b>↻</b> force). <b>💾 Sauver morceau</b> mémorise la fiche ET le Direct (<code>● modifié / ✓ à jour</code> ; modifier la fiche re-dérive le Direct, sauf Direct personnalisé — ↻ le re-force). <b>⚙️ Fiche</b> : signature, verrou ⏱ adaptatif, tonalité de jeu. <b>🎬 Scène</b> : plein écran synchronisé (titre, section, accords, paroles, feux de temps) — ‹§ §› figent l'affichage, ✔ suivi, Échap quitte. <b>📄 Vue chanson</b> : la fiche mise en forme, rangée en cours surlignée.<br>
+      <b>v2.7.5 — Scène standardisée + synchro instantanée</b> : le Mode Scène se pilote comme l'afficheur — <b>☰</b> liste des chansons (clic = chargement), <b>⏮ ⏭</b> chanson précédente/suivante, <b>⏹ début</b> stoppe et revient à la première rangée, <b>♯</b> accords ou paroles seules, <b>⇄</b> vue grille (texte d'origine) ou accords joués, <b>− +</b> transposition d'AFFICHAGE (mémorisée — la séquence jouée ne change JAMAIS), <b>💡</b> feux de temps, <b>M</b> décompte, <b>A− A+</b> ou <b>Ctrl+molette</b> = zoom PROPRE à la Scène (le zoom du navigateur ne suit plus à la sortie). La fenêtre 🪟 suiveuse est INSTANTANÉE (envoi immédiat à chaque changement d'état, scroll immédiat). Bouton <b>📡 au bandeau</b> : devenir master SANS ouvrir la Scène ; la fiche du morceau est poussée à chaque changement de morceau — l'afficheur v0.17 affiche les paroles du morceau INVITÉ même absent de son répertoire.<br>
       <b>Exemple complet</b> :<br>
       <code>Intro</code><br>
       <code>||</code><br>
@@ -391,15 +403,30 @@ Thème
     <button id="scNext" title="Section suivante (affichage figé — la lecture continue)">§›</button>
     <button id="scFollow" title="Reprendre le suivi automatique de la lecture">✔ suivi</button>
     <button id="scPlay" title="▶ Démarrer / ■ Stop (les mêmes boutons que la page)">▶</button>
+    <button id="scRew" title="Retour au début : stoppe la lecture et surligne la première rangée">⏹ début</button>
     <button id="scSyncBtn" title="Synchro multi-appareils : master (cette page pilote des affichages suiveurs — fenêtre APC ou afficheur de chansons, même code session) ou suiveur (cette fenêtre rejoint un master par code)">📡</button>
     <button id="scClose" title="Quitter le Mode Scène (Échap)">✕</button>
   </div>
-  <div class="scSync" id="scSync"><div id="scSyncBody"></div></div>
+  <div class="scOpts"> <!-- v2.7.5 — Scène standardisée comme l'afficheur -->
+    <button id="scChordsBtn" title="♯ Accords affichés / paroles seules (mémorisé)">♯</button>
+    <button id="scGridBtn" title="⇄ Vue grille (texte d'origine des rangées) / déroulé des accords joués (mémorisé)">⇄</button>
+    <button id="scTrL" title="Transposition d'AFFICHAGE −½ ton (la séquence jouée ne change JAMAIS)">−</button>
+    <button id="scTrR" title="Transposition d'AFFICHAGE +½ ton (la séquence jouée ne change JAMAIS)">+</button>
+    <button id="scBeatBtn" title="💡 Feux de temps on/off (mémorisé)">💡</button>
+    <button id="scMesBtn" title="M Décompte de mesures on/off (mémorisé)">M</button>
+    <button id="scFontL" title="Zoom Scène − (ou Ctrl+molette) — propre à la Scène, le navigateur ne suit plus à la sortie">A−</button>
+    <button id="scFontR" title="Zoom Scène + (ou Ctrl+molette) — propre à la Scène, le navigateur ne suit plus à la sortie">A+</button>
+    <button id="scListBtn" title="☰ Liste des chansons (clic = chargement, même chemin que la liste Morceaux)">☰</button>
+    <button id="scSongPrev" title="Chanson précédente de la liste Morceaux">⏮</button>
+    <button id="scSongNext" title="Chanson suivante de la liste Morceaux">⏭</button>
+  </div>
+  <div class="scList" id="scList"></div>
   <div class="scTitle" id="scTitle"></div>
   <div class="scSec" id="scSec"></div>
   <div class="scZone" id="scZone"></div>
-  <div class="scFoot"><span id="scBeats"></span><span id="scCount"></span><span id="scTempo"></span><span style="color:#777">‹§ §› sections · ✔ suivi · Échap quitter</span></div>
+  <div class="scFoot"><span id="scBeats"></span><span id="scCount"></span><span id="scTempo"></span><span id="scTrInfo"></span><span style="color:#777">‹§ §› sections · ✔ suivi · Échap quitter</span></div>
 </div>
+<div class="scSync" id="scSync"><div id="scSyncBody"></div></div> <!-- v2.7.5 — panneau 📡 déplacé HORS du calque Scène (accessible depuis le bandeau) -->
 <script>
 "use strict";
 
@@ -1852,8 +1879,51 @@ document.getElementById("songViewBtn").onclick = () => {
 function sceneView() { // v2.7.4 — la source d'affichage Scène : morceau local (master) ou flux suiveur (?scene=1)
   return (SCENE_ONLY && window.__scFollowSong) ? window.__scFollowSong : (songRows || { title: "", secs: [], rows: [] });
 }
+// ═══ v2.7.5 — Scène STANDARDISÉE (comme l'afficheur) : options d'affichage mémorisées + zoom propre à la Scène ═══
+const SCENE_OPTS_KEY = "kn2000-apc-scene-opts-v1";
+let scOpts = { chords: true, grid: false, tr: 0, beats: true, mes: true, scale: 1 }; // v2.7.5 — réglages Scène : accords / grille / transposition d'affichage / feux / décompte / zoom
+try { Object.assign(scOpts, JSON.parse(localStorage.getItem(SCENE_OPTS_KEY) || "{}")); } catch (e) {}
+function scOptsSave() { try { localStorage.setItem(SCENE_OPTS_KEY, JSON.stringify(scOpts)); } catch (e) {} }
+function scOptsView() { // réglages EFFECTIFS : côté suiveur (?scene=1), le master impose accords/grille/transposition ; zoom/feux restent locaux
+  return (SCENE_ONLY && window.__scFollowOpts) ? Object.assign({}, scOpts, window.__scFollowOpts) : scOpts;
+}
+function scTrText(t, semis) { // v2.7.5 — transposition d'AFFICHAGE par token (repTrChord, tokens non-accords inchangés) — ne modifie JAMAIS la séquence jouée
+  if (!semis) return t;
+  return String(t || "").split(/(\s+)/).map(tk => (/^[A-G]/.test(tk) ? repTrChord(tk, semis) : tk)).join("");
+}
+function scSetScale(n) { // v2.7.5 — zoom Scène : clamp 0.5–3, 2 décimales, mémorisé
+  scOpts.scale = Math.max(0.5, Math.min(3, Math.round((n || 1) * 100) / 100));
+  scOptsSave(); scOptsApply();
+}
+function scOptsApply() { // v2.7.5 — boutons .off selon état, info transposition, feux/décompte visibles, variable --scScale
+  const O = scOptsView();
+  document.documentElement.style.setProperty("--scScale", String(O.scale || 1));
+  for (const pair of [["scChordsBtn", "chords"], ["scGridBtn", "grid"], ["scBeatBtn", "beats"], ["scMesBtn", "mes"]]) {
+    const b = document.getElementById(pair[0]); if (b) b.classList.toggle("off", !O[pair[1]]);
+  }
+  const ti = document.getElementById("scTrInfo"); if (ti) ti.textContent = O.tr ? ("♯ " + (O.tr > 0 ? "+" : "") + O.tr) : "";
+  const sb = document.getElementById("scBeats"); if (sb) sb.style.display = O.beats ? "" : "none";
+  const sc = document.getElementById("scCount"); if (sc) sc.style.display = O.mes ? "" : "none";
+}
+function scListRender() { // v2.7.5 — ☰ liste des chansons dans l'ordre de la liste Morceaux (clic = MÊME chemin que la liste principale)
+  const list = document.getElementById("scList"); if (!list) return;
+  const h = [];
+  for (const s of songs.songs) h.push('<div class="item' + (s.id === curSongId ? " cur" : "") + '" data-id="' + escF(s.id) + '">' + escF((s.numero || "") + " " + (s.title || "")) + "</div>");
+  list.innerHTML = h.join("");
+  list.querySelectorAll(".item").forEach(it => { it.onclick = () => { editBase = zoneVal(); try { document.getElementById("songSel").value = it.dataset.id; document.getElementById("songSel").onchange(); } catch (e) {} }; });
+}
+function scSongStep(d) { // v2.7.5 — ⏮ ⏭ : morceau précédent/suivant dans la liste Morceaux
+  const i = songs.songs.findIndex(s => s.id === curSongId);
+  if (i < 0) return;
+  const j = i + d;
+  if (j < 0 || j >= songs.songs.length) return;
+  const s = songs.songs[j];
+  editBase = zoneVal();
+  try { document.getElementById("songSel").value = s.id; document.getElementById("songSel").onchange(); } catch (e) {}
+}
 function sceneRowsBuild() { // v2.7.4 — déroulé COMPLET (comme l'afficheur) : sections + marqueurs + rangées + paroles
   const R = sceneView();
+  const O = scOptsView(); // v2.7.5 — options Scène standardisées
   const fz = (sceneStick != null);
   const h = [];
   let lastSec = -2;
@@ -1867,22 +1937,23 @@ function sceneRowsBuild() { // v2.7.4 — déroulé COMPLET (comme l'afficheur) 
         if (sec.marker) h.push('<div class="scMarker">' + escF(sec.marker) + "</div>");
       }
     }
-    h.push('<div class="scRow' + (fz && r.secIdx === sceneStick ? " fz" : "") + '" data-r="' + r.rowIdx + '">' + escF(r.textJoue || r.text || "") + "</div>");
-    if (r.lyric) h.push('<div class="scRowLy' + (fz && r.secIdx === sceneStick ? " fz" : "") + '">' + escF(r.lyric) + "</div>");
+    const accTxt = scTrText(O.grid ? (r.text || "") : (r.textJoue || r.text || ""), O.tr); // v2.7.5 — options effectives : grille = texte d'origine, sinon accords JOUÉS ; transposition d'affichage par token
+    if (O.chords && accTxt.trim()) h.push('<div class="scRow' + (fz && r.secIdx === sceneStick ? " fz" : "") + '" data-r="' + r.rowIdx + '">' + escF(accTxt) + "</div>");
+    if (!O.grid && r.lyric) h.push('<div class="scRowLy' + (fz && r.secIdx === sceneStick ? " fz" : "") + (O.chords ? "" : " solo") + '" data-r="' + r.rowIdx + '">' + escF(r.lyric) + "</div>"); // v2.7.5 — paroles seules (♯ off) = rangée plein poids, surlignable
   }
   return h.join("") || '<div class="scEmpty">' + (SCENE_ONLY
     ? "En attente du master — ouvre la page APC Live dans ce navigateur (suivi automatique), ou 📡 saisis un code session."
     : "Rien à afficher — charge un morceau (ou une fiche 🎹) puis ▶.") + "</div>";
 }
-function sceneHlRow(rIdx, scroll) { // v2.7.4 — surligne la rangée en cours + section courante (sans reconstruire le déroulé)
+function sceneHlRow(rIdx, scroll) { // v2.7.5 — surligne la rangée en cours (accords OU paroles seules) + section courante
   const z = document.getElementById("scZone");
   if (!z) return;
   const R = sceneView();
-  z.querySelectorAll(".scRow.cur").forEach(el => el.classList.remove("cur"));
+  z.querySelectorAll(".cur").forEach(el => el.classList.remove("cur"));
   const r = (rIdx != null && R.rows) ? R.rows[rIdx] : null;
   if (!r) return;
-  const el = z.querySelector('.scRow[data-r="' + rIdx + '"]');
-  if (el) { el.classList.add("cur"); if (scroll) { try { el.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) {} } }
+  const el = z.querySelector('.scRow[data-r="' + rIdx + '"], .scRowLy[data-r="' + rIdx + '"]');
+  if (el) { el.classList.add("cur"); if (scroll) { try { el.scrollIntoView({ behavior: "auto", block: "center" }); } catch (e) {} } } // v2.7.5 — retour terrain : scroll IMMÉDIAT (plus de « smooth » → décalage de synchro)
   const sec = (R.secs || [])[r.secIdx];
   document.getElementById("scSec").textContent = (sec && sec.label) || "";
 }
@@ -1929,6 +2000,7 @@ function sceneSync(ev) { // appelé par markChord : la Scène suit la lecture (s
   curEv = ev || null;
   curEvAt = performance.now();
   if (sceneOn && sceneStick == null && curEv && curEv.rowIdx != null) sceneHlRow(curEv.rowIdx, true);
+  try { if (!SCENE_ONLY && typeof sceneSendAll === "function") sceneSendAll(false); } catch (e) {} // v2.7.5 — retour terrain : envoi IMMÉDIAT à chaque changement d'état (plus seulement l'intervalle 250 ms)
 }
 document.getElementById("sceneBtn").onclick = () => sceneOn ? sceneClose() : sceneOpen();
 document.getElementById("scClose").onclick = sceneClose;
@@ -1936,6 +2008,21 @@ document.getElementById("scFollow").onclick = () => { sceneStick = null; sceneRe
 document.getElementById("scPrev").onclick = () => { sceneStick = Math.max(0, sceneStickyIdx() - 1); sceneRender(); };
 document.getElementById("scNext").onclick = () => { sceneStick = Math.min(((sceneView().secs) || []).length - 1, sceneStickyIdx() + 1); sceneRender(); };
 document.getElementById("scPlay").onclick = () => { if (SCENE_ONLY) return; document.getElementById(seqQueue === null ? "play" : "stopPlay").click(); };
+// ── v2.7.5 — Scène standardisée : ♯ ⇄ −+ 💡 M A− A+ ☰ ⏮ ⏭ ⏹ ──
+document.getElementById("scChordsBtn").onclick = () => { scOpts.chords = !scOpts.chords; scOptsSave(); scOptsApply(); if (sceneOn) sceneRender(); };
+document.getElementById("scGridBtn").onclick = () => { scOpts.grid = !scOpts.grid; scOptsSave(); scOptsApply(); if (sceneOn) sceneRender(); };
+document.getElementById("scTrL").onclick = () => { scOpts.tr = Math.max(-11, Math.min(11, (scOpts.tr || 0) - 1)); scOptsSave(); scOptsApply(); if (sceneOn) sceneRender(); };
+document.getElementById("scTrR").onclick = () => { scOpts.tr = Math.max(-11, Math.min(11, (scOpts.tr || 0) + 1)); scOptsSave(); scOptsApply(); if (sceneOn) sceneRender(); };
+document.getElementById("scBeatBtn").onclick = () => { scOpts.beats = !scOpts.beats; scOptsSave(); scOptsApply(); };
+document.getElementById("scMesBtn").onclick = () => { scOpts.mes = !scOpts.mes; scOptsSave(); scOptsApply(); };
+document.getElementById("scFontL").onclick = () => scSetScale((scOpts.scale || 1) - 0.1); // v2.7.5 — zoom PROPRE à la Scène
+document.getElementById("scFontR").onclick = () => scSetScale((scOpts.scale || 1) + 0.1);
+document.getElementById("scListBtn").onclick = () => { const l = document.getElementById("scList"); l.classList.toggle("on"); if (l.classList.contains("on")) scListRender(); };
+document.getElementById("scSongPrev").onclick = () => scSongStep(-1);
+document.getElementById("scSongNext").onclick = () => scSongStep(1);
+document.getElementById("scRew").onclick = () => { try { if (seqQueue !== null) document.getElementById("stopPlay").click(); } catch (e) {} try { sceneHlRow(0, true); } catch (e) {} }; // ⏹ début
+window.addEventListener("wheel", (e) => { if (sceneOn && e.ctrlKey) { e.preventDefault(); scSetScale((scOpts.scale || 1) + (e.deltaY < 0 ? 0.1 : -0.1)); } }, { passive: false }); // v2.7.5 — Ctrl+molette = zoom Scène (le zoom navigateur ne suit plus)
+scOptsApply(); // v2.7.5 — pose --scScale et les états .off dès le boot
 window.addEventListener("keydown", (e) => { if (e.key === "Escape" && sceneOn) sceneClose(); });
 setInterval(() => { // feux de temps + compteurs du Mode Scène (léger : ne tourne que si la Scène est ouverte)
   if (!sceneOn) return;
@@ -1976,7 +2063,8 @@ function sceneFollowState() { // → message apcState (résumé de la lecture co
   return { t: "apcState", title: R.title || "", rowIdx: (ev && ev.rowIdx != null) ? ev.rowIdx : null,
     secIdx: (ev && ev.secIdx != null) ? ev.secIdx : null, hl: (ev && ev.hl != null) ? ev.hl : null,
     pNo: (ev && ev.pNo) || 0, pTot: (seqPlayedMeasures || seqMeasures || 0),
-    bpm: curBpm(), mb: (ev && ev.mb) || 4, playing: seqQueue !== null };
+    bpm: curBpm(), mb: (ev && ev.mb) || 4, playing: seqQueue !== null,
+    opts: { chords: scOpts.chords, grid: scOpts.grid, tr: scOpts.tr } }; // v2.7.5 — le master impose ses réglages d'affichage au suiveur
 }
 function affSongOf() { // → message « song » du protocole AFFICHEUR (data = objet répertoire si le morceau en vient, sinon texte fiche)
   const s = songById(curSongId) || {};
@@ -1995,6 +2083,10 @@ function affStateOf(st) { // → message « state » du protocole AFFICHEUR (hl 
 function scFollowApplySong(m) { window.__scFollowSong = { title: m.title || "", secs: m.secs || [], rows: m.rows || [] }; }
 function scFollowApplyState(m) {
   window.__scFollowPlaying = !!m.playing; window.__scFollowBpm = m.bpm || null; window.__scFollowPTot = m.pTot || 0;
+  if (m.opts) { // v2.7.5 — options d'affichage imposées par le master (accords/grille/transposition) ; zoom/feux restent locaux
+    const k = JSON.stringify(m.opts);
+    if (k !== (window.__scFollowOptsKey || "")) { window.__scFollowOpts = m.opts; window.__scFollowOptsKey = k; scOptsApply(); if (sceneOn) sceneRender(); }
+  }
   curEv = { rowIdx: m.rowIdx, secIdx: m.secIdx, pNo: m.pNo, mb: m.mb || 4, cum: 0 };
   curEvAt = performance.now();
   if (sceneOn && sceneStick == null && m.rowIdx != null) sceneHlRow(m.rowIdx, true);
@@ -2076,11 +2168,17 @@ function syncUi() {
   const stp = document.getElementById("scStopBtn"); if (stp) stp.onclick = () => { syncStop(true); scSyncSay("Synchro arrêtée."); };
 }
 document.getElementById("scSyncBtn").onclick = () => { const p = document.getElementById("scSync"); p.classList.toggle("on"); if (p.classList.contains("on")) syncUi(); };
+document.getElementById("scSyncTopBtn").onclick = () => { const p = document.getElementById("scSync"); p.classList.toggle("on"); if (p.classList.contains("on")) syncUi(); }; // v2.7.5 — 📡 au bandeau : master sans ouvrir la Scène
 document.getElementById("sceneWinBtn").onclick = () => { try { window.open(location.href.split(/[?#]/)[0] + "?scene=1", "_blank"); } catch (e) {} };
 // ── diffusion master : BroadcastChannel + connexions PeerJS (envoi seulement sur changement — léger) ──
-let scStateKey = "", scSongKey = "", scSongRef = null;
+let scStateKey = "", scSongKey = "", scSongRef = null, scLastAffId = null; // v2.7.5 — scLastAffId : la fiche part aux afficheurs à chaque changement de morceau
 function sceneSendAll(force) {
   if (SCENE_ONLY) return;
+  if (curSongId !== scLastAffId) { // v2.7.5 — retour terrain : l'afficheur v0.17 « invité » ignore les morceaux absents de son répertoire → la page POUSSE la fiche à chaque changement de morceau
+    scLastAffId = curSongId;
+    const sg2 = affSongOf();
+    if (sg2) { if (scBC) scBC.postMessage(sg2); for (const c of SYNC.conns) if (c._kind === "aff") syncSendTo(c, sg2); }
+  }
   const sg = (force || songRows !== scSongRef) ? sceneSongPayload() : null;
   const st = sceneFollowState();
   const key = [st.title, st.rowIdx, st.pNo, st.playing, st.bpm, st.hl].join("|");
@@ -2097,6 +2195,7 @@ if (SCENE_ONLY) {
   document.body.classList.add("sceneOnly");
   sceneOn = true; sceneStick = null;
   document.getElementById("sceneFs").classList.add("on");
+  for (const id of ["scListBtn", "scSongPrev", "scSongNext", "scRew", "scGridBtn", "scChordsBtn", "scTrL", "scTrR"]) { const b = document.getElementById(id); if (b) b.style.display = "none"; } // v2.7.5 — réglages de session décidés par le MASTER seul
   sceneRender();
 }
 
