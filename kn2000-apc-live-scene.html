@@ -89,39 +89,46 @@
   .svLyric { color: #333; font-style: italic; padding: 0 6px 4px; }
   .svRow.cur { background: #e9d8ff; box-shadow: inset 0 0 0 1px #5b2d8e; }
   .svMarker { color: #888; font-style: italic; padding: 0 6px; }
-  #sceneFs { position: fixed; inset: 0; background: #101014; color: #fff; z-index: 9999; display: none; flex-direction: column; padding: 2vh 3vw; }
+  /* v2.7.9 — Mode Scène = charte IDENTIQUE à l'afficheur de chansons v0.17.1 (#scene / #sceneBar / #sceneZone) */
+  #sceneFs { position: fixed; inset: 0; background: #10151b; color: #e8e8e8; z-index: 9999; display: none; flex-direction: column; }
   #sceneFs.on { display: flex; }
-  /* v2.7.6 — zoom Scène PROPRE : variable --scScale (boutons A−/A+ ou Ctrl+molette), le zoom du NAVIGATEUR ne suit plus à la sortie */
-  #sceneFs .scTitle { font-size: calc(4vmin * var(--scScale, 1)); font-weight: 700; }
-  #sceneFs .scSec { font-size: calc(3vmin * var(--scScale, 1)); color: #c9a4ff; margin-top: 1vh; }
-  #sceneFs .scZone { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; margin-top: 1vh; }
-  #sceneFs .scSecLbl { color: #c9a4ff; font-weight: 700; font-size: calc(3.4vmin * var(--scScale, 1)); margin: 2.2vh 0 0.6vh; }
-  #sceneFs .scMarker { color: #888; font-size: calc(2.4vmin * var(--scScale, 1)); margin: 0 0 0.4vh; }
-  #sceneFs .scRow { font-family: ui-monospace, Consolas, monospace; font-size: calc(4.6vmin * var(--scScale, 1)); font-weight: 700; line-height: 1.3; padding: 0.9vh 1.2vw; border-radius: 10px; white-space: pre-wrap; }
-  #sceneFs .scRow.cur { background: rgba(126, 242, 157, .14); color: #7ef29d; box-shadow: inset 0 0 0 2px rgba(126, 242, 157, .5); }
-  #sceneFs .scRowLy { font-size: calc(3vmin * var(--scScale, 1)); font-style: italic; color: #ccc; padding: 0 1.2vw 0.6vh; white-space: pre-wrap; }
-  #sceneFs .scRowLy.cur { background: rgba(126, 242, 157, .14); color: #7ef29d; box-shadow: inset 0 0 0 2px rgba(126, 242, 157, .5); font-style: normal; } /* v2.7.6 — rangée paroles surlignée quand les accords sont masqués */
-  #sceneFs .scRowLy.solo { color: #fff; font-style: normal; font-weight: 600; font-size: calc(3.6vmin * var(--scScale, 1)); } /* v2.7.6 — paroles seules (♯ off) : plein poids */
-  #sceneFs .scEmpty { color: #777; font-size: calc(3vmin * var(--scScale, 1)); padding: 3vh 0; }
-  #sceneFs.scFrozen .scSecLbl, #sceneFs.scFrozen .scRow, #sceneFs.scFrozen .scRowLy { opacity: .3; }
+  #sceneFs .scBar { display: flex; align-items: center; gap: 6px; padding: 8px 10px; background: #1a222c; flex-wrap: wrap; }
+  #sceneFs .scBar button { font-size: 15px; padding: 6px 12px; background: #2a3644; color: #e8e8e8; border: 1px solid #3a4a5c; border-radius: 8px; cursor: pointer; }
+  #sceneFs .scBar button.off { opacity: .45; }
+  #sceneFs .scBar .t { flex: 1; min-width: 120px; font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #sceneFs .scBar .meta { color: #9fc4e8; font-size: 14px; white-space: nowrap; }
+  #sceneFs .beats { display: inline-flex; gap: 5px; align-items: center; }
+  #sceneFs .beats .b { width: 13px; height: 13px; border-radius: 50%; background: #2a3644; border: 1px solid #3a4a5c; }
+  #sceneFs .beats .b.red { border-color: #b44; }
+  #sceneFs .beats .b.grn { border-color: #3a5; }
+  #sceneFs .beats .b.on.red { background: #ff3b3b; box-shadow: 0 0 10px #ff3b3b; }
+  #sceneFs .beats .b.on.grn { background: #2ecc5b; box-shadow: 0 0 10px #2ecc5b; }
+  #sceneFs .scMain { flex: 1; position: relative; overflow: hidden; display: flex; min-height: 0; }
+  #sceneFs .scZone { flex: 1; overflow-y: auto; padding: 2vh 3vw; font-family: ui-monospace, Menlo, Consolas, monospace; cursor: pointer; scrollbar-width: thin; font-size: calc(24px * var(--scScale, 1)); } /* v2.7.9 — taille afficheur (14×1.7≈24px) × zoom propre A−/A+ */
+  #sceneFs .scZone .secLbl { color: #ffd479; margin: 16px 0 6px; font-weight: 700; }
+  #sceneFs .scZone .ln { margin: 0 0 1vh; border-radius: 8px; padding: 2px 6px; }
+  #sceneFs .scZone .ln.hl { background: #23425f; box-shadow: 0 0 0 2px #3a6a9c; }
+  #sceneFs .scZone .ln .ch { color: #8fd0ff; font-weight: 600; white-space: pre; }
+  #sceneFs .scZone .ln .ly { white-space: pre-wrap; }
+  #sceneFs .scZone .chordsOnly, #sceneFs .scZone .introLn { color: #8fd0ff; font-weight: 600; white-space: pre; }
+  #sceneFs .scZone .chordsOnly.hl, #sceneFs .scZone .introLn.hl { background: #23425f; box-shadow: 0 0 0 2px #3a6a9c; border-radius: 8px; padding: 2px 6px; }
+  #sceneFs .scZone .markerLn { color: #e0b050; font-style: italic; }
+  #sceneFs .scZone .gridLn { font-family: ui-monospace, Consolas, monospace; white-space: pre; color: #7fd0ff; }
+  #sceneFs .scZone .msr.on { background: rgba(122, 79, 208, .38); border-radius: 4px; }
+  #sceneFs .scZone .secLbl.inst, #sceneFs .scZone .introLn.inst { font-style: italic; opacity: .72; }
+  #sceneFs .scZone .empty { color: #888; text-align: center; padding-top: 30vh; }
+  #sceneFs.scFrozen .scZone > :not(.fz) { opacity: .3; }
   #sceneFs.scFrozen .fz { opacity: 1; }
   #scSync { position: fixed; left: 50%; top: 9vh; transform: translateX(-50%); background: #1c1c26; border: 1px solid #555; border-radius: 10px; padding: 1.4vh 2vw; font-size: 2.6vmin; display: none; max-width: 80vw; z-index: 10001; color: #fff; } /* v2.7.6 — panneau 📡 SORTI du calque Scène : accessible depuis le bandeau sans ouvrir la Scène */
   #scSync.on { display: block; }
   #scSync .btn { margin: 0.6vh 0.4vh 0 0; }
   #scSync input { font-size: 2.6vmin; padding: .4vmin 1vmin; border-radius: 6px; border: 1px solid #666; background: #101014; color: #fff; width: 9ch; text-transform: uppercase; }
   body.sceneOnly > :not(#sceneFs):not(#scSync) { display: none !important; } /* v2.7.6 — le panneau 📡 (rejoindre un code) reste visible côté suiveur */
-  #sceneFs .scFoot { display: flex; align-items: center; gap: 2.5vmin; font-size: calc(2.4vmin * var(--scScale, 1)); color: #aaa; flex-wrap: wrap; }
-  #sceneFs .scBeat { width: 3.2vmin; height: 3.2vmin; border-radius: 50%; background: #333; display: inline-block; }
-  #sceneFs .scBeat.on { background: #7ef29d; box-shadow: 0 0 1.8vmin #7ef29d; }
-  #sceneFs .scBtns { position: absolute; right: 2vw; top: 2vh; display: flex; gap: 8px; }
-  #sceneFs .scOpts { position: absolute; left: 2vw; top: 2vh; display: flex; flex-direction: column; gap: 6px; z-index: 2; } /* v2.7.6 — colonne d'options Scène standardisées (comme l'afficheur) */
-  #sceneFs .scList { position: absolute; left: 2vw; top: 16vh; bottom: 10vh; width: 46vmin; background: #1c1c26; border: 1px solid #555; border-radius: 10px; overflow-y: auto; display: none; font-size: 2.4vmin; padding: .6vh 0; z-index: 3; } /* v2.7.6 — ☰ liste des chansons */
+  #sceneFs .scList { position: absolute; top: 0; left: 0; bottom: 0; width: min(60vw, 440px); background: #141b23; border-right: 2px solid #2c3a4a; overflow-y: auto; display: none; z-index: 2; cursor: pointer; } /* v2.7.9 — liste façon afficheur (#sceneList) */
   #sceneFs .scList.on { display: block; }
-  #sceneFs .scList .item { padding: .6vh 1.2vw; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #sceneFs .scList .item:hover { background: #2a2a33; }
-  #sceneFs .scList .item.cur { background: #2f2440; color: #c9a4ff; }
-  #sceneFs button { font-size: 2.8vmin; padding: 0.6vmin 2vmin; background: #2a2a33; color: #fff; border: 1px solid #555; border-radius: 8px; cursor: pointer; }
-  #sceneFs button.off { opacity: .45; } /* v2.7.6 — option désactivée (♯ ⇄ 💡 M) */
+  #sceneFs .scList .item { padding: 7px 14px; border-bottom: 1px solid #1c2530; color: #e8e8e8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #sceneFs .scList .item:hover { background: #1c2530; }
+  #sceneFs .scList .item.cur { background: #1273b0; color: #fff; }
 </style>
 </head>
 <body data-view="m2">
@@ -129,7 +136,7 @@
   <span class="badge" id="kbdBadge" title="Liaison KN2000 (badge charte)">🎹 <b id="kbdDot">○</b> KN2000</span>
   <span class="badge" id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   <span style="flex:1"></span>
-  <span><b>🎼 APC Live KN2000 — Scene</b> <span class="hint">v2.7.6 — scène standardisée Chanson ✏️ / Direct · Vue Chanson · Mode Scène · M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
+  <span><b>🎼 APC Live KN2000 — Scene</b> <span class="hint">v2.7.9 — Mode Scène = charte identique à l'afficheur de chansons v0.17.1 · Vue Chanson · Mode Scène · M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
   <span style="flex:1"></span>
   <nav class="hubLinks" title="Navigation entre les outils du projet (charte 7i)">
     <a href="index.html">🏠 Hub</a>
@@ -398,34 +405,37 @@ Thème
   </div>
 </div>
 <div id="sceneFs" aria-hidden="true">
-  <div class="scBtns">
+  <div class="scBar"> <!-- v2.7.9 — barre identique à #sceneBar de l'afficheur v0.17.1 -->
+    <button id="scListBtn" title="☰ Liste des chansons (même ordre que la liste Morceaux)">☰</button>
+    <span id="scBeats" class="beats"></span>
+    <span class="t" id="scTitle"></span>
+    <span class="meta" id="scMeta"></span>
+    <span class="meta" id="scCount"></span>
     <button id="scPrev" title="Section précédente (affichage figé — la lecture continue)">‹§</button>
     <button id="scNext" title="Section suivante (affichage figé — la lecture continue)">§›</button>
     <button id="scFollow" title="Reprendre le suivi automatique de la lecture">✔ suivi</button>
     <button id="scPlay" title="▶ Démarrer / ■ Stop (les mêmes boutons que la page)">▶</button>
     <button id="scRew" title="Retour au début : stoppe la lecture et surligne la première rangée">⏹ début</button>
-    <button id="scSyncBtn" title="Synchro multi-appareils : master (cette page pilote des affichages suiveurs — fenêtre APC ou afficheur de chansons, même code session) ou suiveur (cette fenêtre rejoint un master par code)">📡</button>
-    <button id="scClose" title="Quitter le Mode Scène (Échap)">✕</button>
-  </div>
-  <div class="scOpts"> <!-- v2.7.6 — Scène standardisée comme l'afficheur -->
-    <button id="scChordsBtn" title="♯ Accords affichés / paroles seules (mémorisé)">♯</button>
-    <button id="scGridBtn" title="⇄ Vue grille (texte d'origine des rangées) / déroulé des accords joués (mémorisé)">⇄</button>
-    <button id="scTrL" title="Transposition d'AFFICHAGE −½ ton (la séquence jouée ne change JAMAIS)">−</button>
-    <button id="scTrR" title="Transposition d'AFFICHAGE +½ ton (la séquence jouée ne change JAMAIS)">+</button>
-    <button id="scBeatBtn" title="💡 Feux de temps on/off (mémorisé)">💡</button>
-    <button id="scMesBtn" title="M Décompte de mesures on/off (mémorisé)">M</button>
-    <button id="scFontL" title="Zoom Scène − (ou Ctrl+molette) — propre à la Scène, le navigateur ne suit plus à la sortie">A−</button>
-    <button id="scFontR" title="Zoom Scène + (ou Ctrl+molette) — propre à la Scène, le navigateur ne suit plus à la sortie">A+</button>
-    <button id="scListBtn" title="☰ Liste des chansons (clic = chargement, même chemin que la liste Morceaux)">☰</button>
     <button id="scSongPrev" title="Chanson précédente de la liste Morceaux">⏮</button>
     <button id="scSongNext" title="Chanson suivante de la liste Morceaux">⏭</button>
+    <button id="scChordsBtn" title="♯ Accords affichés / paroles seules (mémorisé)">♯</button>
+    <button id="scGridBtn" title="⇄ Vue grille / déroulé des accords joués (mémorisé)">⇄</button>
+    <button id="scTrL" title="Transposition d'AFFICHAGE −½ ton (la séquence jouée ne change JAMAIS)">−</button>
+    <button id="scTrR" title="Transposition d'AFFICHAGE +½ ton (la séquence jouée ne change JAMAIS)">+</button>
+    <span class="meta" id="scTrInfo"></span>
+    <button id="scBeatBtn" title="💡 Feux de temps on/off (mémorisé)">💡</button>
+    <button id="scMesBtn" title="M Décompte de mesures on/off (mémorisé)">M</button>
+    <button id="scFontL" title="Zoom Scène − (propre à la Scène)">A−</button>
+    <button id="scFontR" title="Zoom Scène + (propre à la Scène)">A+</button>
+    <span class="meta" id="scTempo"></span>
+    <span class="meta" id="scSec"></span>
+    <button id="scSyncBtn" title="Synchro multi-appareils : master ou suiveur (même code session que l'afficheur de chansons)">📡</button>
+    <button id="scClose" title="Quitter le Mode Scène (Échap)">✕</button>
   </div>
-  <div class="scList" id="scList"></div>
-  <div class="scTitle" id="scTitle"></div>
-  <div class="scSec" id="scSec"></div>
-  <div class="scZone" id="scZone"></div>
-  <div class="scFoot"><span id="scBeats"></span><span id="scCount"></span><span id="scTempo"></span><span id="scTrInfo"></span><span style="color:#777">‹§ §› sections · ✔ suivi · Échap quitter</span></div>
-</div>
+  <div class="scMain">
+    <div class="scList" id="scList"></div>
+    <div class="scZone" id="scZone"></div>
+  </div>
 <div class="scSync" id="scSync"><div id="scSyncBody"></div></div> <!-- v2.7.6 — panneau 📡 déplacé HORS du calque Scène (accessible depuis le bandeau) -->
 <script>
 "use strict";
@@ -1936,9 +1946,9 @@ function gridNormTxt(raw, R) { // v2.7.6 — vue grille : format constant façon
   if (pm.err || !pm.measures || !pm.measures.length) return t;
   return "| " + pm.measures.map(m => SArep.slotsMeasure(m, beats)).join(" | ") + " |";
 }
-function sceneRowsBuild() { // v2.7.4 — déroulé COMPLET (comme l'afficheur) : sections + marqueurs + rangées + paroles
+function sceneRowsBuild() { // v2.7.9 — markup IDENTIQUE à l'afficheur v0.17.1 : secLbl / markerLn / ln>(.ch+.ly) / chordsOnly
   const R = sceneView();
-  const O = scOptsView(); // v2.7.6 — options Scène standardisées
+  const O = scOptsView();
   const fz = (sceneStick != null);
   const h = [];
   let lastSec = -2;
@@ -1948,15 +1958,18 @@ function sceneRowsBuild() { // v2.7.4 — déroulé COMPLET (comme l'afficheur) 
       const sec = R.secs[r.secIdx];
       if (sec) {
         const cls = (fz && r.secIdx === sceneStick) ? " fz" : "";
-        h.push('<div class="scSecLbl' + cls + '">' + escF(sec.label || "·") + "</div>");
-        if (sec.marker) h.push('<div class="scMarker">' + escF(sec.marker) + "</div>");
+        h.push('<div class="secLbl' + cls + '">' + escF(sec.label || "·") + "</div>");
+        if (sec.marker) h.push('<div class="markerLn' + cls + '">(' + escF(sec.marker) + ")</div>");
       }
     }
-    const accTxt = scTrText(O.grid ? gridNormTxt(r.text, R) : (r.textJoue || r.text || ""), O.tr); // v2.7.6 — options effectives : grille = texte d'origine, sinon accords JOUÉS ; transposition d'affichage par token
-    if (accTxt.trim() && (O.chords || !r.lyric)) h.push( /* v2.7.6 — rangée sans paroles (intro/solo) toujours rendue, même accords masqués */'<div class="scRow' + (fz && r.secIdx === sceneStick ? " fz" : "") + '" data-r="' + r.rowIdx + '">' + escF(accTxt) + "</div>");
-    if (!O.grid && r.lyric) h.push('<div class="scRowLy' + (fz && r.secIdx === sceneStick ? " fz" : "") + (O.chords ? "" : " solo") + '" data-r="' + r.rowIdx + '">' + escF(r.lyric) + "</div>"); // v2.7.6 — paroles seules (♯ off) = rangée plein poids, surlignable
+    const accTxt = scTrText(O.grid ? gridNormTxt(r.text, R) : (r.textJoue || r.text || ""), O.tr); // grille = texte d'origine, sinon accords JOUÉS ; transposition d'affichage par token
+    const fzc = (fz && r.secIdx === sceneStick) ? " fz" : "";
+    if (accTxt.trim() && (O.chords || !r.lyric)) { // rangée sans paroles (intro/solo) toujours rendue, même accords masqués
+      if (O.chords && r.lyric) h.push('<div class="ln' + fzc + '" data-r="' + r.rowIdx + '"><div class="ch">' + escF(accTxt) + '</div><div class="ly">' + escF(r.lyric) + "</div></div>");
+      else h.push('<div class="chordsOnly' + fzc + '" data-r="' + r.rowIdx + '">' + escF(accTxt) + "</div>");
+    } else if (r.lyric) h.push('<div class="ln' + fzc + '" data-r="' + r.rowIdx + '"><div class="ly">' + escF(r.lyric) + "</div></div>"); // ♯ off : paroles seules, plein poids comme l'afficheur
   }
-  return h.join("") || '<div class="scEmpty">' + (SCENE_ONLY
+  return h.join("") || '<div class="empty">' + (SCENE_ONLY
     ? "En attente du master — ouvre la page APC Live dans ce navigateur (suivi automatique), ou 📡 saisis un code session."
     : "Rien à afficher — charge un morceau (ou une fiche 🎹) puis ▶.") + "</div>";
 }
@@ -1964,11 +1977,11 @@ function sceneHlRow(rIdx, scroll) { // v2.7.6 — surligne la rangée en cours (
   const z = document.getElementById("scZone");
   if (!z) return;
   const R = sceneView();
-  z.querySelectorAll(".cur").forEach(el => el.classList.remove("cur"));
+  z.querySelectorAll(".hl").forEach(el => el.classList.remove("hl"));
   const r = (rIdx != null && R.rows) ? R.rows[rIdx] : null;
   if (!r) return;
-  const el = z.querySelector('.scRow[data-r="' + rIdx + '"], .scRowLy[data-r="' + rIdx + '"]');
-  if (el) { el.classList.add("cur"); if (scroll) { try { el.scrollIntoView({ behavior: "auto", block: "center" }); } catch (e) {} } } // v2.7.6 — retour terrain : scroll IMMÉDIAT (plus de « smooth » → décalage de synchro)
+  const el = z.querySelector('.ln[data-r="' + rIdx + '"], .chordsOnly[data-r="' + rIdx + '"], .introLn[data-r="' + rIdx + '"]');
+  if (el) { el.classList.add("hl"); if (scroll) { try { el.scrollIntoView({ behavior: "auto", block: "center" }); } catch (e) {} } } // v2.7.6 — retour terrain : scroll IMMÉDIAT (plus de « smooth » → décalage de synchro)
   const sec = (R.secs || [])[r.secIdx];
   document.getElementById("scSec").textContent = (sec && sec.label) || "";
 }
@@ -1997,6 +2010,7 @@ function sceneRender() { // v2.7.4 — déroulé complet : la rangée en cours e
   const R = sceneView();
   sceneLastR = R;
   document.getElementById("scTitle").textContent = R.title || "";
+  document.getElementById("scMeta").textContent = (R.beats ? R.beats + " temps" : "") + (R.adapt ? " · ⏱" : ""); // v2.7.9 — méta façon afficheur
   document.getElementById("scZone").innerHTML = sceneRowsBuild();
   const fsEl = document.getElementById("sceneFs");
   fsEl.classList.toggle("scFrozen", sceneStick != null);
@@ -2058,7 +2072,7 @@ setInterval(() => { // feux de temps + compteurs du Mode Scène (léger : ne tou
     }
   }
   const dots = [];
-  for (let i = 1; i <= n; i++) dots.push('<span class="scBeat' + (beat === i ? " on" : "") + '"></span>');
+  for (let i = 1; i <= n; i++) dots.push('<span class="b ' + (i === 1 ? "red" : "grn") + (beat === i ? " on" : "") + '"></span>');
   document.getElementById("scBeats").innerHTML = dots.join("");
   document.getElementById("scCount").textContent = (ev && ev.pNo) ? ("mesure " + ev.pNo + "/" + (SCENE_ONLY ? (window.__scFollowPTot || 0) : (seqPlayedMeasures || seqMeasures || 0))) : "";
   document.getElementById("scTempo").textContent = "♩" + ((SCENE_ONLY && window.__scFollowBpm) ? window.__scFollowBpm : curBpm());
