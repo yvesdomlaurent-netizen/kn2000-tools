@@ -171,7 +171,7 @@
       <label>BPM manuel <input type="number" id="bpmMan" value="120" min="40" max="300"></label>
     </div>
     <div class="row">
-      <label title="v2.7.6 — constante MIDI (F8 = 24 pulses/noire), figée">Pulses/noire <input type="number" id="ppq" value="24" min="24" max="24" readonly style="width:4.5em;background:#eee"></label>
+      <label title="v2.7.7 — constante instrument KN2000 : 192 F8 / mesure 4/4 = 48 pulses/noire (mesuré au compteur clavier), figée">Pulses/noire <input type="number" id="ppq" value="48" min="48" max="48" readonly style="width:4.5em;background:#eee"></label>
       <button id="ppqDetect" title="Mesure le rythme réel des F8 reçus pendant 4 s (rythme lancé au clavier) et propose la bonne valeur — fini le réglage au doigt mouillé">🩺 Détecter (4 s)</button>
       <span class="hint">24 = standard MIDI (comptage de la position). Si la position avance 2× trop lent/vite, essaie 48 ou 12 — ou lance 🩺 Détecter, qui mesure la vraie valeur.</span>
     </div>
@@ -243,7 +243,7 @@
       <button id="ficheGear" title="Métadonnées de la fiche : signature, verrou ⏱ adaptatif, tonalité de jeu — capturées au pont 🎹, modifiables ici">⚙️ Fiche</button>
       <button id="songViewBtn" title="Vue Chanson : la fiche mise en forme (sections, accords, paroles) — la rangée en cours est surlignée pendant la lecture">📄 Vue chanson</button>
       <button id="sceneBtn" title="Mode Scène : affichage plein écran synchronisé avec la lecture (titre, section, déroulé complet avec rangée en cours surlignée, paroles, feux de temps) — ‹§ §› figent sur une section (la lecture continue), ✔ reprend le suivi, ▶/■ pilote la lecture, Échap ou ✕ pour quitter">🎬 Scène</button>
-      <button id="sceneWinBtn" title="Scène suiveuse : ouvrir l'affichage Scène dans une FENÊTRE SÉPARÉE (la page reste master). Même navigateur : suivi automatique. Autre appareil/navigateur : bouton 📡 du Mode Scène pour un code session.">🪟 Fenêtre</button>
+      <button id="sceneWinBtn" title="v2.7.7 — ouvrir l'AFFICHEUR DE CHANSONS dans une fenêtre séparée (rendu strictement identique à l'afficheur ; la page reste master). Session master en cours : la fenêtre rejoint automatiquement (?code=). Sinon : bouton 📡 pour un code session.">🪟 Fenêtre</button>
       <button id="scSyncTopBtn" title="Synchro multi-appareils : devenir master 📡 SANS ouvrir le Mode Scène (les afficheurs suiveurs suivent la VRAIE lecture du KN2000) — ouvre/ferme le panneau de synchro.">📡</button>
     </div>
     <div class="row"><div class="editWrap"><textarea class="grid-input" id="progInput" rows="10" spellcheck="false">// Ligne de texte = titre de section (non jouée) · // = commentaire · || ouvre un bloc, || xN le referme et le répète N fois
@@ -461,6 +461,12 @@ function hex(a) { return a.map(x => x.toString(16).padStart(2, "0").toUpperCase(
 
 // ---------- MIDI ----------
 let midiIn = null, midiOut = null;
+function rtStrip(ev, keep) { // v2.7.7 — anti double comptage de l'horloge (retour terrain : compteur 2×/4×) : seuls les octets temps réel (>= 0xF8) du port KN SÉLECTIONNÉ sont comptés ; les autres entrées du boîtier ne livrent que notes/sysex (commande MS)
+  if (keep || !ev || !ev.data) return ev;
+  const d = Array.from(ev.data).filter(b => b < 0xF8);
+  if (!d.length) return null;
+  return { data: d };
+}
 const rx = document.getElementById("rx"), tx = document.getElementById("tx");
 async function initMidi() {
   try {
@@ -494,8 +500,9 @@ async function initMidi() {
         midiOut = access.outputs.get(tx.value) || null;
         if (midiIn) midiIn.onmidimessage = m5MidiIn;
         for (const p of access.inputs.values()) { // v2.6.27 — écoute TOUS les ports d'entrée (le boîtier expose 2 ports USB : la commande MS peut arriver sur l'autre que celui du KN2000) ; l'entrée APC dédiée garde son interception ; la garde anti-écho filtre notre propre commande
+          if (midiIn && p.id === midiIn.id) continue; // v2.7.7 — le port KN sélectionné garde l'horloge (F8) ; déjà bindé ci-dessus
           if (apcIn && p.id === apcIn.id) continue;
-          try { p.onmidimessage = m5MidiIn; } catch (e) {}
+          try { p.onmidimessage = (ev) => { const e2 = rtStrip(ev, false); if (e2) m5MidiIn(e2); }; } catch (e) {} // v2.7.7 — ports annexes : temps réel (F8/FA/FB/FC) filtré, pas de double comptage de pulses
         }
       };
       rx.onchange = bind; tx.onchange = bind; bind();
@@ -565,7 +572,7 @@ function posStr() {
 setInterval(() => { posEl.textContent = posStr(); }, 50);
 let pulse = 0;
 const activeNotes = new Set();
-function ppq() { return 24; } // v2.7.6 — constante MIDI (F8 = 24 pulses/noire) : plus de mesure, plus de persistance
+function ppq() { return 48; } // v2.7.7 — constante INSTRUMENT KN2000 : 192 F8 / mesure 4/4 mesurés au compteur clavier (v2.6.16) = 48 pulses/noire. À 24 (norme MIDI générique) le compteur de position courait 2× trop vite (retour terrain 13/11)
 let lastF8At = 0;
 let m5FcFrozen = false; // v2.6.11 — arrêt FC : compteur figé à la mesure 1 tant qu'aucune horloge F8 (ou FA/FB) ne revient
 
@@ -2128,7 +2135,7 @@ function syncStartMaster(isPublic) { // v2.7.6 — master multi-appareils : isPu
     const code = Math.random().toString(36).slice(2, 6).toUpperCase();
     try { SYNC.peer = new Peer("tdb" + code.toLowerCase()); } catch (e) { scSyncSay("⚠️ " + e); return; }
     SYNC.code = code; SYNC.isPublic = !!isPublic; // v2.7.6
-    SYNC.peer.on("open", () => { scSyncSay("Master " + (isPublic ? "PUBLIQUE" : "privée") + " — code " + code + " · 0 connecté(s). Les suiveurs (afficheur 📡 ou fenêtre APC ?scene=1) saisissent ce code."); scSyncCode = code; scSongKey = ""; syncUi(); });
+    SYNC.peer.on("open", () => { scSyncSay("Master " + (isPublic ? "PUBLIQUE" : "privée") + " — code " + code + " · 0 connecté(s). Les suiveurs (afficheur 🪟 auto, ou 📡 avec ce code) suivent la lecture."); scSyncCode = code; scSongKey = ""; syncUi(); });
     SYNC.peer.on("connection", (c) => {
       c.on("data", (raw) => syncHandleData(c, raw));
       c.on("close", () => { SYNC.conns.delete(c); syncUi(); });
@@ -2170,7 +2177,7 @@ function syncUi() {
       '<button class="btn" id="scSyncTrL">−</button><span id="scSyncTrV">' + ((scOpts.tr > 0 ? "+" : "") + (scOpts.tr || 0)) + '</span><button class="btn" id="scSyncTrR">+</button></div>' +
       (SYNC.peer ? ('<div style="margin:.4vh 0"><b style="color:#7ef29d">Master ' + (SYNC.isPublic ? "PUBLIQUE" : "privée") + " — code " + SYNC.code + "</b> · " + SYNC.conns.size + " connecté(s)</div>" +
         '<div style="margin-top:.6vh"><button class="btn" id="scStopBtn">Arrêter la session</button></div>' +
-        '<div style="color:#888;margin-top:.4vh">Les suiveurs rejoignent avec ce code : afficheur de chansons (📡), lecteur, ou fenêtre APC ?scene=1.</div>')
+        '<div style="color:#888;margin-top:.4vh">v2.7.7 — Les suiveurs : 🪟 Fenêtre = afficheur (auto si session en cours), ou ce code dans l’afficheur 📡 / un lecteur.</div>')
         : ('<div style="margin:.4vh 0">Devenir master : les affichages suiveurs suivront la VRAIE lecture du KN2000 (rangée, mesure, tempo, ▶/■).</div>' +
           '<div style="margin-top:.6vh"><button class="btn" id="scGoPrivBtn">🎼 Devenir master — session privée (membres)</button> ' +
           '<button class="btn" id="scGoPubBtn">📢 Devenir master — session publique (lecteurs)</button></div>' +
@@ -2190,7 +2197,7 @@ function syncUi() {
 }
 document.getElementById("scSyncBtn").onclick = () => { const p = document.getElementById("scSync"); p.classList.toggle("on"); if (p.classList.contains("on")) syncUi(); };
 document.getElementById("scSyncTopBtn").onclick = () => { const p = document.getElementById("scSync"); p.classList.toggle("on"); if (p.classList.contains("on")) syncUi(); }; // v2.7.6 — 📡 au bandeau : master sans ouvrir la Scène
-document.getElementById("sceneWinBtn").onclick = () => { try { window.open(location.href.split(/[?#]/)[0] + "?scene=1", "_blank"); } catch (e) {} };
+document.getElementById("sceneWinBtn").onclick = () => { try { const base = location.href.split(/[?#]/)[0].replace(/kn2000-apc-live-scene\.html$/, "kn2000-afficheur-chansons.html"); window.open(base + (SYNC.code ? ("?code=" + SYNC.code) : ""), "_blank"); } catch (e) {} }; // v2.7.7 — 🪟 ouvre l'AFFICHEUR (rendu strictement identique, même origine) ; ?code= = session master en cours (auto-join)
 // ── diffusion master : BroadcastChannel + connexions PeerJS (envoi seulement sur changement — léger) ──
 let scStateKey = "", scSongKey = "", scSongRef = null, scLastAffId = null; // v2.7.6 — scLastAffId : la fiche part aux afficheurs à chaque changement de morceau
 function sceneSendAll(force) {
@@ -3951,7 +3958,7 @@ document.getElementById("apcConnect").onclick = () => {
   apcIn = midiAccess2.inputs.get(document.getElementById("apcRx").value) || null;
   apcOut = midiAccess2.outputs.get(document.getElementById("apcTx").value) || null;
   if (!apcIn || !apcOut) { apcStateTxt("⚠ choisis les 2 ports APC", false); log("🎛 Sélectionne les DEUX ports de l'APC (Surface RX = port contrôle en entrée, LEDs TX = port contrôle en sortie — via le boîtier H2MIDI Pro).", "ko"); return; }
-  apcIn.onmidimessage = (ev) => { if (!apcSurfaceCap(ev)) onMidiMsg(ev); }; // tout ce qui n'est pas consommé suit le chemin normal
+  apcIn.onmidimessage = (ev) => { if (!apcSurfaceCap(ev)) { const e2 = rtStrip(ev, !!(midiIn && apcIn && apcIn.id === midiIn.id)); if (e2) onMidiMsg(e2); } }; // tout ce qui n'est pas consommé suit le chemin normal ; v2.7.7 — horloge filtrée si l'entrée APC n'est pas le port KN
   try { apcOut.send([0xF0, 0x47, 0x7F, 0x4E, 0x60, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0xF7]); } catch (e) {} // session LEDs (protocole Akai)
   apcReady = true;
   for (const a of APC_SURF) { // volumes initiaux : depuis le kit du morceau (ccs M4) sinon 100
