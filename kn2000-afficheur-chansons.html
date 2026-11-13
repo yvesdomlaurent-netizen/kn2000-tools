@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Afficheur chansons — v0.17.1</title>
+<title>Afficheur chansons — v0.17.2</title>
 <style>
   html, body { margin: 0; }
   body { font-family: system-ui, sans-serif; background: #fafafa; color: #222; max-width: 1060px; margin: 0 auto; padding: 0 10px 16px; }
@@ -124,7 +124,7 @@
 <body data-view="rep">
 <div id="communBanner" hidden style="position:sticky;top:0;z-index:60;background:#fff8dc;border-bottom:2px solid #d4a017;padding:6px 10px;font-size:13px;text-align:center"></div>
 <header>
-  <span><b>🎵 Afficheur chansons</b> <span class="hint">v0.17.1 — répertoire · numéros · édition · transposition · scène (xN, surlignage à la mesure, signature adaptative) · impression · grille/ponctuateur · ⧉ dupliquer la grille sur un couplet · import JazzLab .sng · stockage IndexedDB · imports sans fuite · 💾 sauvegarde visible (garde anti-perte) · 🎤 morceaux INVITÉS du master APC Live</span></span>
+  <span><b>🎵 Afficheur chansons</b> <span class="hint">v0.17.2 — décodeur embarqué reconnaît la fiche APC Live (§ / !…! / @titre) reçue du master · v0.17.1 — répertoire · numéros · édition · transposition · scène (xN, surlignage à la mesure, signature adaptative) · impression · grille/ponctuateur · ⧉ dupliquer la grille sur un couplet · import JazzLab .sng · stockage IndexedDB · imports sans fuite · 💾 sauvegarde visible (garde anti-perte) · 🎤 morceaux INVITÉS du master APC Live</span></span>
   <span style="flex:1"></span>
   <span class="hint" id="stCount">—</span>
 </header>
@@ -1080,7 +1080,8 @@ function decodeSng(xml) {
   if (rhy) out.sourceMeta.rhythm = rhy.trim();
   return out;
 }
-function decodeSource(txt) { if (isBoitePage(txt)) return decodeBoitePage(txt); if (isSng(txt)) return decodeSng(txt); return isChordPro(txt) ? decodeChordPro(txt) : decodeBoiteAChansons(txt); } // v0.12 : + JJazzLab .sng ; v0.6 : + page HTML boîte à chansons ; v0.5.2 : détection auto boîte à chansons / ChordPro
+function isFicheApc(txt) { return /^@titre\s*:/m.test(txt) || /^\s*§/m.test(txt); } // v0.17.2 : grammaire fiche APC Live (§ sections, rangées !…!, @titre:) reconnue par le décodeur embarqué
+function decodeSource(txt) { if (isBoitePage(txt)) return decodeBoitePage(txt); if (isSng(txt)) return decodeSng(txt); if (isFicheApc(txt)) return AFF.parseEdited(txt, { title: null, artist: null, lyricsAuthor: null, musicAuthor: null, sourceMeta: {} }); return isChordPro(txt) ? decodeChordPro(txt) : decodeBoiteAChansons(txt); } // v0.17.2 : + fiche APC Live ; v0.12 : + JJazzLab .sng ; v0.6 : + page HTML boîte à chansons ; v0.5.2 : détection auto boîte à chansons / ChordPro
 
 // ═══════════ LOGIQUE PURE (testée) : AFF.* ═══════════
 const AFF = {};
