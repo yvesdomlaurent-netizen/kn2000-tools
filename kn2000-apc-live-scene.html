@@ -136,7 +136,7 @@
   <span class="badge" id="kbdBadge" title="Liaison KN2000 (badge charte)">🎹 <b id="kbdDot">○</b> KN2000</span>
   <span class="badge" id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
   <span style="flex:1"></span>
-  <span><b>🎼 APC Live KN2000 — Scene</b> <span class="hint">v2.7.9 — Mode Scène = charte identique à l'afficheur de chansons v0.17.1 · Vue Chanson · Mode Scène · M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
+  <span><b>🎼 APC Live KN2000 — Scene</b> <span class="hint">v2.7.10 — correctifs : paroles à jour côté client connecté + liste ☰ refermable (clic morceau/zone) · Vue Chanson · Mode Scène · M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
   <span style="flex:1"></span>
   <nav class="hubLinks" title="Navigation entre les outils du projet (charte 7i)">
     <a href="index.html">🏠 Hub</a>
@@ -436,6 +436,7 @@ Thème
     <div class="scList" id="scList"></div>
     <div class="scZone" id="scZone"></div>
   </div>
+</div>
 <div class="scSync" id="scSync"><div id="scSyncBody"></div></div> <!-- v2.7.6 — panneau 📡 déplacé HORS du calque Scène (accessible depuis le bandeau) -->
 <script>
 "use strict";
@@ -1927,7 +1928,7 @@ function scListRender() { // v2.7.6 — ☰ liste des chansons dans l'ordre de l
   const h = [];
   for (const s of songs.songs) h.push('<div class="item' + (s.id === curSongId ? " cur" : "") + '" data-id="' + escF(s.id) + '">' + escF((s.numero || "") + " " + (s.title || "")) + "</div>");
   list.innerHTML = h.join("");
-  list.querySelectorAll(".item").forEach(it => { it.onclick = () => { editBase = zoneVal(); try { document.getElementById("songSel").value = it.dataset.id; document.getElementById("songSel").onchange(); } catch (e) {} }; });
+  list.querySelectorAll(".item").forEach(it => { it.onclick = () => { editBase = zoneVal(); list.classList.remove("on"); try { document.getElementById("songSel").value = it.dataset.id; document.getElementById("songSel").onchange(); } catch (e) {} }; }); // v2.7.10 — sélection = liste refermée (comme l'afficheur)
 }
 function scSongStep(d) { // v2.7.6 — ⏮ ⏭ : morceau précédent/suivant dans la liste Morceaux
   const i = songs.songs.findIndex(s => s.id === curSongId);
@@ -2047,6 +2048,7 @@ document.getElementById("scMesBtn").onclick = () => { scOpts.mes = !scOpts.mes; 
 document.getElementById("scFontL").onclick = () => scSetScale((scOpts.scale || 1) - 0.1); // v2.7.6 — zoom PROPRE à la Scène
 document.getElementById("scFontR").onclick = () => scSetScale((scOpts.scale || 1) + 0.1);
 document.getElementById("scListBtn").onclick = () => { const l = document.getElementById("scList"); l.classList.toggle("on"); if (l.classList.contains("on")) scListRender(); };
+document.getElementById("scZone").onclick = () => { const l = document.getElementById("scList"); if (l && l.classList.contains("on")) l.classList.remove("on"); }; // v2.7.10 — clic sur la zone referme la liste (comme l'afficheur)
 document.getElementById("scSongPrev").onclick = () => scSongStep(-1);
 document.getElementById("scSongNext").onclick = () => scSongStep(1);
 document.getElementById("scRew").onclick = () => { try { if (seqQueue !== null) document.getElementById("stopPlay").click(); } catch (e) {} try { sceneHlRow(0, true); } catch (e) {} }; // ⏹ début
@@ -2109,7 +2111,7 @@ function affStateOf(st) { // → message « state » du protocole AFFICHEUR (hl 
     tempo: (s.fsig ? "" : "") + (st.bpm || ""), sig: (s.fsig || "4/4"), tr: (s.ftr ? Math.round(+s.ftr) : 0), chords: true, beat: true };
 }
 // ── suiveur (?scene=1) : applique les messages du master ──
-function scFollowApplySong(m) { window.__scFollowSong = { title: m.title || "", secs: m.secs || [], rows: m.rows || [] }; }
+function scFollowApplySong(m) { window.__scFollowSong = { title: m.title || "", secs: m.secs || [], rows: m.rows || [], beats: m.beats || 4, adapt: !!m.adapt }; if (sceneOn) sceneRender(); } // v2.7.10 — re-rendu immédiat à la réception du morceau (le suiveur affiche toujours le morceau courant AVEC ses paroles)
 function scFollowApplyState(m) {
   window.__scFollowPlaying = !!m.playing; window.__scFollowBpm = m.bpm || null; window.__scFollowPTot = m.pTot || 0;
   if (m.opts) { // v2.7.6 — options d'affichage imposées par le master (accords/grille/transposition) ; zoom/feux restent locaux
