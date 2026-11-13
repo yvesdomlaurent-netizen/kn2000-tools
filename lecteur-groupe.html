@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lecteur groupe — v1.1</title>
+<style>
+  html, body { margin: 0; height: 100%; }
+  body { font-family: system-ui, sans-serif; background: #10161d; color: #dfe9f4; }
+  #join { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 20px; text-align: center; }
+  #join h1 { font-size: 26px; margin: 0; }
+  #join .hint { color: #8fa6bd; max-width: 480px; font-size: 15px; }
+  #code { font-size: 28px; letter-spacing: 4px; text-transform: uppercase; text-align: center; width: 190px; padding: 10px; border-radius: 10px; border: 1px solid #2a3a4a; background: #15202b; color: #dfe9f4; }
+  #btnJoin { font-size: 18px; padding: 12px 28px; border-radius: 10px; border: none; background: #2e7d32; color: #fff; cursor: pointer; }
+  #app { display: none; height: 100%; flex-direction: column; }
+  #app.on { display: flex; }
+  #bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #0b1016; font-size: 15px; flex-wrap: wrap; }
+  #title { font-weight: bold; }
+  #meta { color: #9fc4e8; font-size: 14px; }
+  #status { font-size: 13px; color: #8fa6bd; }
+  #status.on { color: #7ee787; }
+  .beats { display: inline-flex; gap: 5px; align-items: center; }
+  .beats .b { width: 13px; height: 13px; border-radius: 50%; background: #2a3644; border: 1px solid #3a4a5c; }
+  .beats .b.red { border-color: #b44; }
+  .beats .b.grn { border-color: #3a5; }
+  .beats .b.on.red { background: #ff3b3b; box-shadow: 0 0 10px #ff3b3b; }
+  .beats .b.on.grn { background: #2ecc5b; box-shadow: 0 0 10px #2ecc5b; }
+  #szL, #szR { background: #1d2a38; color: #cfe2f3; border: 1px solid #2a3a4a; border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+  #zone { flex: 1; overflow-y: auto; padding: 14px 16px 40vh; font-size: 24px; line-height: 1.35; }
+  .ln { padding: 2px 4px; border-radius: 6px; }
+  .ln .ch { color: #ffd54f; font-size: 0.78em; white-space: pre; min-height: 1em; font-family: ui-monospace, monospace; }
+  .ln.hl { background: #274b66; color: #fff; }
+  .secLbl { color: #8fa6bd; font-size: 0.72em; margin-top: 12px; }
+  .chordsOnly { color: #ffd54f; font-family: ui-monospace, monospace; white-space: pre; font-size: 0.9em; }
+  .introLn { color: #ffd54f; font-family: ui-monospace, monospace; white-space: pre; font-size: 0.9em; }
+</style>
+</head>
+<body>
+<div id="join">
+  <h1>🎼 Lecteur</h1>
+  <div class="hint">v1.1 — décode aussi la fiche APC Live texte (§ / !…! / @titre) poussée par le master · Saisis le <b>code de session</b> affiché par le master (bouton 📡 de l'afficheur) pour suivre les paroles en direct.</div>
+  <input id="code" placeholder="CODE" maxlength="6" autocomplete="off">
+  <button id="btnJoin">Se connecter</button>
+  <div id="jInfo" class="hint"></div>
+</div>
+<div id="app">
+  <div id="bar">
+    <span id="beats" class="beats" style="display:none"></span>
+    <span id="title"></span>
+    <span id="meta"></span>
+    <span id="status">…</span>
+    <span style="flex:1"></span>
+    <button id="szL" title="Réduire le texte">A−</button>
+    <button id="szR" title="Agrandir le texte">A+</button>
+  </div>
+  <div id="zone"></div>
+</div>
+<script>
+(function () {
+  "use strict";
+  var el = function (id) { return document.getElementById(id); };
+  var st = { code: "", song: null, state: null, size: 24, beatN: 4, beat: -1, timer: null, peer: null, conn: null };
+  try { st.size = +localStorage.getItem("lecteur-size") || 24; } catch (e) {}
+  function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  function chordRow(chords) {
+    var out = "";
+    (chords || []).forEach(function (c) {
+      var start = Math.max(0, c.col | 0);
+      if (start >= out.length) { out += " ".repeat(start - out.length) + c.chord; return; }
+      var a = out.split("");
+      for (var k = 0; k < c.chord.length; k++) {
+        var idx = start + k;
+        if (a[idx] === undefined || a[idx] === " ") a[idx] = c.chord[k];
+      }
+      out = a.join("");
+    });
+    return out.replace(/\s+$/, "");
+  }
+  function setStatus(txt, on) { var s = el("status"); s.textContent = txt; s.classList.toggle("on", !!on); }
+  function showApp() { el("join").style.display = "none"; el("app").classList.add("on"); }
+  function parseChordRow(raw) { // « ! C ! G ! » → [{chord, col}] (col = position dans la ligne)
+    var out = [], i = 0;
+    while (i < raw.length) {
+      if (raw[i] === "!") {
+        var j = i + 1, tok = "";
+        while (j < raw.length && raw[j] !== "!") { tok += raw[j]; j++; }
+        var lead = tok.length - tok.replace(/^\s+/, "").length;
+        var t = tok.trim();
+        if (t) out.push({ chord: t, col: i + 1 + lead });
+        i = j;
+      } else i++;
+    }
+    return out;
+  }
+  function parseFiche(txt, base) { // v1.1 — grammaire fiche APC Live : @titre / § / rangées !…! / (marqueur) / Intro : / paroles
+    var d = { title: (base && base.title) || "", sections: [], intro: [] };
+    var lines = String(txt || "").replace(/\r\n?/g, "\n").split("\n");
+    var cur = null, pending = null;
+    var stripRep = function (l) { return l.replace(/\s+[×xX]\s*\d+\s*$/, ""); };
+    function close() { if (cur && (cur.lines.length || cur.chords.length || cur.label || cur.marker)) d.sections.push(cur); cur = null; }
+    lines.forEach(function (raw0) {
+      var l = stripRep(raw0).trim();
+      if (!l) { close(); pending = null; return; }
+      var mt = l.match(/^@titre\s*:\s*(.*)$/); if (mt) { d.title = mt[1].trim(); return; }
+      if (/^Intro\s*:/.test(l)) { d.intro = parseChordRow(l.replace(/^Intro\s*:\s*/, "")); return; }
+      if (l[0] === "§") { close(); cur = { label: stripRep(l.replace(/^§\s*/, "")).trim(), marker: null, chords: [], lines: [] }; return; }
+      var mm = l.match(/^\((.+)\)$/); if (mm) { if (cur && !cur.lines.length && !cur.label) cur.marker = cur.marker || mm[1]; else { close(); cur = { label: null, marker: mm[1], chords: [], lines: [] }; } return; }
+      if (l[0] === "!") { pending = (pending || []).concat(parseChordRow(l)); if (!cur) cur = { label: null, marker: null, chords: [], lines: [] }; return; }
+      if (!cur) cur = { label: null, marker: null, chords: [], lines: [] };
+      cur.lines.push({ lyric: l, chords: pending || [] }); pending = null;
+    });
+    if (pending && cur && !cur.lines.length) cur.chords = pending;
+    close();
+    return d;
+  }
+  function render() {
+    var s = st.song; if (!s) return;
+    if (typeof s.data === "string") s.data = parseFiche(s.data, s); // v1.1 — fiche texte reçue du master APC Live
+    if (!s.data) return;
+    showApp();
+    el("title").textContent = s.title || "";
+    el("meta").textContent = (s.tempo ? "♩=" + s.tempo + " " : "") + (s.sig || "");
+    var showChords = !st.state || st.state.chords !== false;
+    var out = [];
+    if (s.data.intro && s.data.intro.length) out.push('<div class="introLn">Intro : ' + esc(chordRow(s.data.intro)) + "</div>");
+    (s.data.sections || []).forEach(function (sec) {
+      if (sec.label) out.push('<div class="secLbl">' + esc(sec.label) + "</div>");
+      if (sec.marker) out.push('<div class="secLbl">(' + esc(sec.marker) + ")</div>");
+      if (sec.chords && sec.chords.length) out.push('<div class="chordsOnly">' + esc(chordRow(sec.chords)) + "</div>");
+      (sec.lines || []).forEach(function (l) {
+        var ch = (showChords && l.chords && l.chords.length) ? '<div class="ch">' + esc(chordRow(l.chords)) + "</div>" : "";
+        out.push('<div class="ln">' + ch + '<div class="ly">' + esc(l.lyric || "") + "</div></div>");
+      });
+      out.push('<div style="height:10px"></div>');
+    });
+    el("zone").innerHTML = out.join("");
+    el("zone").style.fontSize = st.size + "px";
+    applyState();
+  }
+  function applyState() {
+    var lns = el("zone").querySelectorAll(".ln");
+    var hl = st.state ? st.state.hl : -1;
+    for (var i = 0; i < lns.length; i++) lns[i].classList.toggle("hl", i === hl);
+    if (hl >= 0 && lns[hl]) lns[hl].scrollIntoView({ behavior: "smooth", block: "center" });
+    st.beatN = Math.min(12, Math.max(1, parseInt(String((st.state && st.state.sig) || "4/4").split("/")[0], 10) || 4));
+    if (st.state && st.state.play && st.state.beat !== false) { if (st.timer == null) startBeats(); }
+    else stopBeats();
+  }
+  function renderBeats() {
+    var show = st.state && st.state.beat !== false;
+    var elB = el("beats");
+    elB.style.display = show ? "inline-flex" : "none";
+    if (!show) return;
+    var h = "";
+    for (var i = 0; i < st.beatN; i++) h += '<span class="b ' + (i === 0 ? "red" : "grn") + (i === st.beat ? " on" : "") + '"></span>';
+    elB.innerHTML = h;
+  }
+  function startBeats() {
+    var beatMs = Math.round(60000 / ((st.state && st.state.tempo) || 100));
+    st.beat = 0; renderBeats();
+    st.timer = setInterval(function () { st.beat = (st.beat + 1) % st.beatN; renderBeats(); }, beatMs);
+  }
+  function stopBeats() { if (st.timer) { clearInterval(st.timer); st.timer = null; } st.beat = -1; renderBeats(); }
+  el("szL").onclick = function () { st.size = Math.max(12, st.size - 2); try { localStorage.setItem("lecteur-size", st.size); } catch (e) {} el("zone").style.fontSize = st.size + "px"; };
+  el("szR").onclick = function () { st.size = Math.min(48, st.size + 2); try { localStorage.setItem("lecteur-size", st.size); } catch (e) {} el("zone").style.fontSize = st.size + "px"; };
+  function onMsg(raw) {
+    var m; try { m = JSON.parse(raw); } catch (e) { return; }
+    if (m.t === "song") { st.song = m; render(); }
+    else if (m.t === "state") {
+      if (st.song && m.id !== st.song.id) { st.song = null; stopBeats(); }
+      st.state = m;
+      if (st.song) render(); else showApp();
+    }
+  }
+  function loadPeer(cb) {
+    if (window.Peer) return cb();
+    var s = document.createElement("script");
+    s.src = "https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js";
+    s.onload = cb;
+    s.onerror = function () { el("jInfo").textContent = "Impossible de charger PeerJS — connexion internet requise."; };
+    document.head.appendChild(s);
+  }
+  function join(code) {
+    code = String(code || "").trim().toLowerCase();
+    if (!code) return;
+    st.code = code;
+    el("jInfo").textContent = "Connexion…";
+    loadPeer(function () {
+      if (st.peer) { try { st.peer.destroy(); } catch (e) {} }
+      stopBeats();
+      st.peer = new Peer();
+      st.peer.on("open", function () {
+        var c = st.peer.connect("tdb" + code);
+        st.conn = c;
+        c.on("open", function () {
+          c.send(JSON.stringify({ t: "hi", role: "public" }));
+          el("jInfo").textContent = "Connecté — en attente du master…";
+        });
+        c.on("data", onMsg);
+        c.on("close", function () { setStatus("Session coupée — reconnexion…", false); setTimeout(function () { join(st.code); }, 5000); });
+      });
+      st.peer.on("error", function (e) { el("jInfo").textContent = "Erreur : " + (e.type || e); });
+    });
+  }
+  el("btnJoin").onclick = function () { join(el("code").value); };
+  el("code").addEventListener("keydown", function (e) { if (e.key === "Enter") join(el("code").value); });
+  var m = location.search.match(/[?&]s=([^&]+)/);
+  if (m) { el("code").value = decodeURIComponent(m[1]); join(el("code").value); }
+  window.__L = { st: st, join: join, onMsg: onMsg, render: render };
+})();
+</script>
+</body>
+</html>
