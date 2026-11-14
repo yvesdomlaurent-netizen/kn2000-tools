@@ -135,9 +135,9 @@
 <header>
   <span class="badge" id="kbdBadge" title="Liaison KN2000 (badge charte)">🎹 <b id="kbdDot">○</b> KN2000</span>
   <span class="badge" id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
-  <span class="badge" id="verBadge" style="background:#1273b0;color:#fff;font-weight:bold" title="Version publiée de cette page">v2.7.11</span>
+  <span class="badge" id="verBadge" style="background:#1273b0;color:#fff;font-weight:bold" title="Version publiée de cette page">v2.7.12</span>
   <span style="flex:1"></span>
-  <span><b>🎼 APC Live KN2000 — Scene</b> <span class="hint">v2.7.11 — badge version visible · Vue Chanson · Mode Scène · M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
+  <span><b>🎼 APC Live KN2000 — Scene</b> <span class="hint">v2.7.12 — badge version visible · Vue Chanson · Mode Scène · M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
   <span style="flex:1"></span>
   <nav class="hubLinks" title="Navigation entre les outils du projet (charte 7i)">
     <a href="index.html">🏠 Hub</a>
@@ -173,6 +173,14 @@
       <label>Canal ACCOMP1 (CC80) <input type="number" id="chAcc1" value="1" min="1" max="16"></label>
       <label>Canal Add-on 1 <input type="number" id="chAdd1" value="11" min="1" max="16" title="Canal libre pour une part Add-on (séquence MIDI future) — v2.5"></label>
       <label>Canal Add-on 2 <input type="number" id="chAdd2" value="12" min="1" max="16" title="Canal libre pour une part Add-on (séquence MIDI future) — v2.5"></label>
+    </div>
+    <div class="row">
+      <label title="v2.7.12 — paramètre GÉNÉRAL de la page : type de session 📡 utilisée quand tu deviens master. Privée = membres du groupe (afficheur, leur bibliothèque perso, leur affichage local). Publique = lecteurs (lecteur-groupe, contenu poussé par le master, affichage décidé par le master, défaut karaoké sans accords) — utile aussi aux membres temporaires qui n'ont pas chargé la bibliothèque.">📡 Session suiveurs
+        <select id="syncType">
+          <option value="priv">privée — membres (afficheur, bibliothèque perso, affichage local)</option>
+          <option value="pub">publique — lecteurs (contenu poussé, affichage du master, défaut karaoké sans accords)</option>
+        </select>
+      </label>
     </div>
     <div class="row">
       <label>Octave fondamentale : C<input type="number" id="oct" value="3" min="1" max="6"> (C3=48)</label>
@@ -1903,6 +1911,7 @@ const SCENE_OPTS_KEY = "kn2000-apc-scene-opts-v1";
 let scOpts = { chords: true, grid: false, tr: 0, beats: true, mes: true, scale: 1 }; // v2.7.6 — réglages Scène : accords / grille / transposition d'affichage / feux / décompte / zoom
 try { Object.assign(scOpts, JSON.parse(localStorage.getItem(SCENE_OPTS_KEY) || "{}")); } catch (e) {}
 function scOptsSave() { try { localStorage.setItem(SCENE_OPTS_KEY, JSON.stringify(scOpts)); } catch (e) {} }
+function masterChoseDisplay() { if (SYNC.isPublic) SYNC.pubKaraoke = false; } // v2.7.12 — choix explicite du master (♯/⇄/−+) en session publique : le défaut karaoké est levé, c'est le master qui décide
 function scOptsView() { // réglages EFFECTIFS : côté suiveur (?scene=1), le master impose accords/grille/transposition ; zoom/feux restent locaux
   return (SCENE_ONLY && window.__scFollowOpts) ? Object.assign({}, scOpts, window.__scFollowOpts) : scOpts;
 }
@@ -2040,10 +2049,10 @@ document.getElementById("scPrev").onclick = () => { sceneStick = Math.max(0, sce
 document.getElementById("scNext").onclick = () => { sceneStick = Math.min(((sceneView().secs) || []).length - 1, sceneStickyIdx() + 1); sceneRender(); };
 document.getElementById("scPlay").onclick = () => { if (SCENE_ONLY) return; document.getElementById(seqQueue === null ? "play" : "stopPlay").click(); };
 // ── v2.7.6 — Scène standardisée : ♯ ⇄ −+ 💡 M A− A+ ☰ ⏮ ⏭ ⏹ ──
-document.getElementById("scChordsBtn").onclick = () => { scOpts.chords = !scOpts.chords; scOptsSave(); scOptsApply(); if (sceneOn) sceneRender(); };
-document.getElementById("scGridBtn").onclick = () => { scOpts.grid = !scOpts.grid; scOptsSave(); scOptsApply(); if (sceneOn) sceneRender(); };
-document.getElementById("scTrL").onclick = () => { scOpts.tr = Math.max(-11, Math.min(11, (scOpts.tr || 0) - 1)); scOptsSave(); scOptsApply(); if (sceneOn) sceneRender(); };
-document.getElementById("scTrR").onclick = () => { scOpts.tr = Math.max(-11, Math.min(11, (scOpts.tr || 0) + 1)); scOptsSave(); scOptsApply(); if (sceneOn) sceneRender(); };
+document.getElementById("scChordsBtn").onclick = () => { scOpts.chords = !scOpts.chords; masterChoseDisplay(); scOptsSave(); scOptsApply(); if (sceneOn) sceneRender(); };
+document.getElementById("scGridBtn").onclick = () => { scOpts.grid = !scOpts.grid; masterChoseDisplay(); scOptsSave(); scOptsApply(); if (sceneOn) sceneRender(); };
+document.getElementById("scTrL").onclick = () => { scOpts.tr = Math.max(-11, Math.min(11, (scOpts.tr || 0) - 1)); masterChoseDisplay(); scOptsSave(); scOptsApply(); if (sceneOn) sceneRender(); };
+document.getElementById("scTrR").onclick = () => { scOpts.tr = Math.max(-11, Math.min(11, (scOpts.tr || 0) + 1)); masterChoseDisplay(); scOptsSave(); scOptsApply(); if (sceneOn) sceneRender(); };
 document.getElementById("scBeatBtn").onclick = () => { scOpts.beats = !scOpts.beats; scOptsSave(); scOptsApply(); };
 document.getElementById("scMesBtn").onclick = () => { scOpts.mes = !scOpts.mes; scOptsSave(); scOptsApply(); };
 document.getElementById("scFontL").onclick = () => scSetScale((scOpts.scale || 1) - 0.1); // v2.7.6 — zoom PROPRE à la Scène
@@ -2107,9 +2116,14 @@ function affSongOf() { // → message « song » du protocole AFFICHEUR (data = 
 }
 function affStateOf(st) { // → message « state » du protocole AFFICHEUR (hl = index de ligne DÉROULÉ AFFICHEUR, porté par chaque événement)
   const s = songById(curSongId) || {};
+  const pub = !!SYNC.isPublic; // v2.7.12 — pub:1 = session publique → l'afficheur applique accords/grille/transposition du MASTER ; pub:0 = privée → l'afficheur garde SON affichage local (seul le suivi morceau/position/lecture est imposé)
+  let o = (st && st.opts) || { chords: scOpts.chords, grid: scOpts.grid, tr: scOpts.tr };
+  if (pub && SYNC.pubKaraoke) o = { chords: false, grid: false, tr: 0 }; // v2.7.12 — session publique : défaut karaoké sans accords jusqu'au choix explicite du master
   return { t: "state", id: s.repId || ("apc-" + (curSongId || "")), title: st.title || (s.title || ""),
     hl: (st.hl != null && st.hl >= 0) ? st.hl : -1, mes: st.pNo || 0, play: !!st.playing,
-    tempo: (s.fsig ? "" : "") + (st.bpm || ""), sig: (s.fsig || "4/4"), tr: (s.ftr ? Math.round(+s.ftr) : 0), chords: true, beat: true };
+    tempo: (st.bpm || ""), sig: (s.fsig || "4/4"),
+    tr: (pub ? (o.tr || 0) : (s.ftr ? Math.round(+s.ftr) : 0)),
+    chords: (pub ? !!o.chords : true), grid: !!o.grid, beat: !!scOpts.beats, pub: pub ? 1 : 0 };
 }
 // ── suiveur (?scene=1) : applique les messages du master ──
 function scFollowApplySong(m) { window.__scFollowSong = { title: m.title || "", secs: m.secs || [], rows: m.rows || [], beats: m.beats || 4, adapt: !!m.adapt }; if (sceneOn) sceneRender(); } // v2.7.10 — re-rendu immédiat à la réception du morceau (le suiveur affiche toujours le morceau courant AVEC ses paroles)
@@ -2134,7 +2148,13 @@ if (scBC) scBC.onmessage = (e) => {
 };
 if (SCENE_ONLY && scBC) scBC.postMessage({ t: "hello" }); // présente-toi au master du navigateur
 // ── PeerJS : multi-appareils (tablette, autre navigateur) — même code session que l'afficheur (« tdb »+code) ──
-const SYNC = { peer: null, conns: new Set(), code: "", isPublic: false }; // v2.7.6 — session publique (lecteurs) ou privée (membres)
+const SYNC = { peer: null, conns: new Set(), code: "", isPublic: false, pubKaraoke: false }; // v2.7.6 — session publique (lecteurs) ou privée (membres) ; v2.7.12 — pubKaraoke : session publique démarrée avec le défaut karaoké (sans accords) jusqu'au choix explicite du master
+const SYNC_TYPE_KEY = "kn2000-apc-sync-type"; // v2.7.12 — paramètre GÉNÉRAL (⚙️ Réglages) : type de session 📡 par défaut
+function syncTypeIsPub() { const el = document.getElementById("syncType"); return !!el && el.value === "pub"; }
+{ const el = document.getElementById("syncType"); if (el) {
+  try { const v = localStorage.getItem(SYNC_TYPE_KEY); if (v === "pub" || v === "priv") el.value = v; } catch (e) {}
+  el.onchange = () => { try { localStorage.setItem(SYNC_TYPE_KEY, el.value); } catch (e) {} log("📡 Type de session par défaut : " + (el.value === "pub" ? "PUBLIQUE (lecteurs — contenu poussé, affichage du master, défaut karaoké sans accords)" : "privée (membres — afficheur, bibliothèque perso, affichage local)") + ".", "info"); syncUi(); };
+} }
 function syncPeerLib(cb) { if (window.Peer) return cb(); const sc = document.createElement("script"); sc.src = "https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"; sc.onload = cb; sc.onerror = () => scSyncSay("⚠️ PeerJS inaccessible — connexion internet requise."); document.head.appendChild(sc); }
 function syncStop(silent) { if (SYNC.peer) { try { SYNC.peer.destroy(); } catch (e) {} } SYNC.peer = null; SYNC.conns = new Set(); SYNC.code = ""; SYNC.isPublic = false; if (!silent) syncUi(); } // v2.7.6
 function syncSendTo(conn, msg) { try { conn.send(typeof msg === "string" ? msg : JSON.stringify(msg)); } catch (e) {} }
@@ -2151,7 +2171,7 @@ function syncStartMaster(isPublic) { // v2.7.6 — master multi-appareils : isPu
     syncStop(true);
     const code = Math.random().toString(36).slice(2, 6).toUpperCase();
     try { SYNC.peer = new Peer("tdb" + code.toLowerCase()); } catch (e) { scSyncSay("⚠️ " + e); return; }
-    SYNC.code = code; SYNC.isPublic = !!isPublic; // v2.7.6
+    SYNC.code = code; SYNC.isPublic = !!isPublic; SYNC.pubKaraoke = !!isPublic; // v2.7.6 — v2.7.12 : une session PUBLIQUE démarre avec le défaut « karaoké sans accords » pour les lecteurs, jusqu'à ce que le master choisisse explicitement ♯/⇄/−+
     SYNC.peer.on("open", () => { scSyncSay("Master " + (isPublic ? "PUBLIQUE" : "privée") + " — code " + code + " · 0 connecté(s). Les suiveurs (afficheur 🪟 auto, ou 📡 avec ce code) suivent la lecture."); scSyncCode = code; scSongKey = ""; syncUi(); });
     SYNC.peer.on("connection", (c) => {
       c.on("data", (raw) => syncHandleData(c, raw));
@@ -2194,18 +2214,16 @@ function syncUi() {
       '<button class="btn" id="scSyncTrL">−</button><span id="scSyncTrV">' + ((scOpts.tr > 0 ? "+" : "") + (scOpts.tr || 0)) + '</span><button class="btn" id="scSyncTrR">+</button></div>' +
       (SYNC.peer ? ('<div style="margin:.4vh 0"><b style="color:#7ef29d">Master ' + (SYNC.isPublic ? "PUBLIQUE" : "privée") + " — code " + SYNC.code + "</b> · " + SYNC.conns.size + " connecté(s)</div>" +
         '<div style="margin-top:.6vh"><button class="btn" id="scStopBtn">Arrêter la session</button></div>' +
-        '<div style="color:#888;margin-top:.4vh">v2.7.8 — Les suiveurs : 🪟 Fenêtre = afficheur (auto si session en cours), ou ce code dans l’afficheur 📡 / un lecteur.</div>')
+        '<div style="color:#888;margin-top:.4vh">v2.7.8 — Les suiveurs : 🪟 Fenêtre = afficheur (auto si session en cours), ou ce code dans l’afficheur 📡 / un lecteur. v2.7.12 — session ' + (SYNC.isPublic ? "PUBLIQUE : affichage (accords/grille/transpo) décidé par le master pour TOUS les lecteurs (défaut karaoké sans accords)" : "privée : chaque membre garde SON affichage local, seul le suivi (morceau/position/lecture) est imposé") + '.</div>')
         : ('<div style="margin:.4vh 0">Devenir master : les affichages suiveurs suivront la VRAIE lecture du KN2000 (rangée, mesure, tempo, ▶/■).</div>' +
-          '<div style="margin-top:.6vh"><button class="btn" id="scGoPrivBtn">🎼 Devenir master — session privée (membres)</button> ' +
-          '<button class="btn" id="scGoPubBtn">📢 Devenir master — session publique (lecteurs)</button></div>' +
-          '<div style="color:#888;margin-top:.4vh">Même navigateur : pas besoin de code — 🪟 Fenêtre suit automatiquement.</div>'));
+          '<div style="margin-top:.6vh"><button class="btn" id="scGoMasterBtn">🎼 Devenir master — session ' + (syncTypeIsPub() ? "PUBLIQUE (lecteurs)" : "privée (membres)") + '</button></div>' +
+          '<div style="color:#888;margin-top:.4vh">Type de session = paramètre général ⚙️ Réglages (« 📡 Session suiveurs »). Même navigateur : pas besoin de code — 🪟 Fenêtre suit automatiquement.</div>'));
   }
-  const go = document.getElementById("scGoBtn"); if (go) go.onclick = () => { if (SCENE_ONLY) { const i = document.getElementById("scCodeIn"); if (i && i.value.trim()) syncJoinMaster(i.value); } else syncStartMaster(false); };
-  const gp = document.getElementById("scGoPrivBtn"); if (gp) gp.onclick = () => syncStartMaster(false); // v2.7.6 — session privée (membres)
-  const gq = document.getElementById("scGoPubBtn"); if (gq) gq.onclick = () => syncStartMaster(true); // v2.7.6 — session publique (lecteurs)
+  const go = document.getElementById("scGoBtn"); if (go) go.onclick = () => { if (SCENE_ONLY) { const i = document.getElementById("scCodeIn"); if (i && i.value.trim()) syncJoinMaster(i.value); } else syncStartMaster(syncTypeIsPub()); };
+  const gm = document.getElementById("scGoMasterBtn"); if (gm) gm.onclick = () => syncStartMaster(syncTypeIsPub()); // v2.7.12 — type de session = paramètre général ⚙️ Réglages
   if (!SCENE_ONLY) { // v2.7.6 — options d'affichage du master sans ouvrir la Scène (imposées aux suiveurs via apcState.opts)
-    const flip = (key) => { scOpts[key] = !scOpts[key]; scOptsSave(); scOptsApply(); if (sceneOn) sceneRender(); try { sceneSendAll(true); } catch (e) {} syncUi(); };
-    const tr = (d) => { scOpts.tr = Math.max(-11, Math.min(11, (scOpts.tr || 0) + d)); scOptsSave(); scOptsApply(); if (sceneOn) sceneRender(); try { sceneSendAll(true); } catch (e) {} syncUi(); };
+    const flip = (key) => { scOpts[key] = !scOpts[key]; masterChoseDisplay(); scOptsSave(); scOptsApply(); if (sceneOn) sceneRender(); try { sceneSendAll(true); } catch (e) {} syncUi(); };
+    const tr = (d) => { scOpts.tr = Math.max(-11, Math.min(11, (scOpts.tr || 0) + d)); masterChoseDisplay(); scOptsSave(); scOptsApply(); if (sceneOn) sceneRender(); try { sceneSendAll(true); } catch (e) {} syncUi(); };
     const w = (id, fn) => { const b = document.getElementById(id); if (b) b.onclick = fn; };
     w("scSyncChords", () => flip("chords")); w("scSyncGrid", () => flip("grid"));
     w("scSyncTrL", () => tr(-1)); w("scSyncTrR", () => tr(1));
@@ -2309,6 +2327,10 @@ function songsLoad() {
   return st;
 }
 function songsSave() { try { localStorage.setItem(SONGS_KEY, JSON.stringify(songs)); } catch (e) { log("Écriture localStorage impossible : " + e.message, "ko"); } }
+function songPersist() { // v2.7.12 — en Mode Scène (live), AUCUNE sauvegarde au vol : toucher l'APC25 / M4 envoie au clavier et met à jour la config EN MÉMOIRE, mais n'écrase JAMAIS la config travaillée du morceau dans le stockage — seule 💾 Sauver morceau persiste explicitement
+  if (sceneOn) return;
+  songsSave();
+}
 function songById(id) { return songs.songs.find(s => s.id === id) || null; }
 function renderSongs() {
   const sel = document.getElementById("songSel");
@@ -2762,7 +2784,7 @@ function m4Write(key, vals, lbl) {
   if (!s) { log("🎛 Aucun morceau sélectionné — choisis un morceau (M1) avant d'ajuster les parties.", "ko"); return false; }
   if (!s.panel) s.panel = { tempo: null, params: {} };
   s.panel.params[key] = vals.slice();
-  songsSave();
+  songPersist(); // v2.7.12 — pas de sauvegarde au vol en Mode Scène
   const a = key.split(" ").map(x => parseInt(x, 16));
   sendItw(a, vals);
   log("🎛 " + lbl + " → " + vals.join(" ") + " (envoyé au KN2000 + mémorisé pour « " + s.title + " »)", "ok");
@@ -2789,7 +2811,7 @@ function m4CC(d, cc, val, lbl) {
   if (!s.panel.ccs) s.panel.ccs = {};
   const v = val & 0x7f;
   s.panel.ccs[ch + "|" + cc] = v;
-  songsSave();
+  songPersist(); // v2.7.12 — pas de sauvegarde au vol en Mode Scène
   send([0xB0 + (ch - 1), cc, v], "CC" + cc + " ch" + ch + " → " + v);
   log("🎛 " + lbl + " (CC" + cc + " ch" + ch + " → " + v + ") envoyé au KN2000 + mémorisé pour « " + s.title + " ».", "ok");
   return true;
@@ -2803,13 +2825,13 @@ function m4SetMute(d, on) {
   if (!s.panel.mutes) s.panel.mutes = {};
   if (on) s.panel.mutes[d.lbl] = true; else delete s.panel.mutes[d.lbl];
   if (d.cid) { // part Add-on : le mute = plus aucune donnée envoyée sur le canal
-    songsSave();
+    songPersist(); // v2.7.12
     log("🔇 " + d.lbl + " " + (on ? "MUET — aucune donnée ne sera envoyée sur son canal." : "réactivé — le canal redevient actif.") + " Mémorisé pour « " + s.title + " ».", on ? "info" : "ok");
     if (apcReady) apcLedsSync(); // v2.6.21 — LED de la surface APC à jour même si le mute vient de M4/scène/timelapse
     return true;
   }
   const ch = m4ChBase(d);
-  if (!ch || ch < 1 || ch > 16) { songsSave(); log("🔇 Canal de « " + d.lbl + " » inconnu — renseigne le canal sur la ligne : le mute sera appliqué (CC7=0) dès qu'il sera connu.", "ko"); return false; }
+  if (!ch || ch < 1 || ch > 16) { songPersist(); log("🔇 Canal de « " + d.lbl + " » inconnu — renseigne le canal sur la ligne : le mute sera appliqué (CC7=0) dès qu'il sera connu.", "ko"); return false; }
   if (!s.panel.ccs) s.panel.ccs = {};
   const key = ch + "|7";
   if (on) { // mémorise le volume d'avant-mute pour le rétablir intact
@@ -2823,7 +2845,7 @@ function m4SetMute(d, on) {
     s.panel.ccs[key] = prev;
   }
   const v = s.panel.ccs[key];
-  songsSave();
+  songPersist(); // v2.7.12
   send([0xB0 + (ch - 1), 7, v & 0x7f], "CC7 ch" + ch + " → " + v);
   log("🔇 Mute " + d.lbl + " " + (on ? "ON (CC7=0 ch" + ch + ") — l'APC continue de jouer, part inaudible." : "OFF (CC7=" + v + " ch" + ch + ")") + " Mémorisé pour « " + s.title + " ».", "ok");
   if (apcReady) apcLedsSync(); // v2.6.21
@@ -2841,7 +2863,7 @@ function addonCC(a, cc, val, lbl) {
   if (!s.panel.ccs) s.panel.ccs = {};
   const v = val & 0x7f;
   s.panel.ccs[ch + "|" + cc] = v;
-  songsSave();
+  songPersist(); // v2.7.12
   send([0xB0 + (ch - 1), cc, v], "CC" + cc + " ch" + ch + " → " + v);
   log("🎛 " + lbl + " (CC" + cc + " ch" + ch + " → " + v + ") + mémorisé pour « " + s.title + " ».", "ok");
   return true;
@@ -2855,7 +2877,7 @@ function addonSnd(a, snd) { // v2.5 — son d'une part Add-on : bank select + Pr
   if (!s.panel) s.panel = { tempo: null, params: {} };
   if (!s.panel.addsnd) s.panel.addsnd = {};
   s.panel.addsnd[ch] = [snd[0] & 0x7f, snd[1] & 0x7f];
-  songsSave();
+  songPersist(); // v2.7.12
   send([0xB0 + (ch - 1), 0, (snd[1] >> 7) & 0x7f, 0xB0 + (ch - 1), 32, snd[1] & 0x7f, 0xC0 + (ch - 1), snd[0] & 0x7f], "Son " + a.lbl + " → " + snd[2] + " (bank " + snd[1] + " PC " + snd[0] + ")");
   log("🎛 Son " + a.lbl + " → " + snd[2] + " (ch" + ch + ") + mémorisé pour « " + s.title + " ».", "ok");
   return true;
@@ -3077,8 +3099,8 @@ document.getElementById("m4Grid").addEventListener("change", (ev) => {
     if (!s) { log("🎛 Aucun morceau sélectionné — choisis un morceau (M1).", "ko"); return; }
     if (!s.panel) s.panel = { tempo: null, params: {} };
     if (!s.panel.chchans) s.panel.chchans = {};
-    if (!v || v < 1 || v > 16) { delete s.panel.chchans[d.lbl]; songsSave(); log("🎛 Canal de « " + d.lbl + " » effacé.", "info"); }
-    else { s.panel.chchans[d.lbl] = v; songsSave(); log("🎛 Canal de « " + d.lbl + " » → " + v + " (mémorisé pour « " + s.title + " »).", "ok"); }
+    if (!v || v < 1 || v > 16) { delete s.panel.chchans[d.lbl]; songPersist(); log("🎛 Canal de « " + d.lbl + " » effacé.", "info"); }
+    else { s.panel.chchans[d.lbl] = v; songPersist(); log("🎛 Canal de « " + d.lbl + " » → " + v + " (mémorisé pour « " + s.title + " »).", "ok"); }
     renderM4(); return;
   }
   if (t.dataset.rhyvar) { // v2.6.13 — Rythme 2/3 : variation mémorisée pour le morceau (appelée par les boutons Rythme 2/3 de M5 ou un timelapse)
@@ -3086,7 +3108,7 @@ document.getElementById("m4Grid").addEventListener("change", (ev) => {
     if (!s) { log("🎛 Aucun morceau sélectionné — choisis un morceau (M1).", "ko"); return; }
     if (!s.panel) s.panel = { tempo: null, params: {} };
     const idx = parseInt(t.dataset.rhyvar, 10);
-    s.panel["rhy" + idx] = t.value.split("/").map(Number); songsSave();
+    s.panel["rhy" + idx] = t.value.split("/").map(Number); songPersist(); // v2.7.12
     const r = KN.rhythms.find(x => x[0] === s.panel["rhy" + idx][0] && x[1] === s.panel["rhy" + idx][1]);
     if ((s.panel.rhyCur || 1) === idx && r) { m5RhySend(r, idx); renderM4(); } // marqué actuel → on l'entend tout de suite + il devient le rythme du morceau
     else log("🎛 Rythme " + idx + " → " + (r ? r[2] : "?") + " (variation mémorisée pour « " + s.title + " » — appelle-la par le bouton Rythme " + idx + " de M5 ou dans un timelapse).", "ok");
@@ -3097,7 +3119,7 @@ document.getElementById("m4Grid").addEventListener("change", (ev) => {
     if (!s) return;
     if (!s.panel) s.panel = { tempo: null, params: {} };
     const idx = parseInt(t.dataset.rhycur, 10);
-    s.panel.rhyCur = idx; songsSave();
+    s.panel.rhyCur = idx; songPersist(); // v2.7.12 — marqueur « actuel »
     let r = null; // v2.6.14 — idx 1 : le choix du sélecteur principal (rhy1, pc/bank) puis en repli le paramètre mémorisé (valeurs sysex) ; idx 2/3 : pc/bank du sélecteur
     if (idx === 1) {
       r = (s.panel.rhy1 ? (KN.rhythms.find(x => x[0] === s.panel.rhy1[0] && x[1] === s.panel.rhy1[1]) || null) : null)
@@ -3116,7 +3138,7 @@ document.getElementById("m4Grid").addEventListener("change", (ev) => {
     const r = KN.rhythms.find(x => x[0] === pc && x[1] === bk);
     if (!r) return;
     const s0 = songs.songs.find(x => x.id === curSongId);
-    if (s0) { if (!s0.panel) s0.panel = { tempo: null, params: {} }; s0.panel.rhy1 = [pc, bk]; songsSave(); } // v2.6.25 — retour terrain : le sélecteur mémorise TOUJOURS son choix (rhy1) mais ne force PLUS rhyCur=1 — la ligne qui joue ne doit pas bouger si sa case « actuel » n'est pas cochée
+    if (s0) { if (!s0.panel) s0.panel = { tempo: null, params: {} }; s0.panel.rhy1 = [pc, bk]; songPersist(); } // v2.6.25 — retour terrain : le sélecteur mémorise TOUJOURS son choix (rhy1) mais ne force PLUS rhyCur=1 — la ligne qui joue ne doit pas bouger si sa case « actuel » n'est pas cochée
     if (!s0 || (s0.panel.rhyCur || 1) === 1) { // envoi au clavier uniquement si Rythme 1 est l'« actuel » (ou pas de morceau) — sinon simple mémorisation
       sendItw([0x20, 0x04, 0x01], [0x01]);
       setTimeout(() => { m4Write("20 60 00", [r[4] & 0x7f, r[5] & 0x7f], "Rythme → " + r[2]); }, 120);
@@ -3902,7 +3924,7 @@ function apcRhySelect(idx) { // v2.6.24 — pad Rythme 1/2/3 : marque « actuel 
   const s = m5Song();
   if (!s) { log("🎛 Pad Rythme : aucun morceau sélectionné (choisis-en un en M1/M2).", "ko"); return; }
   if (!s.panel) s.panel = { tempo: null, params: {} };
-  s.panel.rhyCur = idx; songsSave();
+  s.panel.rhyCur = idx; songPersist(); // v2.7.12 — pad Rythme APC25
   let r = null;
   if (idx === 1) r = (s.panel.rhy1 ? (KN.rhythms.find(x => x[0] === s.panel.rhy1[0] && x[1] === s.panel.rhy1[1]) || null) : null) || ((s.panel.params && s.panel.params["20 60 00"]) ? matchRhythm(s.panel.params["20 60 00"][0], s.panel.params["20 60 00"][1]) : null);
   else { const arr = s.panel["rhy" + idx]; r = arr ? (KN.rhythms.find(x => x[0] === arr[0] && x[1] === arr[1]) || null) : null; }

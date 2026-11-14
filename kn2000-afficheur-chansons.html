@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Afficheur chansons — v0.17.3</title>
+<title>Afficheur chansons — v0.17.4</title>
 <style>
   html, body { margin: 0; }
   body { font-family: system-ui, sans-serif; background: #fafafa; color: #222; max-width: 1060px; margin: 0 auto; padding: 0 10px 16px; }
@@ -124,7 +124,7 @@
 <body data-view="rep">
 <div id="communBanner" hidden style="position:sticky;top:0;z-index:60;background:#fff8dc;border-bottom:2px solid #d4a017;padding:6px 10px;font-size:13px;text-align:center"></div>
 <header>
-  <span><b>🎵 Afficheur chansons</b> <span class="hint">v0.17.3 — import .mhtml (snapshot Blink : texte versionTxt du &lt;pre&gt;) · v0.17.2 — décodeur embarqué reconnaît la fiche APC Live (§ / !…! / @titre) reçue du master · v0.17.1 — répertoire · numéros · édition · transposition · scène (xN, surlignage à la mesure, signature adaptative) · impression · grille/ponctuateur · ⧉ dupliquer la grille sur un couplet · import JazzLab .sng · stockage IndexedDB · imports sans fuite · 💾 sauvegarde visible (garde anti-perte) · 🎤 morceaux INVITÉS du master APC Live</span></span>
+  <span><b>🎵 Afficheur chansons</b> <span class="hint">v0.17.4 — synchro : en session publique le master impose accords/grille/transposition (défaut karaoké), en privée chacun garde son affichage · v0.17.3 — import .mhtml (snapshot Blink : texte versionTxt du &lt;pre&gt;) · v0.17.2 — décodeur embarqué reconnaît la fiche APC Live (§ / !…! / @titre) reçue du master · v0.17.1 — répertoire · numéros · édition · transposition · scène (xN, surlignage à la mesure, signature adaptative) · impression · grille/ponctuateur · ⧉ dupliquer la grille sur un couplet · import JazzLab .sng · stockage IndexedDB · imports sans fuite · 💾 sauvegarde visible (garde anti-perte) · 🎤 morceaux INVITÉS du master APC Live</span></span>
   <span style="flex:1"></span>
   <span class="hint" id="stCount">—</span>
 </header>
@@ -2621,12 +2621,14 @@ function syncApplyState(st) {
     curId = st.id;
     if (!scEl("scene").classList.contains("on")) scEl("scene").classList.add("on");
     sceneRender(); renderPick();
-  } else if (typeof st.tr === "number" && AFF.getTr(s, curBookId()) !== st.tr) {
-    AFF.setTr(s, curBookId(), st.tr); sceneRender();
-  } else if (typeof st.chords === "boolean" && (params().chords !== false) !== st.chords) {
-    setParam("chords", st.chords); sceneRender();
   }
-  if (typeof st.beat === "boolean") setParam("sceneBeat", st.beat);
+  // v0.17.4 — affichage (accords/grille/transposition/feux) imposé par le master UNIQUEMENT en session PUBLIQUE (st.pub === 1) ; en session privée, chaque membre garde SON affichage local
+  if (st.pub === 1) {
+    if (typeof st.tr === "number" && AFF.getTr(s, curBookId()) !== st.tr) { AFF.setTr(s, curBookId(), st.tr); sceneRender(); }
+    if (typeof st.chords === "boolean" && (params().chords !== false) !== st.chords) { setParam("chords", st.chords); sceneRender(); }
+    if (typeof st.grid === "boolean" && (params().songView === "grid") !== st.grid) { setParam("songView", st.grid ? "grid" : "std"); sceneRender(); }
+    if (typeof st.beat === "boolean") setParam("sceneBeat", st.beat);
+  }
   if (typeof st.mpl === "number" && st.mpl >= 2 && s && !s.guest && AFF.mplOf(s) !== st.mpl) { s.mpl = st.mpl; save(false); if (scTimer) { scEl("scPlay").click(); scEl("scPlay").click(); } } // v0.9 : le déroulé du membre suit le master — v0.17 : jamais pour un INVITÉ (rien à mémoriser)
   scHl = (typeof st.hl === "number") ? st.hl : -1;
   scMes = st.mes || 0;
