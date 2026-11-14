@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Afficheur chansons — v0.17.2</title>
+<title>Afficheur chansons — v0.17.3</title>
 <style>
   html, body { margin: 0; }
   body { font-family: system-ui, sans-serif; background: #fafafa; color: #222; max-width: 1060px; margin: 0 auto; padding: 0 10px 16px; }
@@ -124,7 +124,7 @@
 <body data-view="rep">
 <div id="communBanner" hidden style="position:sticky;top:0;z-index:60;background:#fff8dc;border-bottom:2px solid #d4a017;padding:6px 10px;font-size:13px;text-align:center"></div>
 <header>
-  <span><b>🎵 Afficheur chansons</b> <span class="hint">v0.17.2 — décodeur embarqué reconnaît la fiche APC Live (§ / !…! / @titre) reçue du master · v0.17.1 — répertoire · numéros · édition · transposition · scène (xN, surlignage à la mesure, signature adaptative) · impression · grille/ponctuateur · ⧉ dupliquer la grille sur un couplet · import JazzLab .sng · stockage IndexedDB · imports sans fuite · 💾 sauvegarde visible (garde anti-perte) · 🎤 morceaux INVITÉS du master APC Live</span></span>
+  <span><b>🎵 Afficheur chansons</b> <span class="hint">v0.17.3 — import .mhtml (snapshot Blink : texte versionTxt du &lt;pre&gt;) · v0.17.2 — décodeur embarqué reconnaît la fiche APC Live (§ / !…! / @titre) reçue du master · v0.17.1 — répertoire · numéros · édition · transposition · scène (xN, surlignage à la mesure, signature adaptative) · impression · grille/ponctuateur · ⧉ dupliquer la grille sur un couplet · import JazzLab .sng · stockage IndexedDB · imports sans fuite · 💾 sauvegarde visible (garde anti-perte) · 🎤 morceaux INVITÉS du master APC Live</span></span>
   <span style="flex:1"></span>
   <span class="hint" id="stCount">—</span>
 </header>
@@ -1081,7 +1081,22 @@ function decodeSng(xml) {
   return out;
 }
 function isFicheApc(txt) { return /^@titre\s*:/m.test(txt) || /^\s*§/m.test(txt); } // v0.17.2 : grammaire fiche APC Live (§ sections, rangées !…!, @titre:) reconnue par le décodeur embarqué
-function decodeSource(txt) { if (isBoitePage(txt)) return decodeBoitePage(txt); if (isSng(txt)) return decodeSng(txt); if (isFicheApc(txt)) return AFF.parseEdited(txt, { title: null, artist: null, lyricsAuthor: null, musicAuthor: null, sourceMeta: {} }); return isChordPro(txt) ? decodeChordPro(txt) : decodeBoiteAChansons(txt); } // v0.17.2 : + fiche APC Live ; v0.12 : + JJazzLab .sng ; v0.6 : + page HTML boîte à chansons ; v0.5.2 : détection auto boîte à chansons / ChordPro
+function isMhtml(txt) { return /^\s*(From|MIME-Version|Content-Type)\s*:/m.test((txt || "").slice(0, 512)); } // v0.17.3 : snapshot MHTML (Blink « Enregistrer la page sous »)
+function mhtmlHtmlPart(txt) { // v0.17.3 : corps de la partie text/html d'un MHTML multipart/related
+  const bM = /boundary="?([^"\r\n;]+)"?/i.exec(txt.slice(0, 4096));
+  if (!bM) return null;
+  const esc = bM[1].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const parts = txt.split(new RegExp("\\r?\\n--" + esc));
+  for (const p of parts) {
+    const iCr = p.indexOf("\r\n\r\n"), iLf = p.indexOf("\n\n");
+    const sep = iCr >= 0 ? iCr + 4 : (iLf >= 0 ? iLf + 2 : -1);
+    if (sep < 0) continue;
+    if (/^Content-Type:\s*text\/html/im.test(p.slice(0, sep))) return p.slice(sep).replace(/\r\n/g, "\n");
+  }
+  return null;
+}
+function mhtmlPreText(html) { const m = /<pre[^>]*>([\s\S]*?)<\/pre>/i.exec(html || ""); return m ? decodeEntitiesH(m[1]) : null; } // v0.17.3 : versionTxt de boîte à chansons embarquée dans le <pre>
+function decodeSource(txt) { if (isMhtml(txt)) { const h = mhtmlHtmlPart(txt), pre = h && mhtmlPreText(h); if (pre != null) return decodeBoiteAChansons(pre); if (h && isBoitePage(h)) return decodeBoitePage(h); const s = decodeBoiteAChansons(txt); s.warnings.push("MHTML : aucune partie text/html avec <pre> exploitable — contenu brut parsé, vérifier le résultat"); return s; } if (isBoitePage(txt)) return decodeBoitePage(txt); if (isSng(txt)) return decodeSng(txt); if (isFicheApc(txt)) return AFF.parseEdited(txt, { title: null, artist: null, lyricsAuthor: null, musicAuthor: null, sourceMeta: {} }); return isChordPro(txt) ? decodeChordPro(txt) : decodeBoiteAChansons(txt); } // v0.17.3 : + snapshot MHTML (texte versionTxt du <pre>) ; v0.17.2 : + fiche APC Live ; v0.12 : + JJazzLab .sng ; v0.6 : + page HTML boîte à chansons ; v0.5.2 : détection auto boîte à chansons / ChordPro
 
 // ═══════════ LOGIQUE PURE (testée) : AFF.* ═══════════
 const AFF = {};
