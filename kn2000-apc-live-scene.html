@@ -103,6 +103,7 @@
   #sceneFs .beats .b.grn { border-color: #3a5; }
   #sceneFs .beats .b.on.red { background: #ff3b3b; box-shadow: 0 0 10px #ff3b3b; }
   #sceneFs .beats .b.on.grn { background: #2ecc5b; box-shadow: 0 0 10px #2ecc5b; }
+  #sceneFs .msr.on { background: rgba(122, 79, 208, .45); border-radius: 4px; } /* v2.7.13 — vue grille : mesure en cours surlignée (comme l'afficheur) */
   #sceneFs .scMain { flex: 1; position: relative; overflow: hidden; display: flex; min-height: 0; }
   #sceneFs .scZone { flex: 1; overflow-y: auto; padding: 2vh 3vw; font-family: ui-monospace, Menlo, Consolas, monospace; cursor: pointer; scrollbar-width: thin; font-size: calc(24px * var(--scScale, 1)); } /* v2.7.9 — taille afficheur (14×1.7≈24px) × zoom propre A−/A+ */
   #sceneFs .scZone .secLbl { color: #ffd479; margin: 16px 0 6px; font-weight: 700; }
@@ -135,9 +136,9 @@
 <header>
   <span class="badge" id="kbdBadge" title="Liaison KN2000 (badge charte)">🎹 <b id="kbdDot">○</b> KN2000</span>
   <span class="badge" id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
-  <span class="badge" id="verBadge" style="background:#1273b0;color:#fff;font-weight:bold" title="Version publiée de cette page">v2.7.12</span>
+  <span class="badge" id="verBadge" style="background:#1273b0;color:#fff;font-weight:bold" title="Version publiée de cette page">v2.7.13</span>
   <span style="flex:1"></span>
-  <span><b>🎼 APC Live KN2000 — Scene</b> <span class="hint">v2.7.12 — badge version visible · Vue Chanson · Mode Scène · M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
+  <span><b>🎼 APC Live KN2000 — Scene</b> <span class="hint">v2.7.13 — badge version visible · Vue Chanson · Mode Scène · M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
   <span style="flex:1"></span>
   <nav class="hubLinks" title="Navigation entre les outils du projet (charte 7i)">
     <a href="index.html">🏠 Hub</a>
@@ -728,7 +729,7 @@ function parseSeq() {
       }
       for (const e of evs) {
         const r = (e.mIdx !== undefined && e.mIdx < mRanges.length) ? mRanges[e.mIdx] : null;
-        flush({ t: "ev", chord: e.chord, beats: e.beats, label: e.label, mNo: r ? r[0] : null, pNo: r ? r[0] : null, mRange: r ? [lineStart + r[1], lineStart + r[2]] : [lineStart, lineStart + line.length] }); // v2.6.13 — pNo = mesure JOUÉE (mNo au départ ; les blocs répétés l'incrémentent à chaque passe)
+        flush({ t: "ev", chord: e.chord, beats: e.beats, label: e.label, mNo: r ? r[0] : null, pNo: r ? r[0] : null, mIdx: e.mIdx, mRange: r ? [lineStart + r[1], lineStart + r[2]] : [lineStart, lineStart + line.length] }); // v2.6.13 — pNo = mesure JOUÉE (mNo au départ ; les blocs répétés l'incrémentent à chaque passe) ; v2.7.13 — mIdx ajouté (affichage only)
       }
       continue;
     }
@@ -1383,6 +1384,53 @@ const SArep = (() => { // mini-moteur de ponctuation — port fidèle de l'affic
   }
   return { isChord, isNC, isHold, beatsOf, parsePunctLine, isGridLn, slotsMeasure };
 })();
+// v2.7.13 — ports FIDÈLES de l'afficheur (GR.prowChords / splitChordLine / AFF.chordRow / transposeMeasures) : une même rangée se rend IDENTIQUE dans APC Live et dans l'afficheur
+function prowChordsRep(raw) { // port de GR.prowChords — accords d'une rangée ponctuée avec leurs colonnes 0-based
+  const inner = String(raw).replace(/^[!|]/, "").replace(/[!|][ \t]*$/, "").replace(/^[ \t]+/, "");
+  const out = []; const re = /\S+/g; let m;
+  while ((m = re.exec(inner))) { const t = m[0]; if (isChordToken(t)) out.push({ col: m.index, chord: t, bassOnly: BASSONLY_RE.test(t) }); }
+  return out;
+}
+function splitChordLineRep(line) { // port de splitChordLine (afficheur) — accords nus « G Em » avec colonnes
+  const out = []; const re = /\S+/g; let m;
+  while ((m = re.exec(line))) { const t = m[0]; if (!isChordToken(t)) continue; out.push({ col: m.index, chord: t, bassOnly: BASSONLY_RE.test(t) }); }
+  return out;
+}
+function chordRowRep(chords) { // port de AFF.chordRow — accords replacés à leurs colonnes (ligne .ch façon afficheur)
+  let out = "";
+  for (const c of (chords || [])) {
+    const start = Math.max(0, c.col | 0);
+    if (start >= out.length) { out += " ".repeat(start - out.length) + c.chord; continue; }
+    const a = out.split("");
+    for (let k = 0; k < c.chord.length; k++) { const idx = start + k; if (a[idx] === undefined || a[idx] === " ") a[idx] = c.chord[k]; }
+    out = a.join("");
+  }
+  return out.replace(/\s+$/, "");
+}
+function rowChordsOf(r) { // rangée → [{col, chord}] depuis le texte d'origine (ponctuée !…! ou accords nus), comme l'afficheur
+  const t = String((r && r.text) || "").trim();
+  if (!t) return null;
+  if (SArep.isGridLn(t)) return prowChordsRep(t);
+  if (repIsChordLine(t)) return splitChordLineRep(t);
+  return null;
+}
+function rowChordLine(r, semis) { // ligne d'accords alignée façon afficheur (transposition d'affichage optionnelle) — null si la rangée n'est pas une ligne d'accords
+  const ch = rowChordsOf(r);
+  if (!ch || !ch.length) return null;
+  const tr = semis ? ch.map(c => ({ col: c.col, chord: (c.chord === "NC" || c.chord === "P") ? c.chord : repTrChord(c.chord, semis) })) : ch;
+  return chordRowRep(tr);
+}
+function gridRowHtmlRep(r, R, semis) { // v2.7.13 — vue grille IDENTIQUE à l'afficheur (GR.gridHtml) : « | G . Em . | » par mesure, chaque mesure dans un span .msr[data-m] surlignable, 4 mesures/ligne
+  const t = String((r && r.text) || "").trim();
+  if (!SArep.isGridLn(t)) return escF(scTrText((r && (r.textJoue || r.text)) || "", semis)); // accords nus : inchangé
+  const beats = (R && R.beats) || 4;
+  const pm = SArep.parsePunctLine(t, beats, !!(R && R.adapt));
+  if (pm.err || !pm.measures || !pm.measures.length) return escF(scTrText(t, semis));
+  const mes = semis ? pm.measures.map(m => ({ mb: m.mb, ev: (m.ev || []).map(e => ({ t: e.t, ch: (e.ch === "NC" || e.ch === "P") ? e.ch : repTrChord(e.ch, semis) })) })) : pm.measures; // port de transposeMeasures
+  const lines = [];
+  for (let i = 0; i < mes.length; i += 4) lines.push(mes.slice(i, i + 4).map((m, j) => '<span class="msr" data-m="' + (i + j) + '">' + (j === 0 ? "| " : "") + escF(SArep.slotsMeasure(m, beats)) + " |</span>").join(" "));
+  return lines.join("<br>");
+}
 function repTrChord(name, semis) { // port de AFF.transposeChord — tonalité de jeu de la fiche (s.transpose)
   if (!semis) return name;
   const sh = (tok) => {
@@ -1559,7 +1607,7 @@ function parseFicheZone() { // v2.7.0 (A1) — l'onglet Chanson : § sections, r
             const dur = Math.max(0.5, (e.nextT || r.mb + 1) - e.t);
             const label = e.ch; // accord JOUÉ (transposé si tonalité de jeu, « D/A » pour une basse seule) — le texte ÉCRIT reste dans la fiche
             const mNo = r.mNo + (e.mIdx || 0) + p * r.mp + pass * span; // v2.7.0 : p avance de mesures/PASSE (mp) ; une reprise de section (§ xN) avance du SPAN complet
-            const ev = { t: "ev", chord: e.c, beats: dur, label, mNo, pNo: mNo, mRange: r.range, rowIdx: r.rowIdx, secIdx: r.secIdx, mb: (e.mb || r.mb), hl: evHl };
+            const ev = { t: "ev", chord: e.c, beats: dur, label, mNo, pNo: mNo, mRange: r.range, rowIdx: r.rowIdx, secIdx: r.secIdx, mb: (e.mb || r.mb), hl: evHl, mIdx: e.mIdx }; // v2.7.13 — mIdx ajouté (affichage only, ne change pas le jeu)
             seq.push(ev); disp.push(ev);
           }
           if (pass === 0 && p === 0) r.evLast = seq.length - 1;
@@ -1670,7 +1718,7 @@ function buildRowsFromDisp() { // onglet DIRECT : structure d'affichage Chanson/
     if (it.t === "title") { curSec = { label: it.text, idx: secs.length }; secs.push(curSec); continue; }
     if (it.t !== "ev") continue;
     const key = it.mRange ? it.mRange[0] : null;
-    if (!row || key === null || (lineKey !== null && lineEnd !== -1 && key > lineEnd)) { row = { secIdx: curSec ? curSec.idx : -1, marker: null, text: "", textJoue: "", lyric: "", evFirst: it.i, evLast: it.i, range: it.mRange, rowIdx: rows.length }; rows.push(row); lineKey = key; lineEnd = -1; } // rangée = LIGNE de grille (les mesures se suivent) ; un bloc rejoué re-surligne SA ligne
+    if (!row || key === null || (lineKey !== null && lineEnd !== -1 && key > lineEnd)) { row = { secIdx: curSec ? curSec.idx : -1, marker: null, text: "", textJoue: "", lyric: "", evFirst: it.i, evLast: it.i, range: it.mRange, rowIdx: rows.length }; rows.push(row); lineKey = key; lineEnd = -1; if (it.mRange) { const ta = document.getElementById("progInput"); if (ta && ta.value) row.text = ta.value.substring(it.mRange[0], it.mRange[1]); } } // v2.7.13 — row.text = ligne BRUTE (pour le rendu aligné façon afficheur en onglet Direct aussi)
     if (it.mRange) lineEnd = Math.max(lineEnd, it.mRange[1]);
     if (!(it.pNo > it.mNo)) row.textJoue = row.textJoue ? row.textJoue + "  " + (it.label || "") : (it.label || ""); // les passes ultérieures des blocs || xN ne dupliquent pas l'affichage
     row.evLast = it.i;
@@ -1882,7 +1930,8 @@ function songViewRender() { // Vue Chanson : sections + rangées + paroles (rapp
         if (sec.marker) h.push('<div class="svMarker">' + escF(sec.marker) + "</div>");
       }
     }
-    h.push('<div class="svRow" data-r="' + r.rowIdx + '">' + escF(r.text || r.textJoue) + "</div>");
+    const svCl = rowChordLine(r, 0); // v2.7.13 — Vue Chanson : accords alignés à leurs colonnes façon afficheur (texte d'origine, sans la transposition ♯ de la Scène)
+    h.push('<div class="svRow" data-r="' + r.rowIdx + '">' + (svCl != null ? escF(svCl) : escF(r.text || r.textJoue)) + "</div>");
     if (r.lyric) h.push('<div class="svLyric">' + escF(r.lyric) + "</div>");
   }
   sv.innerHTML = h.join("") || '<div class="hint">Rien à afficher — charge un morceau (ou une fiche 🎹) puis ▶.</div>';
@@ -1973,11 +2022,13 @@ function sceneRowsBuild() { // v2.7.9 — markup IDENTIQUE à l'afficheur v0.17.
         if (sec.marker) h.push('<div class="markerLn' + cls + '">(' + escF(sec.marker) + ")</div>");
       }
     }
-    const accTxt = scTrText(O.grid ? gridNormTxt(r.text, R) : (r.textJoue || r.text || ""), O.tr); // grille = texte d'origine, sinon accords JOUÉS ; transposition d'affichage par token
+    // v2.7.13 — rendu IDENTIQUE à l'afficheur : grille = « | G . Em . | » par mesure (span .msr surlignable) ; sinon accords ALIGNÉS à leurs colonnes (port AFF.chordRow) — plus de « ! » brut affiché
+    const accHtml = O.grid ? gridRowHtmlRep(r, R, O.tr) : (rowChordLine(r, O.tr) != null ? escF(rowChordLine(r, O.tr)) : escF(scTrText(r.textJoue || r.text || "", O.tr)));
+    const accTxt = accHtml.replace(/<[^>]+>/g, ""); // texte sans balises, test de vide uniquement
     const fzc = (fz && r.secIdx === sceneStick) ? " fz" : "";
     if (accTxt.trim() && (O.chords || !r.lyric)) { // rangée sans paroles (intro/solo) toujours rendue, même accords masqués
-      if (O.chords && r.lyric) h.push('<div class="ln' + fzc + '" data-r="' + r.rowIdx + '"><div class="ch">' + escF(accTxt) + '</div><div class="ly">' + escF(r.lyric) + "</div></div>");
-      else h.push('<div class="chordsOnly' + fzc + '" data-r="' + r.rowIdx + '">' + escF(accTxt) + "</div>");
+      if (O.chords && r.lyric) h.push('<div class="ln' + fzc + '" data-r="' + r.rowIdx + '"><div class="ch">' + accHtml + '</div><div class="ly">' + escF(r.lyric) + "</div></div>");
+      else h.push('<div class="chordsOnly' + fzc + '" data-r="' + r.rowIdx + '">' + accHtml + "</div>");
     } else if (r.lyric) h.push('<div class="ln' + fzc + '" data-r="' + r.rowIdx + '"><div class="ly">' + escF(r.lyric) + "</div></div>"); // ♯ off : paroles seules, plein poids comme l'afficheur
   }
   return h.join("") || '<div class="empty">' + (SCENE_ONLY
@@ -1992,7 +2043,10 @@ function sceneHlRow(rIdx, scroll) { // v2.7.6 — surligne la rangée en cours (
   const r = (rIdx != null && R.rows) ? R.rows[rIdx] : null;
   if (!r) return;
   const el = z.querySelector('.ln[data-r="' + rIdx + '"], .chordsOnly[data-r="' + rIdx + '"], .introLn[data-r="' + rIdx + '"]');
+  z.querySelectorAll(".msr.on").forEach(el2 => el2.classList.remove("on"));
   if (el) { el.classList.add("hl"); if (scroll) { try { el.scrollIntoView({ behavior: "auto", block: "center" }); } catch (e) {} } } // v2.7.6 — retour terrain : scroll IMMÉDIAT (plus de « smooth » → décalage de synchro)
+  const O2 = scOptsView();
+  if (O2.grid && curEv && curEv.mIdx != null && el) { const ms = el.querySelector('.msr[data-m="' + curEv.mIdx + '"]'); if (ms) ms.classList.add("on"); } // v2.7.13 — vue grille : la MESURE en cours est surlignée (span .msr, comme l'afficheur)
   const sec = (R.secs || [])[r.secIdx];
   document.getElementById("scSec").textContent = (sec && sec.label) || "";
 }
