@@ -136,9 +136,9 @@
 <header>
   <span class="badge" id="kbdBadge" title="Liaison KN2000 (badge charte)">🎹 <b id="kbdDot">○</b> KN2000</span>
   <span class="badge" id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
-  <span class="badge" id="verBadge" style="background:#1273b0;color:#fff;font-weight:bold" title="Version publiée de cette page">v2.7.13</span>
+  <span class="badge" id="verBadge" style="background:#1273b0;color:#fff;font-weight:bold" title="Version publiée de cette page">v2.7.14</span>
   <span style="flex:1"></span>
-  <span><b>🎼 APC Live KN2000 — Scene</b> <span class="hint">v2.7.13 — badge version visible · Vue Chanson · Mode Scène · M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
+  <span><b>🎼 APC Live KN2000 — Scene</b> <span class="hint">v2.7.14 — badge version visible · Vue Chanson · Mode Scène · M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
   <span style="flex:1"></span>
   <nav class="hubLinks" title="Navigation entre les outils du projet (charte 7i)">
     <a href="index.html">🏠 Hub</a>
@@ -1369,11 +1369,13 @@ const SArep = (() => { // mini-moteur de ponctuation — port fidèle de l'affic
     }
     return { measures };
   }
-  function isGridLn(line) { // port de GR.isGridLn — grammaire ✏️ de l'afficheur
-    if (!/[!|]/.test(line)) return false;
+  function isGridLn(line) { // port de GR.isGridLn — grammaire ✏️ de l'afficheur ; v2.7.14 : règle v0.12.1 de l'afficheur — une rangée AVEC tenues mais SANS séparateur (« NC . . . », « Am . . . ») est une rangée de grille aussi
     const toks = String(line).trim().split(/\s+/).filter(Boolean);
     const inner = toks.filter(t => t !== "!" && t !== "|");
-    return inner.length > 0 && inner.every(t => isChord(t) || isNC(t) || isHold(t));
+    if (!inner.length) return false;
+    if (!inner.every(t => isChord(t) || isNC(t) || isHold(t))) return false;
+    if (/[!|]/.test(line)) return true;
+    return inner.some(t => isHold(t)) && inner.some(t => isChord(t) || isNC(t));
   }
   function slotsMeasure(m, beats) { // mesure → cellules DIRECT, PAD de tenues à la longueur RÉELLE de la mesure — v2.6.33 : m.mb (adaptative : 2, 3, 5, 7 temps…) sinon chiffrage (une mesure sans points est TOUJOURS pleine)
     const B = (m && m.mb) || beats;
@@ -1382,8 +1384,50 @@ const SArep = (() => { // mini-moteur de ponctuation — port fidèle de l'affic
     for (const e of m.ev) s[Math.min(e.t, B) - 1] = e.ch;
     return s.join(" ");
   }
-  return { isChord, isNC, isHold, beatsOf, parsePunctLine, isGridLn, slotsMeasure };
+  function fmtCellRep(m, beats, adapt) { // v2.7.14 — port de SA.fmtCell : forme compacte si l'aller-retour parse est EXACT, sinon points (fmtMeasure)
+    if (!m || !m.ev || !m.ev.length) return "—";
+    const compact = m.ev.map(e => e.ch).join(" ");
+    const r = parsePunctLine(compact, beats, adapt); // sans motif P (jamais dans les rangées réelles)
+    if (!r.err && r.measures.length === 1) {
+      const a = r.measures[0].ev;
+      if (a.length === m.ev.length && a.every((e, ix) => e.t === m.ev[ix].t && e.ch === m.ev[ix].ch) && (r.measures[0].mb || beats) === (m.mb || beats)) return compact;
+    }
+    return slotsMeasure(m, beats);
+  }
+  function rawPunctRep(measures, beats, adapt) { // v2.7.14 — port de SA.rawPunct : forme frappable d'une rangée (cellules jointes par « ! »)
+    if (!measures || !measures.length) return "";
+    return measures.map(m => fmtCellRep(m, beats, adapt)).join(" ! ");
+  }
+  return { isChord, isNC, isHold, beatsOf, parsePunctLine, isGridLn, slotsMeasure, fmtCellRep, rawPunctRep };
 })();
+// v2.7.14 — standardisation à la validation : la ponctuation vit DANS le texte, sous forme canonique
+  function canonProw(measures, beats, adapt) { // v2.7.14 — forme canonique d'une rangée : SA.rawPunct (compacte si l'aller-retour est exact), avec « ! » de bord pour rester une rangée de grille reconnue au re-parse
+    let s = SArep.rawPunctRep(measures, beats, adapt);
+    if (s && !/^[!|]/.test(s)) s = "! " + s + " !";
+    return s;
+  }
+  function ficheCanonText(text, meta) { // v2.7.14 — seules les rangées de grille (!…! / |…|, y compris « Intro : !…! » et le suffixe xN) sont réémises en forme canonique ; TOUTES les autres lignes (accords nus à colonnes, paroles, §, marqueurs…) restent telles quelles, byte-identique
+    const beats = (meta && meta.beats) || 4, adapt = !!(meta && meta.adapt);
+    const out = [];
+    for (const raw of String(text == null ? "" : text).replace(/\r\n?/g, "\n").split("\n")) {
+      const t = raw.trim();
+      if (!t) { out.push(raw); continue; }
+      let repSuf = "", clean = raw;
+      const m = t.match(/\s+[×xX]\s*(\d+)\s*$/);
+      if (m && +m[1] >= 2) { repSuf = raw.slice(m.index); clean = raw.slice(0, m.index); }
+      const introM = clean.match(/^(Intro\s*:\s*)(.*)$/i);
+      if (introM && SArep.isGridLn(introM[2].trim())) {
+        const pv = SArep.parsePunctLine(introM[2].trim(), beats, adapt);
+        if (!pv.err && pv.measures.length) { out.push(introM[1] + canonProw(pv.measures, beats, adapt) + repSuf); continue; }
+      }
+      if (SArep.isGridLn(clean.trim())) {
+        const pv = SArep.parsePunctLine(clean.trim(), beats, adapt);
+        if (!pv.err && pv.measures.length) { out.push(canonProw(pv.measures, beats, adapt) + repSuf); continue; }
+      }
+      out.push(raw);
+    }
+    return out.join("\n");
+  }
 // v2.7.13 — ports FIDÈLES de l'afficheur (GR.prowChords / splitChordLine / AFF.chordRow / transposeMeasures) : une même rangée se rend IDENTIQUE dans APC Live et dans l'afficheur
 function prowChordsRep(raw) { // port de GR.prowChords — accords d'une rangée ponctuée avec leurs colonnes 0-based
   const inner = String(raw).replace(/^[!|]/, "").replace(/[!|][ \t]*$/, "").replace(/^[ \t]+/, "");
@@ -1460,11 +1504,11 @@ function repParseSong(s) { // fiche afficheur → { introProw, sections:[{label,
   }
   // format TEXTE §-sérialisé — port allégé de AFF.parseEdited : mêmes règles § / Intro: / marqueurs (…) / étiquette nue (v0.11.1)
   const arr = String(d).replace(/\r\n?/g, "\n").split("\n").map(normOpt);
-  let cur = null, pendingGrid = null;
+  let cur = null; const pendingGrids = []; // v2.7.14 : LISTE (port v0.14.2 de l'afficheur) — plusieurs rangées d'affilée s'empilent (instrumental multi-rangées), au lieu de s'écraser
   const close = () => {
-    if (cur) { if (pendingGrid) cur.prows.push(pendingGrid); if (cur.prows.length) p.sections.push(cur); cur = null; }
-    else if (pendingGrid) p.sections.push({ label: null, prows: [pendingGrid] }); // rangée seule sans section = instrumental implicite (v0.11.1)
-    pendingGrid = null;
+    if (cur) { for (const g of pendingGrids) cur.prows.push(g); if (cur.prows.length) p.sections.push(cur); cur = null; }
+    else if (pendingGrids.length) p.sections.push({ label: null, prows: pendingGrids.slice() }); // rangée seule sans section = instrumental implicite (v0.11.1)
+    pendingGrids.length = 0;
   };
   for (let i = 0; i < arr.length; i++) {
     const line = arr[i];
@@ -1473,14 +1517,14 @@ function repParseSong(s) { // fiche afficheur → { introProw, sections:[{label,
     if (/^§/.test(line)) { close(); cur = { label: line.replace(/^§\s*/, "").trim() || null, prows: [] }; continue; }
     if (!line.trim()) { close(); continue; }
     if (/^\((.+)\)$/.test(line.trim()) && !SArep.isGridLn(line) && !repIsChordLine(line)) continue; // marqueur (…) — affiché, pas joué
-    if (SArep.isGridLn(line)) { pendingGrid = line.trim(); continue; } // rangée de grille — au-dessus de paroles = rangée de cette ligne ; seule = instrumental de section
+    if (SArep.isGridLn(line)) { pendingGrids.push(line.trim()); continue; } // rangée de grille — au-dessus de paroles = rangée de cette ligne ; seule = instrumental de section ; v2.7.14 : s'empilent (multi-rangées)
     {
       const bare = line.trim();
       const nxt = arr[i + 1] || "", nx2 = arr[i + 2] || "";
       const nx2Lyric = nx2.trim() && !/^§/.test(nx2.trim()) && !SArep.isGridLn(nx2) && !repIsChordLine(nx2) && !/^\((.+)\)$/.test(nx2.trim());
       if (bare.split(/\s+/).length === 1 && bare.length <= 24 && SArep.isGridLn(nxt) && !nx2Lyric) { close(); cur = { label: bare, prows: [] }; continue; } // étiquette nue + rangée = instrumental étiqueté
     }
-    if (pendingGrid) { if (!cur) cur = { label: null, prows: [] }; cur.prows.push(pendingGrid); pendingGrid = null; } // paroles : consomment la rangée au-dessus
+    for (const g of pendingGrids.splice(0)) { if (!cur) cur = { label: null, prows: [] }; cur.prows.push(g); } // paroles : consomment les rangées au-dessus (dans l'ordre)
   }
   close();
   return p;
@@ -2535,7 +2579,9 @@ document.getElementById("songSave").onclick = async () => {
   if (!s) { alert("Sélectionne d'abord un morceau (ou ➕ Nouveau)."); return; }
   const zone = zoneVal(); // v2.7.0 : l'onglet ACTIF est mémorisé dans son champ ; l'autre suit son brouillon éventuel
   if (curTab === "chanson") {
-    s.fiche = zone;
+    const canon = ficheCanonText(zone, ficheMetaOf(s)); // v2.7.14 — validation = standardisation : les rangées !…! partent en forme canonique (SA.rawPunct + ! de bord), toutes les autres lignes restent telles quelles ; la ponctuation vit DANS la fiche
+    if (canon !== zone) log("💾 Fiche standardisée à la validation : rangées ponctuées en forme canonique « ! … ! » — autres lignes inchangées, aller-retour stable.", "info");
+    s.fiche = canon;
     const draftDirect = tabDraft.direct;
     if (draftDirect != null && draftDirect !== (s.seq || "")) {
       const dAuto = ficheDerive(s); // référence du dérivé actuel
