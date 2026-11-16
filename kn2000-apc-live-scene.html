@@ -136,9 +136,9 @@
 <header>
   <span class="badge" id="kbdBadge" title="Liaison KN2000 (badge charte)">🎹 <b id="kbdDot">○</b> KN2000</span>
   <span class="badge" id="synBadge" style="font-weight:bold">⚔ Synchro : ?</span>
-  <span class="badge" id="verBadge" style="background:#1273b0;color:#fff;font-weight:bold" title="Version publiée de cette page">v2.7.16</span>
+  <span class="badge" id="verBadge" style="background:#1273b0;color:#fff;font-weight:bold" title="Version publiée de cette page">v2.7.17</span>
   <span style="flex:1"></span>
-  <span><b>🎼 APC Live KN2000 — Scene</b> <span class="hint">v2.7.16 — badge version visible · Vue Chanson · Mode Scène · M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
+  <span><b>🎼 APC Live KN2000 — Scene</b> <span class="hint">v2.7.17 — badge version visible · Vue Chanson · Mode Scène · M1 Morceaux · M2 Direct · M3 Réglages &amp; Tests · M4 Parties · M5 Live &amp; Automation · surface APC25</span></span>
   <span style="flex:1"></span>
   <nav class="hubLinks" title="Navigation entre les outils du projet (charte 7i)">
     <a href="index.html">🏠 Hub</a>
@@ -284,7 +284,7 @@ Thème
       <span class="deckLbl">📼 Départ mesure</span>
       <button id="mFirst" title="Première mesure">⏮</button>
       <button id="mPrev" title="Mesure précédente">◀</button>
-      <input type="number" id="startM" min="1" max="999" value="1" title="N° de la mesure de départ : ▶ Démarrer part de là (les mesures précédentes ne sont pas envoyées) ; FA Start du clavier part toujours de la mesure 1">
+      <input type="number" id="startM" min="1" max="999" value="1" title="N° de la mesure de départ : ▶ Démarrer part de là (les mesures précédentes ne sont pas envoyées) ; FA Start du clavier part aussi de cette mesure (zap ‹§/§› en Mode Scène, transport arrêté)">
       <button id="mNext" title="Mesure suivante">▶</button>
       <button id="mLast" title="Dernière mesure">⏭</button>
       <span id="mCount">—</span>
@@ -407,7 +407,7 @@ Thème
       <code>Thème</code><br>
       <code>| F . % . | G7 . . . | C . / . NC . . . |</code>
       <br><br><b>▶ Démarrer</b> : (1) tempo imposé au clavier (trame TMP) ; (2) armement Synchro&Break ; (3) séquence — <b>si l'horloge F8 tourne, les accords sont pilotés par le COMPTEUR de pulses</b> : zéro dérive, un changement de tempo à la molette est suivi instantanément, le calage reste collé au compteur affiché (sinon secours au minuteur).
-      <br><b>🎛 Transport clavier</b> : FA Start → séquence lancée depuis l'accord 1 pile sur le temps 1 ; FB Continue → reprise de la séquence arrêtée (accord interrompu rejoué) ; FC Stop → arrêt (notes OFF).
+      <br><b>🎛 Transport clavier</b> : FA Start → séquence lancée depuis la mesure de départ choisie pile sur le temps 1 ; FB Continue → reprise de la séquence arrêtée (accord interrompu rejoué) ; FC Stop → arrêt (notes OFF).
       <br><b>📼 Départ mesure</b> : champ, flèches ⏮ ◀ ▶ ⏭ ou bande glissante — <b>▶ Démarrer part de la mesure choisie</b> (les mesures d'avant ne sont pas envoyées ; 🔁 Repeat y reboucle) ; FA du clavier à l'arrêt → mesure 1 ; FA pendant la lecture → simple réalignage, la lecture continue (le KN2000 émet FA au démarrage de son rythme) ; le grand compteur de position démarre à la mesure de départ (N:01:000) ; pendant la lecture, le compteur du deck affiche la <b>mesure JOUÉE</b> (blocs <code>!!x2</code> : les répétitions continuent la numérotation) ; à l'arrêt (FC/Stop), le compteur se fige sur la <b>mesure de départ</b> choisie — pratique pour positionner les événements ● REC à la mesure courante. Les événements de timelapse (M5) sont horodatés <b>mesure + temps</b> (1-4) et partent au temps exact.
       <br><b>🔇 Vrai silence NC</b> : ▶ Démarrer passe l'APC memory OFF ; dès que le FA du clavier confirme le rythme lancé, Synchro&Break est désarmé — <code>NC</code> coupe l'accompagnement sans couper la batterie, l'accord suivant relance (memory laissé OFF : retour à la main au panneau).
       <br><b>🎵 Morceaux</b> : sélectionner un morceau charge sa séquence et <b>envoie sa config au KN2000</b> (tempo, rythme, APC, sons, volumes — aucun rappel Panel Memory : la config vit dans la page, morceau par morceau) ; <b>💾 Sauver morceau</b> capture la séquence affichée + les réglages COURANTS du clavier (lecture panel façon Panel Console) ; ⬇️ Export / ⬆️ Import pour tout emporter en JSON ; un morceau sans séquence sauvegardée VIDE l'écran (seul le titre reste affiché, jamais sauvegardé) ; <b>🔄 Renvoyer au clavier</b> renvoie les réglages panel du morceau courant (vérif clavier).
@@ -527,6 +527,7 @@ async function initMidi() {
         }
       };
       rx.onchange = bind; tx.onchange = bind; bind();
+      apcAutoConnect(); // v2.7.17 — APC reconnecté automatiquement au chargement si ports mémorisés encore présents (page seule, pas de détection à chaud)
       access.onstatechange = () => { fill(rx, [...access.inputs.values()], rx.value); fill(tx, [...access.outputs.values()], tx.value); apcFill(); bind(); };
       log("MIDI prêt — " + ins.length + " entrée(s), " + outs.length + " sortie(s).", "ok");
       // v2.6.4 — démarrage de session : lecture des réglages enable (p.28) puis Auto Enable sur les réponses
@@ -864,8 +865,13 @@ function onMidiMsg(ev) {
           log("FA du clavier pendant la lecture — origine réalignée sur le temps 1 du rythme : la séquence CONTINUE (mesure de départ conservée).", "info");
           seqPump();
         } else {
-          seqQueue = seqList; seqIdx = 0; seqStartIdx = 0; seqOriginPulse = pulse; posMeasOffset = 0; // pulse = 0 au FA → accord 1 pile sur le temps 1 ; compteur à 1:01 (départ clavier)
-          log("▶ FA Start du clavier — séquence lancée depuis l'accord 1 (mesure 1), calée sur le temps 1 ; les envois suivent le compteur F8.", "ok");
+          const nStart = Math.max(1, parseInt(document.getElementById("startM").value) || 1); // v2.7.17 — FA à l'arrêt part de la MESURE DE DÉPART choisie (zap ‹§/§› ou champ), plus forcément de la mesure 1
+          seqQueue = seqList; seqIdx = firstIdxFromMeasure(seqList, nStart);
+          if (nStart > 1 && seqIdx >= seqList.length) seqIdx = Math.max(0, seqList.length - 1);
+          seqStartIdx = seqIdx;
+          seqOriginPulse = pulse - (seqIdx > 0 && seqList[seqIdx] ? seqList[seqIdx].cum * ppq() : 0); // v2.7.17 — origine reculée du cum des mesures sautées (comme ▶ Démarrer, v0.36)
+          posMeasOffset = Math.max(0, nStart - 1);
+          log("▶ FA Start du clavier — séquence lancée depuis la mesure " + nStart + " (accord " + (seqIdx + 1) + "), calée sur le temps 1 ; les envois suivent le compteur F8.", "ok");
           seqPump();
         }
         // v0.39 — le rythme du clavier est lancé (FA reçu) : Synchro&Break a joué son rôle (1er accord → FA).
@@ -902,6 +908,7 @@ function onMidiMsg(ev) {
         lastStopIdx = seqIdx; // mémorisé pour une éventuelle reprise FB Continue
         if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; }
         seqQueue = null; seqOriginPulse = null; seqOriginBeats = null; chordOff();
+        curEv = null; curEvAt = 0; // v2.7.17 — FC du clavier : feux de la Scène éteintes (curEv gardé = feux fantômes après l'arrêt)
         log("⏹ FC Stop du clavier — séquence ARRÊTÉE à l'événement " + (lastStopIdx + 1) + " (notes OFF, séquence libérée). FB Continue la reprendra ; FA la relancera depuis l'accord 1.", "info");
       }
       lastF8At = 0;
@@ -1195,6 +1202,7 @@ let seqNextAt = 0; // horloge absolue du prochain accord — corrige la dérive 
 let seqOriginBeats = null; // si Départ calé : position en noires de la séquence sur la grille de l'horloge
 function endSeqLocal() {
   chordOff(); markChord(-1); sendRhythmStop(); seqQueue = null; seqOriginPulse = null; seqOriginBeats = null; lastStopIdx = null; posMeasOffset = m5StopMeas() - 1; // v2.6.13 — à la fin de la progression, le compteur se fige sur la MESURE DE DÉPART (comme au FC — avant : retour à l'horloge brute mesure 1)
+  curEv = null; curEvAt = 0; // v2.7.17 — feux de la Scène ÉTEINTES à l'arrêt (ne continuent plus indéfiniment)
   log("=== Fin de la progression — notes OFF + rythme arrêté (CC82 Stop, canal Control " + document.getElementById("chDrums").value + ") ===", "ok");
 }
 function seqPump() {
@@ -1300,6 +1308,7 @@ document.getElementById("play").onclick = () => {
 document.getElementById("stopPlay").onclick = () => {
   clearPlay(); if (seqTimer) { clearTimeout(seqTimer); seqTimer = null; }
   seqQueue = null; chordOff(); seqOriginBeats = null; seqOriginPulse = null; lastStopIdx = null;
+  curEv = null; curEvAt = 0; // v2.7.17 — feux de la Scène éteintes au Stop (plus de continuation fantôme)
   sendRhythmStop();
   log("⏹ Stop — notes OFF, rythme arrêté (CC82 Stop ch Control + FC). L'état Synchro repasse OFF côté clavier (badge) : ▶ Démarrer le réarmera.", "info");
 };
@@ -1832,6 +1841,7 @@ function repLoadSong(i, force) { // v2.7.0 (A4) — pont NON destructif : la fic
   const s = songById(curSongId);
   if (!force && s && s.fiche) { // déjà une fiche : jamais d'écrasement silencieux
     log("🔒 « " + s.title + " » a déjà une fiche Chanson — CONSERVÉE (pont non destructif). ↻ Re-dériver pour la remplacer par « " + (it.s.title || "?") + " » du répertoire.", "info");
+    repLocked = true; // v2.7.17 — pont verrouillé : ↻ re-forcera repLoadSong(lastRepIdx, true) même avec une fiche existante
     return;
   }
   if (!editLeaving("save")) return; // zone modifiée non sauvegardée : OK = 💾 puis charger
@@ -1857,6 +1867,7 @@ function repLoadSong(i, force) { // v2.7.0 (A4) — pont NON destructif : la fic
   }
   if (g.warns.length) log("⚠ Grain à moudre (" + g.warns.length + ") : " + g.warns.slice(0, 12).join(" · ") + (g.warns.length > 12 ? " …" : ""), "info");
   loadSeq();
+  repLocked = false; // v2.7.17 — chargement réussi : verrou levé
 }
 document.getElementById("repBtn").onclick = () => repFillFromDir();
 document.getElementById("repSearch").addEventListener("input", () => { if (repSongs) repFill(); });
@@ -1877,8 +1888,10 @@ let curTab = "direct"; // onglet d'édition actif : "chanson" (fiche ✏️ de l
 let tabDraft = {}; // brouillons d'onglets non sauvegardés — vidés à chaque changement de morceau/sauvegarde
 let editBase = ""; // texte de l'onglet actif au dernier chargement/sauvegarde — base du « ● modifié »
 let lastRepIdx = null; // dernier morceau chargé par le pont 🎹 — le bouton ↻ le re-force (A4)
+let repLocked = false; // v2.7.17 — pont 🎹 verrouillé (🔒) : ↻ re-force le chargement répertoire même quand une fiche existe (cas « Encore Et Encore »)
 let vueOn = false, sceneOn = false, sceneStick = null; // Vue Chanson ouverte ; Mode Scène ouvert ; section figée (null = suivre la lecture)
 let curEv = null, curEvAt = 0; // événement en cours (sync Scène/Vue Chanson) + instant de son émission
+let sceneBpmPrev = null; // v2.7.17 — dernier tempo vu par l'intervalle Scène (ré-ancrage de curEvAt au changement de tempo)
 let ficheHintLast = null; // anti-spam du hint « fiche collée en onglet Direct »
 function ficheLikeHint(t) { // v2.7.0 — texte fiche en zone Direct : hint UNE fois par texte (jamais de bascule silencieuse)
   if (t === ficheHintLast || !t || !/\n/.test(t)) return false;
@@ -1935,7 +1948,7 @@ document.getElementById("tabDirect").onclick = () => setTab("direct");
 document.getElementById("tabRederive").onclick = () => { // ↻ : re-dériver le Direct depuis la fiche — ou re-forcer le pont 🎹 (A4)
   const s = songById(curSongId);
   if (!s) { log("↻ Sélectionne d'abord un morceau.", "ko"); return; }
-  if (!s.fiche && lastRepIdx !== null) { repLoadSong(lastRepIdx, true); return; }
+  if ((repLocked || !s.fiche) && lastRepIdx !== null) { repLoadSong(lastRepIdx, true); return; } // v2.7.17 — verrou 🔒 : ↻ re-force le pont même si s.fiche existe (avant : branche inatteignable)
   if (!s.fiche && !(curTab === "chanson" && zoneVal().trim())) { log("↻ Pas encore de fiche Chanson pour « " + s.title + " » — charge-la par 🎹 répertoire ou saisis-la en onglet Chanson.", "ko"); return; }
   if (curTab === "chanson") s.fiche = zoneVal();
   const g = ficheDerive(s);
@@ -2149,8 +2162,31 @@ function sceneSync(ev) { // appelé par markChord : la Scène suit la lecture (s
 document.getElementById("sceneBtn").onclick = () => sceneOn ? sceneClose() : sceneOpen();
 document.getElementById("scClose").onclick = sceneClose;
 document.getElementById("scFollow").onclick = () => { sceneStick = null; sceneRender(); };
-document.getElementById("scPrev").onclick = () => { sceneStick = Math.max(0, sceneStickyIdx() - 1); sceneRender(); };
-document.getElementById("scNext").onclick = () => { sceneStick = Math.min(((sceneView().secs) || []).length - 1, sceneStickyIdx() + 1); sceneRender(); };
+function scZap(d) { // v2.7.17 — ‹§/§› : transport EN COURS = figement visuel (inchangé, la lecture continue) ; transport ARRÊTÉ = avance/recule la POSITION DE DÉPART par bloc (section), façon zapping de l'afficheur (scHl) : startM = 1ʳᵉ mesure de la section visée → ▶ Démarrer / FA clavier partent de là
+  const R = sceneView();
+  const secs = R.secs || [];
+  if (!secs.length) return;
+  if (seqQueue !== null) { // lecture en cours : purement visuel
+    sceneStick = Math.max(0, Math.min(secs.length - 1, sceneStickyIdx() + d));
+    sceneRender();
+    return;
+  }
+  // transport arrêté : position de départ par bloc
+  const startEl = document.getElementById("startM");
+  const startM = Math.max(1, parseInt(startEl.value) || 1);
+  const evs = seqList || [];
+  let curSec = 0;
+  for (const e of evs) { if ((e.mNo || 1) >= startM) { curSec = (e.secIdx != null ? e.secIdx : 0); break; } } // section de la position de départ courante
+  const ni = Math.max(0, Math.min(secs.length - 1, curSec + d));
+  const first = evs.find(e => e.secIdx === ni && e.mNo != null); // 1ʳᵉ événement de la section visée (1ʳᵉ passe des xN)
+  if (first) { startEl.value = String(first.mNo); deckIdle(); }
+  sceneStick = ni; // surligne la 1ʳᵉ rangée de la section (comme scHl dans l'afficheur)
+  sceneRender();
+  const sec = secs[ni];
+  log("‹§/§› — départ réglé sur la section « " + ((sec && sec.label) || (ni + 1)) + " »" + (first ? " (mesure " + first.mNo + ")" : "") + " : ▶ Démarrer / FA clavier partiront de là.", "info");
+}
+document.getElementById("scPrev").onclick = () => scZap(-1);
+document.getElementById("scNext").onclick = () => scZap(1);
 document.getElementById("scPlay").onclick = () => { if (SCENE_ONLY) return; document.getElementById(seqQueue === null ? "play" : "stopPlay").click(); };
 // ── v2.7.6 — Scène standardisée : ♯ ⇄ −+ 💡 M A− A+ ☰ ⏮ ⏭ ⏹ ──
 document.getElementById("scChordsBtn").onclick = () => { scOpts.chords = !scOpts.chords; masterChoseDisplay(); scOptsSave(); scOptsApply(); if (sceneOn) sceneRender(); };
@@ -2184,6 +2220,11 @@ setInterval(() => { // feux de temps + compteurs du Mode Scène (léger : ne tou
       b = Math.floor((pulse - seqOriginPulse) / ppq() - ev.cum) + 1;
     } else if (curEvAt) { // minuteur local : temps déduit du tempo (suiveur aussi — calé sur l'arrivée de la rangée)
       const bpm = (SCENE_ONLY && window.__scFollowBpm) ? window.__scFollowBpm : curBpm();
+      if (sceneBpmPrev !== null && sceneBpmPrev !== bpm && curEv) { // v2.7.17 — changement de tempo : ré-ancrage de curEvAt en conservant le temps courant (plus de dérive du métronome)
+        const bPrev = Math.floor((performance.now() - curEvAt) * sceneBpmPrev / 60000) + 1;
+        curEvAt = performance.now() - (Math.max(1, bPrev) - 1) * 60000 / bpm;
+      }
+      sceneBpmPrev = bpm;
       b = Math.floor((performance.now() - curEvAt) * bpm / 60000) + 1;
     }
     if (b !== null && b >= 1 && b <= 64) { // v2.7.16 — tenue (mesure vide « ! ! ») : l'accord en cours peut chevaucher plusieurs mesures → beat rebouclé dans la mesure (feux 1..n toujours allumés) et mesure jouée = pNo + mesures écoulées depuis le début de l'accord
@@ -2242,8 +2283,8 @@ function scFollowApplyState(m) {
     const k = JSON.stringify(m.opts);
     if (k !== (window.__scFollowOptsKey || "")) { window.__scFollowOpts = m.opts; window.__scFollowOptsKey = k; scOptsApply(); if (sceneOn) sceneRender(); }
   }
-  curEv = { rowIdx: m.rowIdx, secIdx: m.secIdx, pNo: m.pNo, mb: m.mb || 4, cum: 0 };
-  curEvAt = performance.now();
+  curEv = (m.rowIdx != null) ? { rowIdx: m.rowIdx, secIdx: m.secIdx, pNo: m.pNo, mb: m.mb || 4, cum: 0 } : null; // v2.7.17 — master arrêté (rowIdx null) : curEv vidé côté suiveur → feux éteints
+  curEvAt = curEv ? performance.now() : 0;
   if (sceneOn && sceneStick == null && m.rowIdx != null) sceneHlRow(m.rowIdx, true);
 }
 // ── BroadcastChannel : même navigateur, multi-fenêtres/écrans, zéro configuration ──
@@ -2436,9 +2477,8 @@ function songsLoad() {
   return st;
 }
 function songsSave() { try { localStorage.setItem(SONGS_KEY, JSON.stringify(songs)); } catch (e) { log("Écriture localStorage impossible : " + e.message, "ko"); } }
-function songPersist() { // v2.7.12 — en Mode Scène (live), AUCUNE sauvegarde au vol : toucher l'APC25 / M4 envoie au clavier et met à jour la config EN MÉMOIRE, mais n'écrase JAMAIS la config travaillée du morceau dans le stockage — seule 💾 Sauver morceau persiste explicitement
-  if (sceneOn) return;
-  songsSave();
+function songPersist() { // v2.7.17 — PLUS AUCUNE sauvegarde « au vol », page principale comme Mode Scène (demande Yves 16/11) : les réglages M4/APC (ccs, mutes, rhy…) restent EN MÉMOIRE ; seule 💾 Sauver morceau persiste — et il les capture (prevCcs/prevMutes/prevSnd/prevRhy fusionnés à la lecture DRQ du panel)
+  // no-op : persistance UNIQUEMENT via les boutons de sauvegarde explicites
 }
 function songById(id) { return songs.songs.find(s => s.id === id) || null; }
 function renderSongs() {
@@ -2509,6 +2549,7 @@ function selectSong(id, envoi) {
     loadSeq();
   }
   songInfo();
+  document.getElementById("startM").value = "1"; deckIdle(); // v2.7.17 — un morceau chargé part toujours du début (le zap ‹§/§› ne s'applique qu'après chargement, transport arrêté)
   if (s.panel && envoi !== false) restorePanel(s.panel);
   log("🎵 Morceau : « " + s.title + " »" + (s.seq ? " — séquence chargée" : " (pas encore de séquence sauvegardée)") + (s.panel ? (envoi === false ? " ; réglages panel disponibles" : " ; réglages panel ENVOYÉS au KN2000") : " ; pas encore de réglages sauvegardés — 💾 Sauver morceau les capturera"), "info");
   try { if (apcReady) apcLedsSync(); } catch (e) {} // v2.6.24 — synchronisation de la surface APC à chaque chargement de morceau (mutes, RV/DSP, rythme actuel)
@@ -4103,7 +4144,7 @@ function apcSurfaceCap(e) { // interception des messages de l'APC — true = con
   }
   return false;
 }
-document.getElementById("apcConnect").onclick = () => {
+function apcConnectDo(auto) { // v2.7.17 — routine factorisée : bouton « 🔌 Connecter l'APC » (auto=false) + reconnexion AUTO au chargement (auto=true, ports mémorisés uniquement)
   if (!midiAccess2) { log("🎛 Ouvre d'abord l'accès MIDI (⚙️ Réglages → 🔌 Connecter) — l'APC partage le même accès Web MIDI.", "ko"); return; }
   apcIn = midiAccess2.inputs.get(document.getElementById("apcRx").value) || null;
   apcOut = midiAccess2.outputs.get(document.getElementById("apcTx").value) || null;
@@ -4117,10 +4158,21 @@ document.getElementById("apcConnect").onclick = () => {
     apcVol[a.lbl] = (st !== undefined && st !== null) ? st : 100;
   }
   apcLedsSync();
-  apcStateTxt("● APC connecté", true);
+  apcStateTxt("● APC connecté" + (auto ? " (auto)" : ""), true);
   try { localStorage.setItem(APC_PORTS_KEY, JSON.stringify({ apcRx: document.getElementById("apcRx").value, apcTx: document.getElementById("apcTx").value })); } catch (e) {} // v2.6.22 — choix mémorisé pour la prochaine session
-  log("🎛 Surface APC connectée : ligne 5 (basse) pads 1-5 = mutes (rouge = muette) + pad 8 = Chord On/Off ; ligne 4 (au-dessus) = RV par part, aligné sur les colonnes des parts (pads 9-13) + pad 16 = RV Chord (gris = inconnu, orange = ON, éteint = OFF) ; ligne 3, pad 24 = DSP Chord ; colonne Batterie pads 37/29/21 = Rythme 1/2/3 (bleu = actuel, lu au chargement du morceau) ; knobs 1-5 = volumes, knob 8 = volume Chord. Pad 17 = envoi isolé de la commande MobileSheets (comme le bouton 📱 Commande MS). Pad 40 réservé au futur mode Sound.", "ok"); // v2.6.27 — + pad 17 MS
-};
+  log((auto ? "🎛 Surface APC RECONNECTÉE AUTOMATIQUEMENT au chargement (ports mémorisés) : " : "🎛 Surface APC connectée : ") + "ligne 5 (basse) pads 1-5 = mutes (rouge = muette) + pad 8 = Chord On/Off ; ligne 4 (au-dessus) = RV par part, aligné sur les colonnes des parts (pads 9-13) + pad 16 = RV Chord (gris = inconnu, orange = ON, éteint = OFF) ; ligne 3, pad 24 = DSP Chord ; colonne Batterie pads 37/29/21 = Rythme 1/2/3 (bleu = actuel, lu au chargement du morceau) ; knobs 1-5 = volumes, knob 8 = volume Chord. Pad 17 = envoi isolé de la commande MobileSheets (comme le bouton 📱 Commande MS). Pad 40 réservé au futur mode Sound.", "ok"); // v2.6.27 — + pad 17 MS
+}
+document.getElementById("apcConnect").onclick = () => apcConnectDo(false);
+function apcAutoConnect() { // v2.7.17 — connexion AUTO de l'APC au chargement de la page UNIQUEMENT si les ports ont déjà été mémorisés (APC_PORTS_KEY) et existent encore dans l'accès MIDI (présence détectée) — pas de connexion à chaud, pas de port deviné par nom
+  if (apcReady || !midiAccess2) return;
+  let saved = null; try { saved = JSON.parse(localStorage.getItem(APC_PORTS_KEY) || "null"); } catch (e) {}
+  if (!saved || !saved.apcRx || !saved.apcTx) return;
+  const ins = [...midiAccess2.inputs.values()], outs = [...midiAccess2.outputs.values()];
+  if (!ins.some(p => p.id === saved.apcRx) || !outs.some(p => p.id === saved.apcTx)) return;
+  document.getElementById("apcRx").value = saved.apcRx;
+  document.getElementById("apcTx").value = saved.apcTx;
+  apcConnectDo(true);
+}
 
 const _setModeV2 = setMode;
 setMode = function (m) { _setModeV2(m); if (m === "m4") renderM4(); if (m === "m5") { renderM4(); renderM5(); } };
