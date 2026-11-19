@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Afficheur chansons — v0.17.4</title>
+<title>Afficheur chansons — v0.17.6</title>
 <style>
   html, body { margin: 0; }
   body { font-family: system-ui, sans-serif; background: #fafafa; color: #222; max-width: 1060px; margin: 0 auto; padding: 0 10px 16px; }
@@ -124,7 +124,7 @@
 <body data-view="rep">
 <div id="communBanner" hidden style="position:sticky;top:0;z-index:60;background:#fff8dc;border-bottom:2px solid #d4a017;padding:6px 10px;font-size:13px;text-align:center"></div>
 <header>
-  <span><b>🎵 Afficheur chansons</b> <span class="hint">v0.17.4 — synchro : en session publique le master impose accords/grille/transposition (défaut karaoké), en privée chacun garde son affichage · v0.17.3 — import .mhtml (snapshot Blink : texte versionTxt du &lt;pre&gt;) · v0.17.2 — décodeur embarqué reconnaît la fiche APC Live (§ / !…! / @titre) reçue du master · v0.17.1 — répertoire · numéros · édition · transposition · scène (xN, surlignage à la mesure, signature adaptative) · impression · grille/ponctuateur · ⧉ dupliquer la grille sur un couplet · import JazzLab .sng · stockage IndexedDB · imports sans fuite · 💾 sauvegarde visible (garde anti-perte) · 🎤 morceaux INVITÉS du master APC Live</span></span>
+  <span><b>🎵 Afficheur chansons</b> <span class="hint">v0.17.6 — import .sng : vocabulaire complet des accords JJazzLab (table ChordTypeDatabaseImpl, 265 alias : 7#11→7(#11), 7b9→7(b9), m7b5→ø…) · v0.17.5 — import .sng : résolution des références XStream d’accords (les sections complètes réapparaissent, ex. A-1 = 16 mesures) · v0.17.4 — synchro : en session publique le master impose accords/grille/transposition (défaut karaoké), en privée chacun garde son affichage · v0.17.3 — import .mhtml (snapshot Blink : texte versionTxt du &lt;pre&gt;) · v0.17.2 — décodeur embarqué reconnaît la fiche APC Live (§ / !…! / @titre) reçue du master · v0.17.1 — répertoire · numéros · édition · transposition · scène (xN, surlignage à la mesure, signature adaptative) · impression · grille/ponctuateur · ⧉ dupliquer la grille sur un couplet · import JazzLab .sng · stockage IndexedDB · imports sans fuite · 💾 sauvegarde visible (garde anti-perte) · 🎤 morceaux INVITÉS du master APC Live</span></span>
   <span style="flex:1"></span>
   <span class="hint" id="stCount">—</span>
 </header>
@@ -969,17 +969,378 @@ function sngSig(ts) { // FOUR_FOUR → 4/4, SIX_EIGHT → 6/8…
   const N = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5, SIX: 6, SEVEN: 7, EIGHT: 8, NINE: 9, TEN: 10, ELEVEN: 11, TWELVE: 12 };
   return (N[m[1]] ? N[m[1]] : 4) + "/" + (m[2] === "EIGHT" ? 8 : 4);
 }
+const SNG_CHORD_ALIASES = {
+  "minMaj7(9)": "mM9",
+  "Maj9(no3)": "M9",
+  "min11(b5)": "m11(b5)",
+  "Maj13#11": "M13(#11)",
+  "Maj13+11": "M13(#11)",
+  "maj13#11": "M13(#11)",
+  "maj13+11": "M13(#11)",
+  "min7(11)": "m11",
+  "minMaj79": "mM9",
+  "-11(b5)": "m11(b5)",
+  "13-9+11": "13(b9#11)",
+  "13sus-9": "13sus4(b9)",
+  "7-9sus4": "7sus4(b9)",
+  "7b9sus4": "7sus4(b9)",
+  "7sus4-9": "7sus4(b9)",
+  "7sus4b9": "7sus4(b9)",
+  "M7add13": "M13",
+  "Maj6(9)": "69",
+  "Maj7#11": "M7(#11)",
+  "Maj7(9)": "M9",
+  "Maj7+11": "M7(#11)",
+  "Maj7Lyd": "M9(#11)",
+  "Maj7aug": "M7(#5)",
+  "Maj9#11": "M9(#11)",
+  "Maj9+11": "M9(#11)",
+  "Maj9no3": "M9",
+  "m11(b5)": "m11(b5)",
+  "m7add11": "m11",
+  "m7add13": "m13",
+  "m9add13": "m13",
+  "ma13#11": "M13(#11)",
+  "ma13+11": "M13(#11)",
+  "maj7#11": "M7(#11)",
+  "maj7+11": "M7(#11)",
+  "maj9#11": "M9(#11)",
+  "maj9+11": "M9(#11)",
+  "min11-5": "m11(b5)",
+  "min7(9)": "m9",
+  "minMaj7": "mM7",
+  "sus13-9": "13sus4(b9)",
+  "sus13b9": "13sus4(b9)",
+  "-9(11)": "m9(#11)",
+  "13+9-5": "13(#9b5)",
+  "13-5+9": "13(#9b5)",
+  "13-5-9": "13(b9b5)",
+  "13-9-5": "13(b9b5)",
+  "13M#11": "M13(#11)",
+  "13M+11": "M13(#11)",
+  "13b5#9": "13(#9b5)",
+  "13b5b9": "13(b9b5)",
+  "13sus4": "13sus4",
+  "7(b13)": "7(#5)",
+  "7+9+11": "7(#9#11)",
+  "7-9+11": "7(b9#11)",
+  "7-9-13": "7(#5b9)",
+  "7-9sus": "7sus4(b9)",
+  "713#11": "13(#11)",
+  "713+11": "13(#11)",
+  "713sus": "13sus4",
+  "7add13": "13",
+  "7b9b13": "7(#5b9)",
+  "7b9sus": "7sus4(b9)",
+  "7dim7M": "dimM7",
+  "7sus-9": "7sus4(b9)",
+  "MAJ713": "M13",
+  "Maj(9)": "M9",
+  "Maj7#5": "M7(#5)",
+  "Maj7+5": "M7(#5)",
+  "Maj7-5": "M7(b5)",
+  "Maj7b5": "M7(b5)",
+  "m7add4": "m11",
+  "m9(11)": "m9(#11)",
+  "ma7#11": "M7(#11)",
+  "ma7+11": "M7(#11)",
+  "ma9#11": "M9(#11)",
+  "ma9+11": "M9(#11)",
+  "maj7#5": "M7(#5)",
+  "maj7+5": "M7(#5)",
+  "maj7-5": "M7(b5)",
+  "maj713": "M13",
+  "maj7b5": "M7(b5)",
+  "min(9)": "m9",
+  "min7#5": "m7(#5)",
+  "min7+5": "m7(#5)",
+  "min7-5": "ø",
+  "min7-9": "m7(b9)",
+  "min711": "m11",
+  "min713": "m13",
+  "min7b5": "ø",
+  "min7b9": "m7(b9)",
+  "min9-5": "m9(b5)",
+  "min911": "m9(#11)",
+  "min9b5": "m9(b5)",
+  "sus7-9": "7sus4(b9)",
+  "sus713": "13sus4",
+  "sus7b9": "7sus4(b9)",
+  "-11-5": "m11(b5)",
+  "-11b5": "m11(b5)",
+  "-maj7": "mM7",
+  "1+2+5": "add9",
+  "13+11": "13(#11)",
+  "7#5#9": "7(#5#9)",
+  "7#5b9": "7(#5b9)",
+  "7(#9)": "7(#9)",
+  "7(13)": "13",
+  "7(b9)": "7(b9)",
+  "7+5+9": "7(#5#9)",
+  "7+5-9": "7(#5b9)",
+  "7-5+9": "7(b5#9)",
+  "7-5-9": "7(b5b9)",
+  "713#9": "13(#9)",
+  "713+9": "13(#9)",
+  "713-5": "13(b5)",
+  "713-9": "13(b9)",
+  "713b5": "13(b5)",
+  "713b9": "13(b9)",
+  "79sus": "9sus4",
+  "7M#11": "M7(#11)",
+  "7M+11": "M7(#11)",
+  "7Mlyd": "M9(#11)",
+  "7add6": "13",
+  "7b5#9": "7(b5#9)",
+  "7b5b9": "7(b5b9)",
+  "7sus4": "7sus4",
+  "9M#11": "M9(#11)",
+  "9M+11": "M9(#11)",
+  "9sus4": "9sus4",
+  "M7lyd": "M9(#11)",
+  "MAJ13": "13",
+  "MAJ69": "69",
+  "MAJ79": "M9",
+  "Maj13": "13",
+  "Maj69": "69",
+  "Maj79": "M9",
+  "dimM7": "dimM7",
+  "m11-5": "m11(b5)",
+  "mMaj7": "mM7",
+  "ma7#5": "M7(#5)",
+  "ma7+5": "M7(#5)",
+  "ma7-5": "M7(b5)",
+  "ma713": "M13",
+  "ma7b5": "M7(b5)",
+  "madd2": "madd2",
+  "madd4": "m11",
+  "madd9": "madd2",
+  "maj#5": "aug",
+  "maj+5": "aug",
+  "maj-5": "M7(b5)",
+  "maj13": "13",
+  "maj69": "69",
+  "maj79": "M9",
+  "mi7#5": "m7(#5)",
+  "mi7+5": "m7(#5)",
+  "mi7-5": "ø",
+  "mi7-9": "m7(b9)",
+  "mi711": "m11",
+  "mi713": "m13",
+  "mi7b5": "ø",
+  "mi7b9": "m7(b9)",
+  "mi9-5": "m9(b5)",
+  "mi911": "m9(#11)",
+  "mi9b5": "m9(b5)",
+  "min13": "m13",
+  "min69": "m69",
+  "min79": "m9",
+  "min7M": "mM7",
+  "min9M": "mM9",
+  "sus13": "13sus4",
+  "sus79": "9sus4",
+  "-7#5": "m7(#5)",
+  "-7+5": "m7(#5)",
+  "-7-5": "ø",
+  "-7-9": "m7(b9)",
+  "-711": "m11",
+  "-713": "m13",
+  "-7b5": "ø",
+  "-7b9": "m7(b9)",
+  "-9-5": "m9(b5)",
+  "-911": "m9(#11)",
+  "-9b5": "m9(b5)",
+  "-ass": "",
+  "13+9": "13(#9)",
+  "13-5": "13(b5)",
+  "13-9": "13(b9)",
+  "7(9)": "9",
+  "7+11": "7(#11)",
+  "7-13": "7(#5)",
+  "79#5": "9(#5)",
+  "79+5": "9(#5)",
+  "79-5": "9(b5)",
+  "79b5": "9(b5)",
+  "7M#5": "M7(#5)",
+  "7M+5": "M7(#5)",
+  "7M-5": "M7(b5)",
+  "7Mb5": "M7(b5)",
+  "7alt": "7(#5#9)",
+  "7aug": "7(#5)",
+  "7b13": "7(#5)",
+  "7dim": "dim7",
+  "9+11": "9(#11)",
+  "BASS": "",
+  "Bass": "",
+  "MAJ6": "6",
+  "MAJ7": "M7",
+  "Maj6": "6",
+  "Maj7": "M7",
+  "Maj9": "M9",
+  "add2": "add9",
+  "add9": "add9",
+  "aug7": "7(#5)",
+  "bass": "",
+  "dim5": "dim",
+  "dim7": "dim7",
+  "m7-5": "ø",
+  "m711": "m11",
+  "m7M9": "mM9",
+  "m9-5": "m9(b5)",
+  "m911": "m9(#11)",
+  "m913": "m13",
+  "ma#5": "aug",
+  "ma+5": "aug",
+  "ma-5": "M7(b5)",
+  "ma13": "13",
+  "ma69": "69",
+  "ma79": "M9",
+  "maj6": "6",
+  "maj7": "M7",
+  "maj9": "M9",
+  "maug": "m(#5)",
+  "mi#5": "m(#5)",
+  "mi+5": "m(#5)",
+  "mi13": "m13",
+  "mi69": "m69",
+  "mi9M": "mM9",
+  "min2": "madd2",
+  "min6": "m6",
+  "min7": "m7",
+  "min9": "m9",
+  "sus2": "add9",
+  "sus4": "sus4",
+  "sus7": "7sus4",
+  "sus9": "9sus4",
+  "-#5": "m(#5)",
+  "-+5": "m(#5)",
+  "-11": "m11",
+  "-13": "m13",
+  "-69": "m69",
+  "-7M": "mM7",
+  "-9M": "mM9",
+  "1+5": "",
+  "1+8": "",
+  "134": "13sus4",
+  "13M": "13",
+  "7+5": "7(#5)",
+  "7+9": "7(#9)",
+  "7-5": "7(b5)",
+  "7-9": "7(b9)",
+  "713": "13",
+  "7th": "7",
+  "9+5": "9(#5)",
+  "9-5": "9(b5)",
+  "Lyd": "M9(#11)",
+  "M#5": "aug",
+  "M+5": "aug",
+  "M-5": "M7(b5)",
+  "M13": "M13",
+  "M69": "69",
+  "MAJ": "",
+  "Maj": "",
+  "Mb5": "M7(b5)",
+  "aug": "aug",
+  "dim": "dim",
+  "lyd": "M9(#11)",
+  "m#5": "m(#5)",
+  "m+5": "m(#5)",
+  "m-5": "dim",
+  "mM7": "mM7",
+  "mM9": "mM9",
+  "ma7": "M7",
+  "maj": "",
+  "mb5": "dim",
+  "mi+": "m(#5)",
+  "mi2": "madd2",
+  "mi6": "m6",
+  "mi7": "m7",
+  "mi9": "m9",
+  "min": "m",
+  "o7M": "dimM7",
+  "oM7": "dimM7",
+  "°7M": "dimM7",
+  "+7": "7(#5)",
+  "-2": "madd2",
+  "-5": "M7(b5)",
+  "-6": "m6",
+  "-7": "m7",
+  "-9": "m9",
+  "11": "7sus4",
+  "67": "13",
+  "7+": "7(#5)",
+  "74": "7sus4",
+  "79": "9",
+  "7M": "M7",
+  "9+": "9(#5)",
+  "94": "9sus4",
+  "9M": "M9",
+  "M6": "6",
+  "M7": "M7",
+  "M9": "M9",
+  "b5": "M7(b5)",
+  "h7": "dim7",
+  "m6": "m6",
+  "m7": "m7",
+  "mi": "m",
+  "o7": "dim7",
+  "°7": "dim7",
+  "-": "m",
+  "4": "sus4",
+  "5": "",
+  "7": "7",
+  "M": "",
+  "h": "dim",
+  "o": "dim",
+  "°": "dim"
+};
 function sngNormChord(name) { // alias JJazzLab → tokens afficheur ; null si toujours inconnu (→ tenue + avertissement)
   let c = decodeEntitiesH(String(name || "")).trim().replace(/♭/g, "b").replace(/♯/g, "#");
+  // v0.17.6 : table des accords JJazzLab (ChordTypeDatabaseImpl du toolkit, ~320 alias avec formes normalisées
+  // #→+ et b→-) embarquée — fondamentale + suffixe cherché dans SNG_CHORD_ALIASES
+  // (ex. Db7#11 → Db7(#11), E7b9 → E7(b9), Cm7b5 → Cø, G7alt → G7(#5#9))
+  const fm = /^([A-G][b#]?)([\s\S]*)$/.exec(c);
+  if (fm) {
+    let rest = fm[2].trim(), bass = null;
+    const sl = rest.indexOf("/");
+    if (sl >= 0) { bass = rest.slice(sl + 1).trim(); rest = rest.slice(0, sl).trim(); }
+    const norm = r => r.replace(/#/g, "+").replace(/b/g, "-").replace(/[()]/g, "");
+    const rn = norm(rest);
+    const cands = [rest, rn];
+    if (/^M/.test(rest)) cands.push(rest.slice(1) + "M", "ma" + rest.slice(1), "Maj" + rest.slice(1)); // M7#11 → 7M#11…
+    for (const k of cands) {
+      if (k !== "" && Object.prototype.hasOwnProperty.call(SNG_CHORD_ALIASES, k)) {
+        const out = fm[1] + SNG_CHORD_ALIASES[k] + (bass && /^[A-G][b#]?$/.test(bass) ? "/" + bass : "");
+        if (isChordToken(out)) return out;
+      }
+    }
+    if (rest === "" && isChordToken(fm[1] + (bass ? "/" + bass : ""))) return fm[1] + (bass ? "/" + bass : "");
+  }
   c = c.replace(/^([A-G][b#]?)min(?![A-Za-z])/, "$1m")
        .replace(/^([A-G][b#]?)maj(?![A-Za-z])/, "$1M")
        .replace(/^([A-G][b#]?)-(?![A-Za-z])/, "$1m")
        .replace(/sus(?![0-9])$/, "sus4").replace(/(\d)sus(?![0-9])/, "$1sus4")
-       .replace(/m7-?b?5$/, "ø").replace(/°$/, "dim").replace(/\+$/, "aug"); // v0.12.1 : m7b5/m7-5/m7-b5 → ø (token natif) ; ø/° acceptés tels quels
+       .replace(/m7-?b?5$/, "ø").replace(/°$/, "dim").replace(/\+$/, "aug");
   return isChordToken(c) ? c : null;
+}
+// v0.17.5 : résolution des références XStream — un accord déjà vu ailleurs dans le document arrive
+// sous la forme <spChord reference="../../CLI__ChordSymbolImpl[N]/spChord"/> (N 1-based, sans [N] = 1er
+// bloc du document) : on va chercher le nom de l'accord dans le bloc référencé, sinon la mesure reste vide.
+const SNG_REF_RE = /reference="\.\.\/\.\.\/CLI__ChordSymbolImpl(?:\[(\d+)\])?\/spChord"/;
+function sngChordBlocks(x) { const blks = []; const re = /<CLI__ChordSymbolImpl\b[^>]*>[\s\S]*?<\/CLI__ChordSymbolImpl>/g; let mm; while ((mm = re.exec(x))) blks.push(mm[0]); return blks; }
+function sngResolveChord(choTag, blocks) {
+  const direct = (sngAttr(choTag, "spOriginalName") || sngAttr(choTag, "spName") || "").trim();
+  if (direct) return direct;
+  const r = String(choTag).match(SNG_REF_RE);
+  if (!r) return "";
+  const blk = blocks[r[1] ? +r[1] - 1 : 0];
+  if (!blk) return "";
+  const ct = (blk.match(/<spChord\b[^>]*>/) || [""])[0];
+  return (sngAttr(ct, "spOriginalName") || sngAttr(ct, "spName") || "").trim();
 }
 function decodeSng(xml) {
   const x = String(xml || "");
+  const choBlocks = sngChordBlocks(x); // v0.17.5
   const out = { title: null, artist: null, lyricsAuthor: null, musicAuthor: null, intro: [], sections: [], markers: [], warnings: [], tempo: "", sig: "", key: null, capo: null, vocab: [], sourceMeta: { modified: null, version: null, source: "JJazzLab (.sng)" } };
   const songTag = (x.match(/<Song[\s][^>]*>/) || [""])[0];
   out.title = decodeEntitiesH(sngAttr(songTag, "spName") || "").trim().replace(/[-_]+/g, " ").replace(/\s+/g, " ")
@@ -998,7 +1359,7 @@ function decodeSng(xml) {
     const pos = blk.match(/spPos="[^"]*\[(\d+):(\d+)\]"/); // [mesure:temps], 0-based
     if (!pos) continue;
     const choTag = (blk.match(/<spChord\b[^>]*>/) || [""])[0];
-    items.push({ kind: "cho", at: m.index, bar: +pos[1], beat: +pos[2], nc: /NCExtChordSymbol/.test(blk), raw: (sngAttr(choTag, "spOriginalName") || sngAttr(choTag, "spName") || "").trim() });
+    items.push({ kind: "cho", at: m.index, bar: +pos[1], beat: +pos[2], nc: /NCExtChordSymbol/.test(blk), raw: sngResolveChord(choTag, choBlocks) }); // v0.17.5
   }
   items.sort((a, b) => a.at - b.at);
   const cls = [];
@@ -1677,7 +2038,7 @@ function renderRep() {
   const th = (k, label) => '<th style="cursor:pointer" data-sort="' + k + '" title="Trier par ' + label + '">' + label + (so && so.by === k ? (so.dir > 0 ? " ▲" : " ▼") : " ↕") + "</th>";
   const t = document.getElementById("repSearch").value;
   const rows = repRows(t);
-  document.getElementById("stCount").textContent = AFF.bookSongs(rep, curBookId()).length + " chanson(s)" + (curBookId() === "all" ? "" : " · répertoire complet : " + rep.songs.length) + " · " + rep.songs.filter(s => s.hasStructure).length + " structurées" + (rep.updated ? " · dernière modif : " + fmtTs(rep.updated) + (rep.journal && rep.journal.length ? " par " + rep.journal[rep.journal.length - 1].qui : "") : "") + " · afficheur v0.16.2";
+  document.getElementById("stCount").textContent = AFF.bookSongs(rep, curBookId()).length + " chanson(s)" + (curBookId() === "all" ? "" : " · répertoire complet : " + rep.songs.length) + " · " + rep.songs.filter(s => s.hasStructure).length + " structurées" + (rep.updated ? " · dernière modif : " + fmtTs(rep.updated) + (rep.journal && rep.journal.length ? " par " + rep.journal[rep.journal.length - 1].qui : "") : "") + " · afficheur v0.17.6";
   const el = document.getElementById("repList");
   el.innerHTML = '<table class="rep"><tr>' + th("numero", "N°") + th("title", "Titre") + '<th>Artiste</th><th>Statut</th><th>Modifié</th><th></th></tr>' +
     rows.map(s => {
